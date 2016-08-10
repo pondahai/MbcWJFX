@@ -1,0 +1,3522 @@
+/***********************************************************************
+ *
+ * Copyright (c) 1994-1999 3Com Corporation or its subsidiaries.
+ * All rights reserved.
+ *
+ * PROJECT:  Pilot
+ * FILE:     Starter.c
+ * AUTHOR:   Roger Flores: May 20, 1997
+ *
+ * DECLARER: Starter
+ *
+ * DESCRIPTION:
+ *	  
+ *
+ **********************************************************************/
+#include <Pilot.h>
+#include <SysEvtMgr.h>
+#include <KeyMgr.h>
+//#include <FloatMgr.h>
+#include "StarterRsc.h"
+
+
+/***********************************************************************
+ *
+ *   Entry Points
+ *
+ ***********************************************************************/
+
+
+/***********************************************************************
+ *
+ *   Internal Structures
+ *
+ ***********************************************************************/
+typedef struct 
+	{
+	Byte replaceme;
+	} StarterPreferenceType;
+
+typedef struct 
+	{
+	Byte replaceme;
+	} StarterAppInfoType;
+
+typedef StarterAppInfoType* StarterAppInfoPtr;
+
+
+/***********************************************************************
+ *
+ *   Global variables
+ *
+ ***********************************************************************/
+//static Boolean HideSecretRecords;
+
+
+#define offset_x 0
+#define offset_y -16
+
+
+// for test
+/*
+struct diagram_element{
+UInt16 unitRSC;
+int x,y;
+};
+struct diagram_element table1={ADDBitmap,50,50};
+*/
+////////////////////////////////////////////////
+
+Boolean DataLoaded=false;
+Boolean CanvasState=true;
+Boolean RUN=false;
+int prev_x,prev_y;
+int penMoveAverage;
+
+
+typedef struct{
+	UInt16 x;
+	UInt16 y;
+}MWPointType;
+	
+typedef struct{
+	UInt16 NodeID;
+	Boolean IO; 					//true = input , false = output
+	Boolean DATAnotREADY;
+	int value;
+	MWPointType PieceRelativeTopLeft; // 
+	MWPointType PieceExtent;			//
+}IONodeType;
+
+typedef struct{
+	UInt16 NodeID;
+	MWPointType ControlNodeAreaTopLeft;
+	MWPointType ControlNodeAreaExtent;
+}PanelControlNodeType;
+
+typedef struct{
+	UInt16 UID;
+	UInt16 PanelBitmapID;
+	UInt16 BlockBitmapID;
+	MWPointType BlockXY;
+	MWPointType BlockSize;
+	MWPointType PanelXY;
+	MWPointType PanelSize;	
+	UInt16 IONodeN;				// number of IO nodes
+	IONodeType IONodes[16];		// max of IO number is 16
+	UInt16 PanelControlNodeN;			// panel control item's control
+	PanelControlNodeType PanelNodes[16];//
+}BlockType;	
+
+
+
+//BlockType Items[5];
+//LineType WireItem[5];
+
+typedef struct{
+	UInt16 WireID;
+	//Uint16 LineStyle;
+	//BlockLink StartBlockP;
+	UInt16 StartBlockID;
+	UInt16 StartNodeID;
+	//BlockLink EndBlockP;
+	UInt16 EndBlockID;
+	UInt16 EndNodeID;
+}LineType;
+
+struct wList{
+	LineType wire;
+	struct wList* PREVNODE;
+	struct wList* NEXTNODE;
+};
+
+typedef struct wList WireLLNode;
+typedef WireLLNode *WireLink;
+
+// link-list type 
+struct list{
+	BlockType item;
+	//struct list *PrevBlockLLHeadP;
+	struct list *BlockLLHeadP;
+	struct wList *WireLLHeadP;
+	struct list *PREVNODE;
+	struct list *NEXTNODE;
+};
+
+typedef struct list BlockLLNode;
+typedef BlockLLNode *BlockLink;
+
+
+//
+/*
+#define HAND 1
+#define THREAD 2
+#define ARROW 3
+#define FINGER 4
+#define SCISSOR 5
+#define KILL 6
+*/
+UInt16 BlockPointerState = HANDBitmap; // block : HAND , THREAD
+UInt16 PanelPointerState = HANDBitmap; // panel : HAND , FINGER
+
+//int WhichTool=HAND;			// now is which tool?1=hand 2=thread
+
+
+struct hand{
+UInt16 HandState ;
+BlockLink CatchWhat;
+}HandPointer;
+
+//BlockLink BlockLLHead = NULL;
+BlockLink LLP;
+
+BlockLink FunctionsLLHead = NULL;
+BlockLink FLLP;
+
+//WireLink WireLLHead = NULL;
+WireLink WLLP;
+
+// ver. 3
+struct SysStruct{
+BlockLink BlockLLHead;
+WireLink WireLLHead;
+};
+
+typedef struct SysStruct SysHead;
+SysHead SYSHEAD;
+
+typedef struct{
+	BlockLink BlockP;
+	UInt16 Node;
+}EndPoint;
+EndPoint WireStart,WireStop;
+
+DmOpenRef   db;
+UInt32      numRecords;
+static VoidHand 		ChoicesHandle = 0, ChoicesPtrsHandle;
+
+/***********************************************************************
+ *
+ *   Internal Constants
+ *
+ ***********************************************************************/
+#define appFileCreator					'strt'
+#define appVersionNum              0x01
+#define appPrefID                  0x00
+#define appPrefVersionNum          0x01
+
+#define appCreatorID    'wjfx'
+#define appDBType       'test'
+
+// Define the minimum OS version we support
+#define ourMinVersion	sysMakeROMVersion(2,0,0,sysROMStageRelease,0)
+
+
+/***********************************************************************
+ *
+ *   Internal Functions
+ *
+ ***********************************************************************/
+/***********************************************************************
+ * Database rotuine
+ ***********************************************************************/
+extern void    OpenDB(char *DBname)
+{
+    UInt16      error;
+
+    error=DmCreateDatabase(0,DBname,appCreatorID,appDBType,false);
+
+    if((error!=dmErrAlreadyExists)&&(error!=0)) {
+        /* Error Occurs!! */
+    }
+
+    db=DmOpenDatabaseByTypeCreator(appDBType,appCreatorID,
+        dmModeReadWrite);
+
+    numRecords=DmNumRecords(db);
+}
+
+extern void    CloseDB(void)
+{
+    DmCloseDatabase(db);
+}
+
+extern UInt16  NewIntRecord(int i)
+{
+    Handle   hrecord;
+    void        *precord;
+    UInt16      cursor;
+    UInt32      size;
+
+    cursor=dmMaxRecordIndex;
+    size=sizeof(int);
+    hrecord=DmNewRecord(db,&cursor,size);
+    precord=MemHandleLock(hrecord);
+
+    DmWrite(precord,0,&i,size);
+
+    MemHandleUnlock(hrecord);
+    DmReleaseRecord(db,cursor,true);
+
+    return cursor;
+}
+extern UInt16  NewBlockRecord(BlockLink BL)
+{
+    Handle   hrecord;
+    void        *precord;
+    UInt16      cursor;
+    UInt32      size;
+
+    cursor=dmMaxRecordIndex;
+    size=sizeof(BlockLLNode);
+    hrecord=DmNewRecord(db,&cursor,size);
+    precord=MemHandleLock(hrecord);
+
+    DmWrite(precord,0,BL,size);
+
+    MemHandleUnlock(hrecord);
+    DmReleaseRecord(db,cursor,true);
+
+    return cursor;
+}
+extern UInt16  NewWireRecord(WireLink WL)
+{
+    Handle   hrecord;
+    void        *precord;
+    UInt16      cursor;
+    UInt32      size;
+
+    cursor=dmMaxRecordIndex;
+    size=sizeof(WireLLNode);
+    hrecord=DmNewRecord(db,&cursor,size);
+    precord=MemHandleLock(hrecord);
+
+    DmWrite(precord,0,WL,size);
+
+    MemHandleUnlock(hrecord);
+    DmReleaseRecord(db,cursor,true);
+
+    return cursor;
+}
+/*
+void    ModifyRecord(UInt16 cursor,struct MyRecord *r)
+{
+    Handle   hrecord;
+    void        *precord;
+    UInt32      size;
+
+    size=sizeof(struct MyRecord);
+    hrecord=DmGetRecord(db,cursor);
+    precord=MemHandleLock(hrecord);
+
+    DmWrite(precord,0,r,size);
+
+    MemHandleUnlock(hrecord);
+    DmReleaseRecord(db,cursor,true);
+}
+*/
+
+extern void    GetIntRecord(UInt16 cursor,struct MyRecord *r)
+{
+    Handle   hrecord;
+    void        *precord;
+    UInt32      size;
+
+    size=sizeof(int);
+    hrecord=DmGetRecord(db,cursor);
+    precord=MemHandleLock(hrecord);
+
+    MemMove(r,precord,size);
+
+    MemHandleUnlock(hrecord);
+    DmReleaseRecord(db,cursor,true);
+}
+extern void    GetBlockRecord(UInt16 cursor,struct MyRecord *r)
+{
+    Handle   hrecord;
+    void        *precord;
+    UInt32      size;
+
+    size=sizeof(BlockLLNode);
+    hrecord=DmGetRecord(db,cursor);
+    precord=MemHandleLock(hrecord);
+
+    MemMove(r,precord,size);
+
+    MemHandleUnlock(hrecord);
+    DmReleaseRecord(db,cursor,true);
+}
+extern void    GetWireRecord(UInt16 cursor,struct MyRecord *r)
+{
+    Handle   hrecord;
+    void        *precord;
+    UInt32      size;
+
+    size=sizeof(WireLLNode);
+    hrecord=DmGetRecord(db,cursor);
+    precord=MemHandleLock(hrecord);
+
+    MemMove(r,precord,size);
+
+    MemHandleUnlock(hrecord);
+    DmReleaseRecord(db,cursor,true);
+}
+
+extern void    RemoveRecord(UInt16 cursor)
+{
+    DmRemoveRecord(db,cursor);
+}
+/*
+static  Int16 compare(void* rec1, void* rec2,
+    Int16 sortBy,
+    SortRecordInfoPtr rec1SortInfo,
+    SortRecordInfoPtr rec2SortInfo,
+    Handle appInfoH)
+{
+    struct MyRecord *r1,*r2;
+    Int16  result;
+
+    r1=(struct MyRecord *)rec1;
+    r2=(struct MyRecord *)rec2;
+
+    switch (sortBy) {
+        case MY_SORT_BY_NAME:
+            result=StrCompare(r1->name,r2->name);
+
+            break;
+        case MY_SORT_BY_SEX:
+            result=(r1->sex)-(r2->sex);
+            break;
+        case MY_SORT_BY_AGE:
+            result=(r1->age)-(r2->age);
+            break;
+        case MY_SORT_BY_TEL:
+            result=StrCompare(r1->tel,r2->tel);
+            break;
+    }
+
+    return result;
+}
+*/
+/*
+void    SortDB(void)
+{
+    DmQuickSort(db,compare, MY_SORT_BY_NAME);
+}
+*/
+extern int CountItemN(void )
+{
+	int i=0;
+	BlockLink BL;
+	BL = SYSHEAD.BlockLLHead;
+	while(BL != NULL)
+	{
+		i++;
+		BL=BL->NEXTNODE;
+	}
+	return i;
+}
+extern int CountWireN(void )
+{
+	int i=0;
+	WireLink WL;
+	WL = SYSHEAD.WireLLHead;
+	while(WL != NULL)
+	{
+		i++;
+		WL=WL->NEXTNODE;
+	}
+	return i;
+}
+UInt16 CalculateNeededSize(void )
+{
+	int WLn,BLn;
+//	BlockLink BL;
+//	WireLink WL;
+	
+	BLn=CountItemN();
+	WLn=CountWireN();
+	return (BLn+WLn+4);	// total size
+}
+
+
+/***********************************************************************
+ * Link List rotuine
+ ***********************************************************************/
+
+WireLink allocate_a_new_wire_node()
+{
+	return (WireLink)MemHandleLock(MemHandleNew(sizeof(WireLLNode)));
+}
+SysHead InsertIntoWireLL(SysHead sysHead,WireLink node)
+{
+	WireLink wLLP;
+	wLLP = sysHead.WireLLHead;
+
+	// condition 1
+	if(wLLP == NULL)
+	{
+		sysHead.WireLLHead = node ;
+		sysHead.WireLLHead->PREVNODE = NULL;
+   		sysHead.BlockLLHead->WireLLHeadP = sysHead.WireLLHead;//ver.2 >>>BLLHead<<<
+
+		return sysHead;
+	}
+	
+	// condition 2
+	while(true)
+	{
+		if(wLLP->NEXTNODE == NULL)
+			break;
+		wLLP = wLLP->NEXTNODE;
+	}
+	
+	wLLP->NEXTNODE = node;
+	node->PREVNODE = wLLP;
+	
+	return sysHead;
+}
+BlockLink allocate_a_new_node()
+{
+	int i,j=0;
+	char *p;
+	p = MemHandleLock(MemHandleNew(sizeof(BlockLLNode)));
+	for(i=0;i<sizeof(BlockLLNode);i++)
+	{
+		*(p+i) = 0;
+	 //MemMove((p+i),&j,1);
+	}
+	return (BlockLink)p;
+}
+SysHead InsertIntoBlockLL(SysHead sysHead,BlockLink node,Boolean generate_new_ID)
+{
+	UInt16 IDn = 0;
+	BlockLink bLLP ;
+	/*
+	LLP = BlockLLHead;
+	
+	if(LLP == NULL)
+	{
+		BlockLLHead = node ;
+		return;
+	}
+	
+	while(true)
+	{
+		if(LLP->NEXTNODE == NULL)
+			break;
+		LLP = LLP->NEXTNODE;
+	}
+	
+	LLP->NEXTNODE = node;
+	*/
+	bLLP = sysHead.BlockLLHead;
+
+	if(bLLP == NULL)
+	{
+		sysHead.BlockLLHead = node ;
+		sysHead.BlockLLHead->PREVNODE = NULL;
+		if(generate_new_ID)
+		{
+			sysHead.BlockLLHead->item.UID = 1;
+		}
+		return sysHead;
+	}
+	
+	 while(true)
+	 {
+		if((bLLP->item.UID > IDn) && generate_new_ID)
+		{
+			IDn = bLLP->item.UID; // generate the uID
+		}
+		if(bLLP->NEXTNODE == NULL)
+		{
+			break;
+		}
+		bLLP = bLLP->NEXTNODE;
+	 }
+	 if(generate_new_ID)
+	 {
+	 	node->item.UID = IDn + 1;
+	 }
+	 
+	bLLP->NEXTNODE = node;
+	node->PREVNODE = bLLP;
+	
+	return sysHead;
+}
+void InsertIntoFunctionsLL(BlockLink node )
+{
+		//BlockLink LLP = BlockLLHead;
+	FLLP = FunctionsLLHead;
+	
+	if(FLLP == NULL)
+	{
+		FunctionsLLHead = node ;
+		return;
+	}
+	
+	while(true)
+	{
+		if(FLLP->NEXTNODE == NULL)
+			break;
+		FLLP = FLLP->NEXTNODE;
+	}
+	
+	FLLP->NEXTNODE = node;
+}
+/***********************************************************************
+ * 
+ ***********************************************************************/
+
+void SetFunctionsLL(void )
+{
+	BlockLink newnodeptr;
+
+	newnodeptr = allocate_a_new_node();
+	//establish the new node's data
+	newnodeptr->item.UID = 0x0004;                         
+	newnodeptr->item.PanelBitmapID = INDICATOR8Bitmap;     
+	newnodeptr->item.BlockBitmapID = INDICATOR8BLOCKBitmap;
+	newnodeptr->item.PanelXY.x = 100;                      
+	newnodeptr->item.PanelXY.y = 50;                       
+	newnodeptr->item.PanelSize.x = 32;                     
+	newnodeptr->item.PanelSize.y = 16;                     
+	newnodeptr->item.BlockXY.x = 0;                       
+	newnodeptr->item.BlockXY.y = 40;                      
+	newnodeptr->item.BlockSize.x = 32;                     
+	newnodeptr->item.BlockSize.y = 16;                     
+	newnodeptr->item.IONodeN = 1;                          
+	newnodeptr->item.IONodes[0].NodeID = 0x0001;           
+	newnodeptr->item.IONodes[0].IO = true;        // input     
+	newnodeptr->item.IONodes[0].PieceRelativeTopLeft.x = 0;
+	newnodeptr->item.IONodes[0].PieceRelativeTopLeft.y = 0;
+	newnodeptr->item.IONodes[0].PieceExtent.x = 32;        
+	newnodeptr->item.IONodes[0].PieceExtent.y = 16;        
+	newnodeptr->item.PanelControlNodeN = 0;
+    	newnodeptr->NEXTNODE = NULL;
+
+	//insert into linked list
+	InsertIntoFunctionsLL(newnodeptr);
+	
+	newnodeptr = allocate_a_new_node(newnodeptr);
+	//establish the new node's data
+	newnodeptr->item.UID = 0x0005;                          
+	newnodeptr->item.PanelBitmapID = CTRLU8Bitmap;          
+	newnodeptr->item.BlockBitmapID = CTRLU8BLOCKBitmap;     
+	newnodeptr->item.PanelXY.x = 100;                       
+	newnodeptr->item.PanelXY.y = 70;                        
+	newnodeptr->item.PanelSize.x = 32;                      
+	newnodeptr->item.PanelSize.y = 16;                      
+	newnodeptr->item.BlockXY.x = 40;                        
+	newnodeptr->item.BlockXY.y = 40;                       
+	newnodeptr->item.BlockSize.x = 32;                      
+	newnodeptr->item.BlockSize.y = 16;                      
+	newnodeptr->item.IONodeN = 1;                           
+	newnodeptr->item.IONodes[0].NodeID = 0x0001;            
+	newnodeptr->item.IONodes[0].IO = false;           //output       
+	newnodeptr->item.IONodes[0].PieceRelativeTopLeft.x = 0; 
+	newnodeptr->item.IONodes[0].PieceRelativeTopLeft.y = 0; 
+	newnodeptr->item.IONodes[0].PieceExtent.x = 32;         
+	newnodeptr->item.IONodes[0].PieceExtent.y = 16;
+	newnodeptr->item.IONodes[0].value = 0;
+	newnodeptr->item.PanelControlNodeN = 2;
+	newnodeptr->item.PanelNodes[0].NodeID = 0x0001;
+	newnodeptr->item.PanelNodes[0].ControlNodeAreaTopLeft.x=27;
+	newnodeptr->item.PanelNodes[0].ControlNodeAreaTopLeft.y=0;
+	newnodeptr->item.PanelNodes[0].ControlNodeAreaExtent.x=5;
+	newnodeptr->item.PanelNodes[0].ControlNodeAreaExtent.y=8;
+	newnodeptr->item.PanelNodes[1].NodeID = 0x0002;
+	newnodeptr->item.PanelNodes[1].ControlNodeAreaTopLeft.x=27;
+	newnodeptr->item.PanelNodes[1].ControlNodeAreaTopLeft.y=8;
+	newnodeptr->item.PanelNodes[1].ControlNodeAreaExtent.x=5;
+	newnodeptr->item.PanelNodes[1].ControlNodeAreaExtent.y=8;
+	
+    	newnodeptr->NEXTNODE = NULL;
+
+
+	//insert into linked list
+	InsertIntoFunctionsLL(newnodeptr);
+	
+
+	//allocate a new node
+	newnodeptr = allocate_a_new_node();
+	//establish the new node's data
+	newnodeptr->item.UID = 0x0001;                                   
+	newnodeptr->item.PanelBitmapID = NULL;                           
+	newnodeptr->item.BlockBitmapID = ADDBitmap;                      
+	newnodeptr->item.PanelXY.x = NULL;                               
+	newnodeptr->item.PanelXY.y = NULL;                               
+	newnodeptr->item.PanelSize.x = NULL;                             
+	newnodeptr->item.PanelSize.y = NULL;                             
+	newnodeptr->item.BlockXY.x = 0;                                
+	newnodeptr->item.BlockXY.y = 20;                                 
+	newnodeptr->item.BlockSize.x = 16;                               
+	newnodeptr->item.BlockSize.y = 16;                               
+	newnodeptr->item.IONodeN = 3;                                    
+	newnodeptr->item.IONodes[0].NodeID = 0x0001;                     
+	newnodeptr->item.IONodes[0].IO = true;                           
+	newnodeptr->item.IONodes[0].PieceRelativeTopLeft.x = 0;          
+	newnodeptr->item.IONodes[0].PieceRelativeTopLeft.y = 0;          
+	newnodeptr->item.IONodes[0].PieceExtent.x = 8;                   
+	newnodeptr->item.IONodes[0].PieceExtent.y = 8;                   
+    	newnodeptr->item.IONodes[1].NodeID = 0x0002;                     
+        newnodeptr->item.IONodes[1].IO = true;                           
+        newnodeptr->item.IONodes[1].PieceRelativeTopLeft.x = 0;          
+        newnodeptr->item.IONodes[1].PieceRelativeTopLeft.y = 8;          
+        newnodeptr->item.IONodes[1].PieceExtent.x = 8;                   
+        newnodeptr->item.IONodes[1].PieceExtent.y = 8;                   
+        newnodeptr->item.IONodes[2].NodeID = 0x0003;                     
+        newnodeptr->item.IONodes[2].IO = false;                          
+        newnodeptr->item.IONodes[2].PieceRelativeTopLeft.x = 8;          
+        newnodeptr->item.IONodes[2].PieceRelativeTopLeft.y = 0;          
+        newnodeptr->item.IONodes[2].PieceExtent.x = 8;                   
+        newnodeptr->item.IONodes[2].PieceExtent.y = 16;                  
+    	newnodeptr->NEXTNODE = NULL;
+
+	//insert into linked list
+	InsertIntoFunctionsLL(newnodeptr);
+
+	//allocate a new node
+	newnodeptr = allocate_a_new_node();
+	//establish the new node's data
+	newnodeptr->item.UID = 0x0002;                                      
+	newnodeptr->item.PanelBitmapID = NULL;                              
+	newnodeptr->item.BlockBitmapID = SUBBitmap;                         
+	newnodeptr->item.PanelXY.x = NULL;                                  
+	newnodeptr->item.PanelXY.y = NULL;                                  
+	newnodeptr->item.PanelSize.x = NULL;                                
+	newnodeptr->item.PanelSize.y = NULL;                                
+	newnodeptr->item.BlockXY.x = 20;                                    
+	newnodeptr->item.BlockXY.y = 20;                                    
+	newnodeptr->item.BlockSize.x = 16;                                  
+	newnodeptr->item.BlockSize.y = 16;                                  
+	newnodeptr->item.IONodeN = 3;                                       
+	newnodeptr->item.IONodes[0].NodeID = 0x0001;                        
+	newnodeptr->item.IONodes[0].IO = true;                              
+	newnodeptr->item.IONodes[0].PieceRelativeTopLeft.x = 0;             
+	newnodeptr->item.IONodes[0].PieceRelativeTopLeft.y = 0;             
+	newnodeptr->item.IONodes[0].PieceExtent.x = 8;                      
+	newnodeptr->item.IONodes[0].PieceExtent.y = 8;                      
+    	newnodeptr->item.IONodes[1].NodeID = 0x0002;                        
+        newnodeptr->item.IONodes[1].IO = true;                              
+        newnodeptr->item.IONodes[1].PieceRelativeTopLeft.x = 0;             
+        newnodeptr->item.IONodes[1].PieceRelativeTopLeft.y = 8;             
+        newnodeptr->item.IONodes[1].PieceExtent.x = 8;                      
+        newnodeptr->item.IONodes[1].PieceExtent.y = 8;                      
+        newnodeptr->item.IONodes[2].NodeID = 0x0003;                        
+        newnodeptr->item.IONodes[2].IO = false;                             
+        newnodeptr->item.IONodes[2].PieceRelativeTopLeft.x = 8;             
+        newnodeptr->item.IONodes[2].PieceRelativeTopLeft.y = 0;             
+        newnodeptr->item.IONodes[2].PieceExtent.x = 8;                      
+        newnodeptr->item.IONodes[2].PieceExtent.y = 16;                     
+    	newnodeptr->NEXTNODE = NULL;
+
+	//insert into linked list
+	InsertIntoFunctionsLL(newnodeptr);
+
+	//allocate a new node                                   	
+	newnodeptr = allocate_a_new_node();                     
+	//establish the new node's data                         
+	newnodeptr->item.UID = 0x0003;                                  
+	newnodeptr->item.PanelBitmapID = NULL;                          
+	newnodeptr->item.BlockBitmapID = MULBitmap;                     
+	newnodeptr->item.PanelXY.x = NULL;                              
+	newnodeptr->item.PanelXY.y = NULL;                              
+	newnodeptr->item.PanelSize.x = NULL;                            
+	newnodeptr->item.PanelSize.y = NULL;                            
+	newnodeptr->item.BlockXY.x = 40;                                
+	newnodeptr->item.BlockXY.y = 20;                                
+	newnodeptr->item.BlockSize.x = 16;                              
+	newnodeptr->item.BlockSize.y = 16;                              
+	newnodeptr->item.IONodeN = 3;                                   
+	newnodeptr->item.IONodes[0].NodeID = 0x0001;                    
+	newnodeptr->item.IONodes[0].IO = true;                          
+	newnodeptr->item.IONodes[0].PieceRelativeTopLeft.x = 0;         
+	newnodeptr->item.IONodes[0].PieceRelativeTopLeft.y = 0;         
+	newnodeptr->item.IONodes[0].PieceExtent.x = 8;                  
+	newnodeptr->item.IONodes[0].PieceExtent.y = 8;                  
+    	newnodeptr->item.IONodes[1].NodeID = 0x0002;                    
+        newnodeptr->item.IONodes[1].IO = true;                          
+        newnodeptr->item.IONodes[1].PieceRelativeTopLeft.x = 0;         
+        newnodeptr->item.IONodes[1].PieceRelativeTopLeft.y = 8;         
+        newnodeptr->item.IONodes[1].PieceExtent.x = 8;                  
+        newnodeptr->item.IONodes[1].PieceExtent.y = 8;                  
+        newnodeptr->item.IONodes[2].NodeID = 0x0003;                    
+        newnodeptr->item.IONodes[2].IO = false;                         
+        newnodeptr->item.IONodes[2].PieceRelativeTopLeft.x = 8;         
+        newnodeptr->item.IONodes[2].PieceRelativeTopLeft.y = 0;         
+        newnodeptr->item.IONodes[2].PieceExtent.x = 8;                  
+        newnodeptr->item.IONodes[2].PieceExtent.y = 16;                 
+    	newnodeptr->NEXTNODE = NULL;
+                                                                
+	//insert into linked list                               
+	InsertIntoFunctionsLL(newnodeptr);    
+
+	//allocate a new node                                   	
+	newnodeptr = allocate_a_new_node();                     
+	//establish the new node's data                         
+	newnodeptr->item.UID = 0x0003;                                  
+	newnodeptr->item.PanelBitmapID = NULL;                          
+	newnodeptr->item.BlockBitmapID = DIVBitmap;                     
+	newnodeptr->item.PanelXY.x = NULL;                              
+	newnodeptr->item.PanelXY.y = NULL;                              
+	newnodeptr->item.PanelSize.x = NULL;                            
+	newnodeptr->item.PanelSize.y = NULL;                            
+	newnodeptr->item.BlockXY.x = 60;                                
+	newnodeptr->item.BlockXY.y = 20;                                
+	newnodeptr->item.BlockSize.x = 16;                              
+	newnodeptr->item.BlockSize.y = 16;                              
+	newnodeptr->item.IONodeN = 3;                                   
+	newnodeptr->item.IONodes[0].NodeID = 0x0001;                    
+	newnodeptr->item.IONodes[0].IO = true;                          
+	newnodeptr->item.IONodes[0].PieceRelativeTopLeft.x = 0;         
+	newnodeptr->item.IONodes[0].PieceRelativeTopLeft.y = 0;         
+	newnodeptr->item.IONodes[0].PieceExtent.x = 8;                  
+	newnodeptr->item.IONodes[0].PieceExtent.y = 8;                  
+    	newnodeptr->item.IONodes[1].NodeID = 0x0002;                    
+        newnodeptr->item.IONodes[1].IO = true;                          
+        newnodeptr->item.IONodes[1].PieceRelativeTopLeft.x = 0;         
+        newnodeptr->item.IONodes[1].PieceRelativeTopLeft.y = 8;         
+        newnodeptr->item.IONodes[1].PieceExtent.x = 8;                  
+        newnodeptr->item.IONodes[1].PieceExtent.y = 8;                  
+        newnodeptr->item.IONodes[2].NodeID = 0x0003;                    
+        newnodeptr->item.IONodes[2].IO = false;                         
+        newnodeptr->item.IONodes[2].PieceRelativeTopLeft.x = 8;         
+        newnodeptr->item.IONodes[2].PieceRelativeTopLeft.y = 0;         
+        newnodeptr->item.IONodes[2].PieceExtent.x = 8;                  
+        newnodeptr->item.IONodes[2].PieceExtent.y = 16;                 
+    	newnodeptr->NEXTNODE = NULL;
+                                                                
+	//insert into linked list                               
+	InsertIntoFunctionsLL(newnodeptr);    
+}
+extern void SAVE(char *filename )
+{
+	int i,itemsize,wiresize,itemN,wireN;
+	BlockLink BL;
+	WireLink WL;
+	//char filename[32]="thermo";
+    Handle   recordH;
+    void        *recordP;
+    UInt16      cursor;
+    UInt32      size;
+
+	OpenDB("SAVETEST");
+	itemN = CountItemN();
+	wireN = CountWireN();
+	itemsize=itemN*sizeof(BlockLLNode);
+	wiresize=wireN*sizeof(WireLLNode);
+
+	// count size
+	size = ((StrLen(filename) + itemsize + wiresize)+(sizeof(int)*2));
+	
+    cursor=dmMaxRecordIndex;
+    recordH=DmNewRecord(db,&cursor,size);
+    recordP=MemHandleLock(recordH);
+	// copy data
+	//MemMove(recordP,filename,StrLen(filename));
+	DmStrCopy(recordP,0,filename);
+	//i=CountItemN();
+    DmWrite(recordP,(StrLen(filename)),&itemN,sizeof(int));
+    //i=CountWireN();
+    DmWrite(recordP,(StrLen(filename)+sizeof(int)),&wireN,sizeof(int));
+	BL = SYSHEAD.BlockLLHead;
+	for(i=0;i<itemN;i++)
+	{
+	    DmWrite(recordP,(StrLen(filename)+(sizeof(int)*2) +
+	    	(sizeof(BlockLLNode)*i)) ,
+	    	BL,sizeof(BlockLLNode));
+
+		BL=BL->NEXTNODE;
+	}
+	WL = SYSHEAD.WireLLHead;
+	for(i=0;i<wireN;i++)
+	{
+	    DmWrite(recordP,(StrLen(filename)+(sizeof(int)*2) +
+	    	(sizeof(BlockLLNode)*itemN)+(sizeof(WireLLNode)*i)) ,
+	    	WL,sizeof(WireLLNode));
+	    
+		WL=WL->NEXTNODE;
+	}
+	// data write
+    //DmWrite(recordP,0,,size);
+
+    MemHandleUnlock(recordH);
+    DmReleaseRecord(db,cursor,true);
+
+	/*
+	BL = BlockLLHead;
+	while(BL != NULL)
+	{
+		NewBlockRecord(BL);
+		BL = BL->NEXTNODE;
+	}
+	
+	WL = WireLLHead;
+	while(WL != NULL)
+	{
+		NewWireRecord(WL);
+		WL = WL->NEXTNODE;
+	}
+	*/
+	CloseDB();
+}
+int ConvertFileName2RecordIndex(char *filename)
+{
+	char	str[20];
+	int		itemIndex;
+	Handle			recHandle;
+	Ptr				recPtr;
+	
+	OpenDB("SAVETEST");
+
+	numRecords = DmNumRecords(db);
+	if (numRecords)
+		{
+		for (itemIndex = 0; itemIndex < numRecords; itemIndex++)
+			{
+			// Retrieve the record from the database and lock it down.
+			recHandle = DmGetRecord(db, itemIndex);
+			recPtr = MemHandleLock(recHandle);
+			
+			StrCopy(str,recPtr);
+			if(StrCompare(str,filename) == 0)
+			{
+				MemHandleUnlock(recHandle);
+				DmReleaseRecord(db, itemIndex, false);
+				break; // jump out of the for loop
+			}
+			
+			// Unlock the handle to the record.
+			MemHandleUnlock(recHandle);
+			
+			// Release the record, not dirty.
+			DmReleaseRecord(db, itemIndex, false);
+			}
+		
+		}
+	
+
+	CloseDB();
+	return itemIndex;
+}
+SysHead RemoveBlockLinkList(SysHead sysHead,BlockLink  blockptr)
+{
+	if((blockptr->PREVNODE == NULL) && (blockptr->NEXTNODE == NULL)){
+		sysHead.BlockLLHead = NULL;
+	}else if((blockptr->PREVNODE != NULL) && (blockptr->NEXTNODE == NULL)){
+		blockptr->PREVNODE->NEXTNODE = NULL;
+	}else if((blockptr->PREVNODE == NULL) && (blockptr->NEXTNODE != NULL)){
+		sysHead.BlockLLHead = blockptr->NEXTNODE;
+		blockptr->NEXTNODE->PREVNODE = NULL;
+	}else if((blockptr->PREVNODE != NULL) && (blockptr->NEXTNODE != NULL)){
+		blockptr->PREVNODE->NEXTNODE = blockptr->NEXTNODE;
+		blockptr->NEXTNODE->PREVNODE = blockptr->PREVNODE;
+	}
+	MemHandleUnlock(MemPtrRecoverHandle(blockptr));
+	MemHandleFree(MemPtrRecoverHandle(blockptr));
+	
+	return sysHead;
+}
+
+SysHead RemoveWireLinkList(SysHead sysHead,WireLink  wireptr)
+{
+	if((wireptr->PREVNODE == NULL) && (wireptr->NEXTNODE == NULL)){
+		sysHead.WireLLHead = NULL;
+   		sysHead.BlockLLHead->WireLLHeadP = sysHead.WireLLHead;//ver.2
+
+	}else if((wireptr->PREVNODE != NULL) && (wireptr->NEXTNODE == NULL)){
+		wireptr->PREVNODE->NEXTNODE = NULL;
+	}else if((wireptr->PREVNODE == NULL) && (wireptr->NEXTNODE != NULL)){
+		sysHead.WireLLHead = wireptr->NEXTNODE;
+   		sysHead.BlockLLHead->WireLLHeadP = sysHead.WireLLHead;//ver.2
+
+		wireptr->NEXTNODE->PREVNODE = NULL;
+	}else if((wireptr->PREVNODE != NULL) && (wireptr->NEXTNODE != NULL)){
+		wireptr->PREVNODE->NEXTNODE = wireptr->NEXTNODE;
+		wireptr->NEXTNODE->PREVNODE = wireptr->PREVNODE;
+	}
+	/*
+	if(wireptr->PREVNODE == NULL)
+		wireptr->NEXTNODE->PREVNODE = NULL;
+	else
+		wireptr->NEXTNODE->PREVNODE = wireptr->PREVNODE;
+	if(wireptr->NEXTNODE == NULL)
+		wireptr->PREVNODE->NEXTNODE = NULL;
+	else
+		wireptr->PREVNODE->NEXTNODE = wireptr->NEXTNODE;
+	*/	
+	MemHandleUnlock(MemPtrRecoverHandle(wireptr));
+	MemHandleFree(MemPtrRecoverHandle(wireptr));
+	
+	return sysHead;
+}
+
+static SysHead NEW(SysHead sysHead)
+{
+	
+	while(sysHead.WireLLHead != NULL)
+	{
+		sysHead = RemoveWireLinkList(sysHead,sysHead.WireLLHead);
+	}
+	while(sysHead.BlockLLHead != NULL)
+	{
+		sysHead = RemoveBlockLinkList(sysHead,sysHead.BlockLLHead);
+	}
+	
+	return sysHead;
+}
+SysHead InsertIconNode(SysHead sysHead)
+{
+		BlockLink newnodeptr;
+		
+		newnodeptr = allocate_a_new_node();
+		newnodeptr->item.PanelBitmapID = NULL;
+		newnodeptr->item.BlockBitmapID = NULL;
+   		newnodeptr->NEXTNODE = NULL;
+   		newnodeptr->BlockLLHeadP = newnodeptr;
+   		newnodeptr->WireLLHeadP = NULL;
+   		//newnodeptr->PrevBlockLLHeadP = NULL;
+		sysHead = InsertIntoBlockLL(sysHead,newnodeptr,true);
+		return sysHead;
+}
+SysHead LOAD(SysHead sysHead,char *filename )
+{
+    //Handle   hrecord;
+ 	Handle			recHandle;
+	Ptr				recPtr;
+    //void        *precord;
+    //UInt32      size;
+    int filename_length;
+	int i,itemN,wireN;
+	//int recordIndex=0;
+	char str[32];
+	BlockLink BL;
+	WireLink WL;
+	int 	recordIndex;
+	
+	
+	sysHead = NEW(sysHead);// no auto add ICON node
+	
+	recordIndex = ConvertFileName2RecordIndex(filename);
+	
+	OpenDB("SAVETEST");
+			recHandle = DmGetRecord(db, recordIndex);
+			recPtr = MemHandleLock(recHandle);
+
+			StrCopy(str,recPtr);
+			filename_length = StrLen(str);
+		
+    	MemMove(&itemN,(recPtr+filename_length),sizeof(int));
+    	MemMove(&wireN,(recPtr+filename_length+sizeof(int)),sizeof(int));
+	for(i=0;i<itemN;i++)
+	{
+	BL = allocate_a_new_node();
+   	MemMove(BL,(recPtr+filename_length+(sizeof(int)*2)+(sizeof(BlockLLNode)*i)),sizeof(BlockLLNode));
+   	BL->NEXTNODE = NULL;
+   	// BLL
+	sysHead = InsertIntoBlockLL(sysHead,BL,false); // do not auto add in ICON node.
+	//
+	// if it is the ICON node but not the 1st node.
+	// recursive the LOAD()
+	// prepare a empty HEAD
+	//
+	// LOAD(HEAD,filename); // pass the LL head ptr.
+	//
+	// restore the HEAD value into the ICON node.
+	}
+	for(i=0;i<wireN;i++)
+	{
+	WL = allocate_a_new_wire_node();
+   	MemMove(WL,(recPtr+filename_length+(sizeof(int)*2)+(sizeof(BlockLLNode)*itemN)+(sizeof(WireLLNode)*i)),sizeof(WireLLNode));
+   	WL->NEXTNODE = NULL;
+    // WLL
+	sysHead = InsertIntoWireLL(sysHead,WL);
+	}
+			MemHandleUnlock(recHandle);
+			
+			// Release the record, not dirty.
+			DmReleaseRecord(db, recordIndex, false);
+/*
+    size=sizeof(BlockLLNode);
+    hrecord=DmGetRecord(db,cursor);
+    precord=MemHandleLock(hrecord);
+
+    MemMove(r,precord,size);
+
+    MemHandleUnlock(hrecord);
+    DmReleaseRecord(db,cursor,true);
+*/
+	CloseDB();
+
+	return sysHead;
+}
+extern void BuildLOADMenu(void )
+{
+	//int WLn,BLn;
+	//BlockLink BL;
+	//WireLink WL;
+	Handle			recHandle;
+	Int				itemIndex, textLen, choicesOffset = 0;
+	ListPtr			lst;
+	FormPtr			frm;
+	Ptr				recPtr;
+	CharPtr			choices;
+	char 			str[20];
+	UInt16			i;
+	Err				error;
+	
+	OpenDB("SAVETEST");
+
+	frm = FrmGetActiveForm();
+	
+	// Get the number of records currently in the application's database.
+	numRecords = DmNumRecords(db);
+	if (numRecords)
+		{
+		// Prepare to setup the contents of the list for the main form.
+		
+		// Get a pointer to the list object.
+		itemIndex = FrmGetObjectIndex(frm, FilesFileListList);
+		lst = FrmGetObjectPtr(frm, itemIndex);
+	
+		// Get the usable width of the list rectangle.
+		//FrmGetObjectBounds (frm, itemIndex, &lstRect);
+		//lstWidth = lstRect.extent.x - 2;
+		
+		// Allocate an initial block for the list choices.
+		ChoicesHandle = MemHandleNew(sizeof(char));
+	
+		// Lock down the block and set it's initial value to an empty string.
+		choices = MemHandleLock(ChoicesHandle);
+		*choices = 0;
+		
+		// Build up the choices.  
+		// A sequence of strings packed one after another, one for each record.
+		for (itemIndex = 0; itemIndex < numRecords; itemIndex++)
+			{
+			// Retrieve the record from the database and lock it down.
+			recHandle = DmGetRecord(db, itemIndex);
+			recPtr = MemHandleLock(recHandle);
+			
+			// Determine the length of text that will fit within the list bounds.
+			//i = lstWidth;
+			//textLen = StrLen(recText);
+			//FntCharsInWidth(recText, &i, &textLen, &fits);
+			
+			//temp = (recPtr[0] << 8) + recPtr[1];
+			//StrPrintF(str,"%d",temp);
+			StrCopy(str,recPtr);
+			textLen = StrLen(str);
+			
+			// Grow the choices buffer to accomodate the new string. We must unlock
+			// the chunk so that the Memory Manager can move the chunk if neccessary to
+			// grow it.
+			MemHandleUnlock(ChoicesHandle);
+			error = MemHandleResize(ChoicesHandle, textLen + choicesOffset + sizeof('\0'));
+			choices = MemHandleLock(ChoicesHandle);
+			
+			// Check for fatal error.
+			ErrFatalDisplayIf(error, "Could not grow choices for list.");
+		
+			// Copy the text from the record to the choices buffer.
+			for (i = 0; i < textLen; i++)
+				choices[choicesOffset + i] = str[i];
+	
+			// Update the end of choices offset and set a zero terminator 
+			// on the string in the choices buffer.
+			choicesOffset += textLen;
+			choices[choicesOffset++] = 0;
+	
+			// Unlock the handle to the record.
+			MemHandleUnlock(recHandle);
+			
+			// Release the record, not dirty.
+			DmReleaseRecord(db, itemIndex, false);
+			}
+		
+		// Create an array of pointers from the choices strings.
+		ChoicesPtrsHandle = SysFormPointerArrayToStrings(choices, numRecords);
+		
+		// Set the list choices from the array of pointers.
+		LstSetListChoices(lst, MemHandleLock(ChoicesPtrsHandle), numRecords);
+		}
+	
+	// Draw the form.
+	//FrmDrawForm(frm);
+
+	CloseDB();
+}
+/*
+*/
+static void DrawIcon(UInt16 BitMapID,UInt16 x,UInt16 y)
+{
+	Handle resH;
+	BitmapType *bitmap;
+	
+	if(BitMapID)
+	{
+		resH =	DmGetResource (bitmapRsc, BitMapID);
+		bitmap = MemHandleLock (resH);
+		WinDrawBitmap(bitmap, x,y);
+		MemHandleUnlock(resH);
+		DmReleaseResource( resH);
+	}
+
+}
+static Boolean CheckBoundary(int x,int y,int XX,int YY,int X,int Y)
+{
+    //    <---X--->
+    //  (x,y)
+    //    ********* ^
+    //    * (X,Y) * |
+    //    *       * Y
+    //    *       * |
+    //    ********* v
+    //
+	if((X > x && X < (x+XX)) && (Y > y && Y < (y+YY)))
+		return true;
+	else
+		return false;
+}
+//
+// remove the wire connection when block has been kill
+//
+//
+void RemoveWireConnection(BlockLink  blockptr)
+{
+	Boolean exist=false;
+	//WireLink tempLink;
+	WLLP = SYSHEAD.WireLLHead;
+	
+	while(WLLP != NULL)
+	{
+		if((WLLP->wire.StartBlockID == blockptr->item.UID) ||
+		(WLLP->wire.EndBlockID == blockptr->item.UID)		)
+		{
+			//tempLink = WLLP->PREVNODE;
+			SYSHEAD = RemoveWireLinkList(SYSHEAD,WLLP);
+			//WLLP = tempLink;
+			if(SYSHEAD.WireLLHead == NULL)
+			 break;
+			//break;
+			WLLP = SYSHEAD.WireLLHead;
+			//continue;
+		}
+		else
+		{
+			WLLP = WLLP->NEXTNODE;
+		}
+	}
+	/*
+	if(exist)
+	{
+		
+		RemoveWireLinkList(WLLP);
+	}
+	*/
+}
+
+Boolean MatchThread(EndPoint EP,WireLink WL)
+{
+	if((EP.BlockP->item.UID == WL->wire.StartBlockID) && (EP.Node == WL->wire.StartNodeID))
+		return true;
+	else if((EP.BlockP->item.UID == WL->wire.EndBlockID) && (EP.Node == WL->wire.EndNodeID))
+		return true;
+	else
+		return false;
+}
+// 
+// InWireLinkList
+//
+// note the WireLLHead status! NULL or not.
+//
+WireLink InWireLinkList(EndPoint start,EndPoint end)
+{
+	WireLink WLP;
+	Boolean thread1=false,thread2=false;
+	WLLP = SYSHEAD.WireLLHead;
+	WLP = NULL;
+	do
+	{
+	   if(start.BlockP != end.BlockP)
+	   {
+	   /*
+		thread1 = (
+			((start.BlockP == WLLP->wire.StartBlockID) && (start.Node == WLLP->wire.StartNodeID))
+			||
+			((start.BlockP == WLLP->wire.EndBlockID) && (start.Node == WLLP->wire.EndNodeID))
+		);
+		thread2 = (
+			((end.BlockP == WLLP->wire.StartBlockID) && (end.Node == WLLP->wire.StartNodeID))
+			||
+			((end.BlockP == WLLP->wire.EndBlockID) && (end.Node == WLLP->wire.EndNodeID))
+		);
+		*/
+		thread1 = MatchThread(start,WLLP);
+		thread2 = MatchThread(end,WLLP);
+	    if((thread1 == true) && (thread2 == true))
+	    {
+		   	WLP = WLLP;
+		    break;
+	    }
+	   }
+		/*
+		if(start.BlockP == WLLP->wire.StartBlockID)
+		 if(start.Node == WLLP->wire.StartNodeID)
+		  if(end.BlockP == WLLP->wire.EndBlockID)
+		   if(end.Node == WLLP->wire.EndNodeID)
+		   {
+		   	WLP = WLLP;
+		    break;
+		   }
+		*/
+	}while((WLLP = WLLP->NEXTNODE));
+	return WLP;
+}
+void AddWireLinkList()
+{
+	WireLink  newwireptr;
+	
+	newwireptr = allocate_a_new_wire_node();
+	newwireptr->wire.WireID = 0x0000;
+	newwireptr->wire.StartBlockID = WireStart.BlockP->item.UID;
+	newwireptr->wire.StartNodeID = WireStart.Node;
+	newwireptr->wire.EndBlockID = WireStop.BlockP->item.UID;
+	newwireptr->wire.EndNodeID = WireStop.Node;
+	newwireptr->NEXTNODE = NULL;
+	SYSHEAD = InsertIntoWireLL(SYSHEAD,newwireptr);
+
+}
+//
+// i is point which item.
+// LLP
+//
+static int CheckOnNode(int now_x,int now_y,Boolean Draw,Boolean CheckWireLink)
+{
+	int i;
+	Boolean OnNode = false;
+	RectangleType Rtest;
+	
+	if(LLP != NULL)
+	switch(FrmGetActiveFormID())
+	{
+		case BlockDiagramForm:
+
+		
+			//if(Items[0].UID != NULL) // data was loaded
+				for(i=0;i<LLP->item.IONodeN && !OnNode;i++)
+				{	
+					OnNode = CheckBoundary(
+						LLP->item.IONodes[i].PieceRelativeTopLeft.x + 
+						LLP->item.BlockXY.x,
+						LLP->item.IONodes[i].PieceRelativeTopLeft.y + 
+						LLP->item.BlockXY.y,
+						LLP->item.IONodes[i].PieceExtent.x ,
+						LLP->item.IONodes[i].PieceExtent.y ,now_x,now_y);
+				}
+		
+			// draw black block
+			// if OnNode the (i-1) is the node.
+			if(OnNode)
+			{
+				Rtest.topLeft.x=LLP->item.IONodes[i-1].PieceRelativeTopLeft.x + 
+				LLP->item.BlockXY.x;
+				Rtest.topLeft.y=LLP->item.IONodes[i-1].PieceRelativeTopLeft.y + 
+				LLP->item.BlockXY.y;
+				Rtest.extent.x=LLP->item.IONodes[i-1].PieceExtent.x;
+				Rtest.extent.y=LLP->item.IONodes[i-1].PieceExtent.y;
+				
+				if(Draw)
+					WinDrawRectangle(&Rtest,0);
+				else
+					WinEraseRectangle(&Rtest,0);
+				//
+				// wire link
+			   if(CheckWireLink)
+			   {
+				if(WireStart.BlockP == NULL)
+				{
+					WireStart.BlockP = LLP;
+					WireStart.Node = i-1;
+					//WireStop.x = NULL;
+				}
+				else if((WireStop.BlockP == NULL) && (WireStart.BlockP != LLP))
+				{
+					WireStop.BlockP = LLP;
+					WireStop.Node = i-1;
+				}
+				if((WireStop.BlockP != NULL) 
+					&& (WireStart.BlockP != NULL)
+					&& (WireStart.BlockP != WireStop.BlockP)
+					)
+				{
+					// THREAD or SCISSOR ?
+					if(BlockPointerState == THREADBitmap)
+					{
+						AddWireLinkList();
+					}
+					else if(BlockPointerState == SCISSORBitmap)
+					{
+					   if(SYSHEAD.WireLLHead != NULL)
+						if((WLLP = InWireLinkList(WireStart,WireStop)) != NULL)
+						{
+							SYSHEAD = RemoveWireLinkList(SYSHEAD,WLLP);
+						}
+					}
+				}
+			   }
+				//
+				//
+			}
+		
+		break;
+		case FrontPanelForm:
+			for(i=0;i<LLP->item.PanelControlNodeN && !OnNode;i++)
+			{	
+				OnNode = CheckBoundary(
+					LLP->item.PanelNodes[i].ControlNodeAreaTopLeft.x + 
+					LLP->item.PanelXY.x,
+					LLP->item.PanelNodes[i].ControlNodeAreaTopLeft.y + 
+					LLP->item.PanelXY.y,
+					LLP->item.PanelNodes[i].ControlNodeAreaExtent.x ,
+					LLP->item.PanelNodes[i].ControlNodeAreaExtent.y ,now_x,now_y);
+			}
+		
+			// draw black block
+			if(OnNode)
+			{
+				Rtest.topLeft.x=LLP->item.PanelNodes[i-1].ControlNodeAreaTopLeft.x + 
+				LLP->item.PanelXY.x;
+				Rtest.topLeft.y=LLP->item.PanelNodes[i-1].ControlNodeAreaTopLeft.y + 
+				LLP->item.PanelXY.y;
+				Rtest.extent.x=LLP->item.PanelNodes[i-1].ControlNodeAreaExtent.x;
+				Rtest.extent.y=LLP->item.PanelNodes[i-1].ControlNodeAreaExtent.y;
+		
+				if(Draw)
+					WinDrawRectangle(&Rtest,0);
+				else
+					WinEraseRectangle(&Rtest,0);
+			}
+			
+		break;		
+	}
+	if(OnNode)
+		return i-1;
+	else
+		return -1;
+}
+
+static void DrawMainRUN()
+{
+	RectangleType Rtest;
+	
+		Rtest.topLeft.x=78;
+		Rtest.topLeft.y=0;
+		Rtest.extent.x=142-78;
+		Rtest.extent.y=15;
+		
+		WinEraseRectangle(&Rtest,0);
+
+		//DrawIcon(LAMPBitmap,80,0);
+		//DrawIcon(RUNBitmap,100,0);
+		//DrawIcon(STOPBitmap,120,0);
+		if(RUN)
+			DrawIcon(RUNMANBitmap,80,0);
+		else
+			DrawIcon(STOPMANBitmap,80,0);
+
+}
+void ValueDisplay(BlockLink BL)
+{
+	char text[10];
+	switch(BL->item.PanelBitmapID)
+	{
+		case CTRLU8Bitmap:
+			StrPrintF(text,"%d",BL->item.IONodes[0].value);
+			WinDrawChars(text,StrLen(text),BL->item.PanelXY.x+3,BL->item.PanelXY.y+3);
+		break;
+		case INDICATOR8Bitmap:
+			StrPrintF(text,"%d",BL->item.IONodes[0].value);
+			WinDrawChars(text,StrLen(text),BL->item.PanelXY.x+3,BL->item.PanelXY.y+3);
+		break;
+		default:
+		break;
+	}
+}
+static void DrawPanel(Boolean show)
+{
+	//int i;
+	RectangleType Rtest;
+	//BlockLink LLP = BlockLLHead;
+
+	//if(Items[0].UID != NULL)
+	//for(i=0;i<5;i++) // now have 5 items on diagram
+	LLP = SYSHEAD.BlockLLHead;
+	while(1)
+	{
+	 if(LLP != NULL)
+	 {
+		if(LLP->item.PanelBitmapID != NULL)
+		{
+			if(show)
+			{
+				DrawIcon(LLP->item.PanelBitmapID,LLP->item.PanelXY.x,LLP->item.PanelXY.y);
+				ValueDisplay(LLP);
+			}
+			else
+			{
+				Rtest.topLeft.x=LLP->item.PanelXY.x;
+				Rtest.topLeft.y=LLP->item.PanelXY.y;
+				Rtest.extent.x=LLP->item.PanelSize.x;
+				Rtest.extent.y=LLP->item.PanelSize.y;
+		
+				WinEraseRectangle(&Rtest,0);
+			
+			}
+		}
+		
+	 }else{
+	 	break;
+	 }
+	  LLP = LLP->NEXTNODE;
+	}
+	
+	DrawIcon(PanelPointerState,142,0);
+}
+static Boolean NextWireLL()
+{
+	
+	if(WLLP->NEXTNODE != NULL)
+	{
+		WLLP = WLLP->NEXTNODE;
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+/*
+static Boolean NextBlockLL()
+{
+	if(LLP->NEXTNODE != NULL)
+	{
+		LLP = LLP->NEXTNODE;
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+*/
+/*
+static Boolean FindWireByID(UInt16 ID)
+{
+	WLLP = WireLLHead;
+	if(WLLP != NULL)
+		while(NextWireLL())
+		{
+			if(WLLP->wire.WireID == ID)
+				return true;
+		}
+	return false;
+}
+*/
+
+static BlockLink FindItemByID(UInt16 ID)
+{
+	BlockLink BL;
+	BL = SYSHEAD.BlockLLHead;
+		while(BL != NULL)
+		{
+			if(BL->item.UID == ID)
+				break;
+			BL = BL->NEXTNODE;
+		}
+	return BL;
+}
+
+static void DrawWires(Boolean show)
+{
+	int startx,starty,endx,endy;
+	int turn1x,turn1y,turn2x,turn2y;
+	BlockLink startblock,endblock;
+	// draw wire process
+	//WireLink wllp;
+	WLLP = SYSHEAD.WireLLHead;
+	if(WLLP != NULL)
+		do
+		{
+			if(WLLP->wire.StartBlockID != NULL)
+				startblock = FindItemByID(WLLP->wire.StartBlockID);
+			if(WLLP->wire.EndBlockID != NULL)
+				endblock = FindItemByID(WLLP->wire.EndBlockID);
+			
+		startx = startblock->item.BlockXY.x +
+			startblock->item.IONodes[WLLP->wire.StartNodeID].PieceRelativeTopLeft.x +
+				startblock->item.IONodes[WLLP->wire.StartNodeID].PieceExtent.x / 2 ;
+		starty = startblock->item.BlockXY.y +
+			startblock->item.IONodes[WLLP->wire.StartNodeID].PieceRelativeTopLeft.y +
+				startblock->item.IONodes[WLLP->wire.StartNodeID].PieceExtent.y / 2;
+		
+		endx = endblock->item.BlockXY.x +
+			endblock->item.IONodes[WLLP->wire.EndNodeID].PieceRelativeTopLeft.x +
+				endblock->item.IONodes[WLLP->wire.EndNodeID].PieceExtent.x / 2 ;
+		endy = endblock->item.BlockXY.y +
+			endblock->item.IONodes[WLLP->wire.EndNodeID].PieceRelativeTopLeft.y +
+				endblock->item.IONodes[WLLP->wire.EndNodeID].PieceExtent.y / 2;
+
+		if(startx == endx || starty == endy)
+		{
+			if(show)
+				WinDrawLine(startx,starty,endx,endy);
+			else
+				WinEraseLine(startx,starty,endx,endy);
+		}
+		else
+		{
+			//compare x1,x2
+			if(startx > endx)
+				turn2x = turn1x = endx + (startx - endx)/2;
+			if(startx < endx)
+				turn2x = turn1x = startx + (endx - startx)/2;
+				
+			turn1y = starty;
+			turn2y = endy;
+
+			if(show)
+			{
+				WinDrawLine(startx,starty,turn1x,turn1y);
+				WinDrawLine(turn1x,turn1y,turn2x,turn2y);
+				WinDrawLine(turn2x,turn2y,endx,endy);
+			}
+			else
+			{
+				WinEraseLine(startx,starty,turn1x,turn1y);
+				WinEraseLine(turn1x,turn1y,turn2x,turn2y);
+				WinEraseLine(turn2x,turn2y,endx,endy);
+			}
+
+		}
+
+		}while(NextWireLL());
+}
+static void DrawDiagram(Boolean show)
+{
+	//Handle resH;
+	//BitmapType *bitmap;
+	//int i;
+	RectangleType Rtest;
+	BlockLink llp;
+	
+	//
+	// wire link test
+	/*
+	if((WireStart.BlockP != NULL) && (WireStop.BlockP != NULL))
+	{
+		WinDrawLine(
+			WireStart.BlockP->item.BlockXY.x +
+			WireStart.BlockP->item.IONodes[WireStart.Node].PieceRelativeTopLeft.x +
+			WireStart.BlockP->item.IONodes[WireStart.Node].PieceExtent.x / 2
+			,
+			WireStart.BlockP->item.BlockXY.y +
+			WireStart.BlockP->item.IONodes[WireStart.Node].PieceRelativeTopLeft.y +
+			WireStart.BlockP->item.IONodes[WireStart.Node].PieceExtent.y / 2
+			,
+			WireStop.BlockP->item.BlockXY.x +
+			WireStop.BlockP->item.IONodes[WireStop.Node].PieceRelativeTopLeft.x +
+			WireStop.BlockP->item.IONodes[WireStop.Node].PieceExtent.x / 2
+			,
+			WireStop.BlockP->item.BlockXY.y +
+			WireStop.BlockP->item.IONodes[WireStop.Node].PieceRelativeTopLeft.y +
+			WireStop.BlockP->item.IONodes[WireStop.Node].PieceExtent.y / 2
+		);
+	}
+	*/
+	//
+	DrawWires(show);
+	/*
+	
+	if(Items[0].UID != NULL)
+	for(i=0;i<2;i++) // now have 2 wires on diagram
+	{
+		startx = Items[WireItem[i].StartBlockID].BlockXY.x +
+					Items[WireItem[i].StartBlockID].IONodes[WireItem[i].StartNodeID].PieceRelativeTopLeft.x +
+						Items[WireItem[i].StartBlockID].IONodes[WireItem[i].StartNodeID].PieceExtent.x / 2 ;
+		starty = Items[WireItem[i].StartBlockID].BlockXY.y +
+					Items[WireItem[i].StartBlockID].IONodes[WireItem[i].StartNodeID].PieceRelativeTopLeft.y +
+						Items[WireItem[i].StartBlockID].IONodes[WireItem[i].StartNodeID].PieceExtent.y / 2;
+		
+		endx = Items[WireItem[i].EndBlockID].BlockXY.x +
+					Items[WireItem[i].EndBlockID].IONodes[WireItem[i].EndNodeID].PieceRelativeTopLeft.x +
+						Items[WireItem[i].EndBlockID].IONodes[WireItem[i].EndNodeID].PieceExtent.x / 2 ;
+		endy = Items[WireItem[i].EndBlockID].BlockXY.y +
+					Items[WireItem[i].EndBlockID].IONodes[WireItem[i].EndNodeID].PieceRelativeTopLeft.y +
+						Items[WireItem[i].EndBlockID].IONodes[WireItem[i].EndNodeID].PieceExtent.y / 2;
+		
+		if(startx == endx || starty == endy)
+		{
+			if(show)
+				WinDrawLine(startx,starty,endx,endy);
+			else
+				WinEraseLine(startx,starty,endx,endy);
+		}
+		else
+		{
+			//compare x1,x2
+			if(startx > endx)
+				turn2x = turn1x = endx + (startx - endx)/2;
+			if(startx < endx)
+				turn2x = turn1x = startx + (endx - startx)/2;
+				
+			turn1y = starty;
+			turn2y = endy;
+
+			if(show)
+			{
+				WinDrawLine(startx,starty,turn1x,turn1y);
+				WinDrawLine(turn1x,turn1y,turn2x,turn2y);
+				WinDrawLine(turn2x,turn2y,endx,endy);
+			}
+			else
+			{
+				WinEraseLine(startx,starty,turn1x,turn1y);
+				WinEraseLine(turn1x,turn1y,turn2x,turn2y);
+				WinEraseLine(turn2x,turn2y,endx,endy);
+			}
+
+		}
+	}
+    */
+    
+	//if(Items[0].UID != NULL)
+	//for(i=0;i<5;i++) // now have 5 items on diagram
+	llp = SYSHEAD.BlockLLHead;
+	while(1)
+	{
+	 	if(llp != NULL)
+	 	{
+	
+			if(show)
+				DrawIcon(llp->item.BlockBitmapID,llp->item.BlockXY.x,llp->item.BlockXY.y);
+			else
+			{
+				Rtest.topLeft.x=llp->item.BlockXY.x;
+				Rtest.topLeft.y=llp->item.BlockXY.y;
+				Rtest.extent.x=llp->item.BlockSize.x;
+				Rtest.extent.y=llp->item.BlockSize.y;
+		
+				WinEraseRectangle(&Rtest,0);
+			
+			}
+		}else{
+	 	break;
+	 	}
+	  llp = llp->NEXTNODE;
+	}
+	
+	DrawIcon(BlockPointerState,142,0);
+
+}
+
+static void DrawCanvas(Boolean show )
+{
+	switch(FrmGetActiveFormID())
+	{
+		case BlockDiagramForm:
+			DrawDiagram(show);
+		break;
+		case FrontPanelForm:
+			DrawPanel(show);
+		break;
+		default:
+		break;
+	}
+}
+static Boolean IsInFunctionsArea(UInt16 now_x,UInt16 now_y)
+{
+	Boolean InArea=false;
+
+	FLLP = FunctionsLLHead;
+	
+	// scan whole link-list,
+	//if  hit then stop,
+	//if touch link-list end then stop,too.
+	while(1)
+	{
+	 	if(FLLP != NULL)
+	 	{
+				InArea = CheckBoundary(
+				FLLP->item.BlockXY.x,
+				FLLP->item.BlockXY.y,
+				FLLP->item.BlockSize.x,
+				FLLP->item.BlockSize.y,now_x,now_y);
+			
+			if(InArea == true)// jump out when In the area.l
+				break;
+		}else{
+			break;
+		}
+	  FLLP = FLLP->NEXTNODE;
+	}
+	
+	return InArea;
+}
+static Boolean IsInArea(UInt16 now_x,UInt16 now_y)
+{
+	Boolean InArea=false;
+
+	LLP = SYSHEAD.BlockLLHead;
+	
+	// scan whole link-list,
+	//if  hit then stop,
+	//if touch link-list end then stop,too.
+	while(1)
+	{
+	 	if(LLP != NULL)
+	 	{
+	  		switch(FrmGetActiveFormID())
+			{
+			case BlockDiagramForm:
+
+				InArea = CheckBoundary(
+				LLP->item.BlockXY.x,
+				LLP->item.BlockXY.y,
+				LLP->item.BlockSize.x,
+				LLP->item.BlockSize.y,now_x,now_y);
+			break;
+			case FrontPanelForm:
+				InArea = CheckBoundary(
+				LLP->item.PanelXY.x,
+				LLP->item.PanelXY.y,
+				LLP->item.PanelSize.x,
+				LLP->item.PanelSize.y,now_x,now_y);
+			break;
+			default:
+			break;
+	
+			}
+			
+			if(InArea == true)// jump out when In the area.l
+				break;
+		}else{
+			break;
+		}
+	  LLP = LLP->NEXTNODE;
+	}
+	
+	return InArea;
+}
+static void setNewObjXY(UInt16 newx,UInt16 newy)
+{
+	LLP = HandPointer.CatchWhat;
+	
+	switch(FrmGetActiveFormID())
+	{
+		case BlockDiagramForm:
+			LLP->item.BlockXY.x = newx;
+			LLP->item.BlockXY.y = newy;
+		break;
+		case FrontPanelForm:
+			LLP->item.PanelXY.x = newx;
+			LLP->item.PanelXY.y = newy;
+		break;
+		default:
+		break;
+	}
+}
+void DrawFunctionsForm()
+{
+		FLLP = FunctionsLLHead;
+	while(1)
+	{
+	 	if(FLLP != NULL)
+	 	{
+	
+				DrawIcon(FLLP->item.BlockBitmapID,FLLP->item.BlockXY.x,FLLP->item.BlockXY.y);
+		}else{
+	 	break;
+	 	}
+	  FLLP = FLLP->NEXTNODE;
+	}
+
+}
+///////////////////////////////////////////////////////////////////
+//\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+//
+//  CAUTION
+//  recursive area
+//
+//\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+///////////////////////////////////////////////////////////////////
+void CheckConnection(BlockLink BlockLLHeadP)
+{
+	BlockLink BL;
+	
+		BL = BlockLLHeadP;
+		while(BL!=NULL)
+		{
+			switch(BL->item.BlockBitmapID)
+			{
+				case INDICATOR8BLOCKBitmap:
+					BL->item.IONodes[0].DATAnotREADY = true;
+				break;
+				case CTRLU8BLOCKBitmap:
+					BL->item.IONodes[0].DATAnotREADY = false;
+				break;
+				case ADDBitmap:
+					BL->item.IONodes[0].DATAnotREADY = true;
+					BL->item.IONodes[1].DATAnotREADY = true;
+					BL->item.IONodes[2].DATAnotREADY = true;
+				break;
+				case SUBBitmap:
+					BL->item.IONodes[0].DATAnotREADY = true;
+					BL->item.IONodes[1].DATAnotREADY = true;
+					BL->item.IONodes[2].DATAnotREADY = true;
+				break;
+				case MULBitmap:
+					BL->item.IONodes[0].DATAnotREADY = true;
+					BL->item.IONodes[1].DATAnotREADY = true;
+					BL->item.IONodes[2].DATAnotREADY = true;
+				break;
+				case DIVBitmap:
+					BL->item.IONodes[0].DATAnotREADY = true;
+					BL->item.IONodes[1].DATAnotREADY = true;
+					BL->item.IONodes[2].DATAnotREADY = true;
+				break;
+			}
+			BL = BL->NEXTNODE;
+		}
+}
+void DoItemRUN(BlockLink BL)
+{
+		switch(BL->item.BlockBitmapID)
+		{
+			case ADDBitmap:
+					BL->item.IONodes[2].value =
+					BL->item.IONodes[0].value +
+					BL->item.IONodes[1].value;
+					BL->item.IONodes[2].DATAnotREADY = false;
+			break;
+			case SUBBitmap:
+					BL->item.IONodes[2].value =
+					BL->item.IONodes[0].value -
+					BL->item.IONodes[1].value;
+					BL->item.IONodes[2].DATAnotREADY = false;
+			break;
+			case MULBitmap:
+					BL->item.IONodes[2].value =
+					BL->item.IONodes[0].value *
+					BL->item.IONodes[1].value;
+					BL->item.IONodes[2].DATAnotREADY = false;
+			break;
+			case DIVBitmap:
+					BL->item.IONodes[2].value =
+					BL->item.IONodes[0].value /
+					BL->item.IONodes[1].value;
+					BL->item.IONodes[2].DATAnotREADY = false;
+			break;
+		}
+}
+void DoRun(BlockLink BlockLLHeadP,WireLink WireLLHeadP)
+{
+	Boolean handle;
+	Boolean INPUTREADY;
+	BlockLink BL,startblock,endblock;
+	WireLink  WL;
+	int i;
+	
+	CheckConnection(BlockLLHeadP);
+	do{
+		handle = false;
+		
+		
+		
+		BL = BlockLLHeadP;
+		while(BL!=NULL)
+		{
+			INPUTREADY = true;
+			//if((BL->item.IONodes[i].DATAnotREADY == true) && 
+			//		(BL->item.IONodes[i].IO == false)) // check output data ready?
+		    //{
+				for(i=0;i<BL->item.IONodeN;i++)
+				{
+					if((BL->item.IONodes[i].DATAnotREADY == true) && 
+					(BL->item.IONodes[i].IO == true)) // check input node's data status
+					{
+						INPUTREADY = false;
+						handle = true;
+					}
+				}
+					if(INPUTREADY)
+					{
+						DoItemRUN(BL);
+					}
+			//}
+			BL = BL->NEXTNODE;
+		}
+		
+		
+		WL = WireLLHeadP;
+		while(WL!=NULL)
+		{
+			startblock = FindItemByID(WL->wire.StartBlockID);
+			endblock   = FindItemByID(WL->wire.EndBlockID);
+			// if one node is output then another node is input
+			if((startblock->item.IONodes[WL->wire.StartNodeID].DATAnotREADY == false) &&
+				(startblock->item.IONodes[WL->wire.StartNodeID].IO == false))//check output status
+			{
+				//output data is ready
+				//move data from output to input
+				endblock->item.IONodes[WL->wire.EndNodeID].value =
+				  startblock->item.IONodes[WL->wire.StartNodeID].value;
+				
+				endblock->item.IONodes[WL->wire.EndNodeID].DATAnotREADY = false;
+			}
+			if((endblock->item.IONodes[WL->wire.EndNodeID].DATAnotREADY == false) &&
+				(endblock->item.IONodes[WL->wire.EndNodeID].IO == false))
+			{
+				//output data is ready
+				//move data from output to input
+				startblock->item.IONodes[WL->wire.StartNodeID].value = 
+				  endblock->item.IONodes[WL->wire.EndNodeID].value;
+				  
+				startblock->item.IONodes[WL->wire.StartNodeID].DATAnotREADY = false;
+			}
+			// if both node are input then 
+			if((endblock->item.IONodes[WL->wire.EndNodeID].IO == true) &&
+				(startblock->item.IONodes[WL->wire.StartNodeID].IO == true))
+			{
+				// if one node data is ready and another is not ready
+				if((startblock->item.IONodes[WL->wire.StartNodeID].DATAnotREADY == true) &&
+				    (endblock->item.IONodes[WL->wire.EndNodeID].DATAnotREADY == false))
+				{
+					startblock->item.IONodes[WL->wire.StartNodeID].value = 
+				  endblock->item.IONodes[WL->wire.EndNodeID].value;
+				
+					startblock->item.IONodes[WL->wire.StartNodeID].DATAnotREADY = false;
+				}
+				if((startblock->item.IONodes[WL->wire.StartNodeID].DATAnotREADY == false) &&
+				    (endblock->item.IONodes[WL->wire.EndNodeID].DATAnotREADY == true))
+				{
+					endblock->item.IONodes[WL->wire.EndNodeID].value =
+				  startblock->item.IONodes[WL->wire.StartNodeID].value;
+				
+					endblock->item.IONodes[WL->wire.EndNodeID].DATAnotREADY = false;
+				}
+			}
+			WL = WL->NEXTNODE;
+		}
+		
+		
+	}while(handle);
+	
+	//
+	// restore ICON node's data
+	//
+	
+}
+static void FunctionspenUpProcess(EventPtr eventP)
+{
+}
+static void FunctionspenDownProcess(EventPtr eventP)
+{
+	UInt16 now_x,now_y;
+	Boolean InArea=false;
+	BlockLink newnodeptr;
+
+	
+		if(eventP->screenX<10)now_x=10;else now_x = eventP->screenX;
+		if(eventP->screenY<10+15)now_y=10+15;else now_y = eventP->screenY;
+	
+	InArea = IsInFunctionsArea(now_x,now_y); //FLLP will set
+	
+			if(InArea)
+			{
+				// user choice a block
+				newnodeptr = allocate_a_new_node();
+				// mem copy
+				MemMove(newnodeptr,FLLP,sizeof(BlockLLNode));
+				newnodeptr->NEXTNODE = NULL;
+				SYSHEAD = InsertIntoBlockLL(SYSHEAD,newnodeptr,true);
+				FrmGotoForm(BlockDiagramForm);
+			}
+	
+}
+static void FunctionspenMoveProcess(EventPtr eventP)
+{
+}
+/***********************************************************************
+*	Block event process routine
+*	
+*	
+*	
+*	
+*	
+*	
+************************************************************************/
+static void BlockpenUpProcess(EventPtr eventP)
+{
+//	Handle resH;
+//	BitmapType *bitmap;
+    FormPtr frmP;
+	UInt16 now_x,now_y;
+	Boolean InArea=false;
+
+		if(eventP->screenX<10)now_x=10;else now_x = eventP->screenX;
+		if(eventP->screenY<10+15)now_y=10+15;else now_y = eventP->screenY;
+
+		// tool = hand
+	switch(BlockPointerState){
+		case HANDBitmap:
+		
+			if(eventP->screenY > 15 && HandPointer.HandState != NULL)
+			{
+		
+				if((prev_x) < 10)prev_x=10;
+				if((prev_y) < 10+15)prev_y=10+15;
+				// clear prev. icon image
+				DrawIcon(BLANKBitmap,prev_x+offset_x,prev_y+offset_y);
+				
+				frmP = FrmGetActiveForm(); //redraw form
+				//MainFormInit( frmP);
+				FrmDrawForm ( frmP);
+				
+				DrawDiagram(1); // redraw diagram
+				DrawMainRUN();
+			}
+			HandPointer.HandState = NULL;
+		break;
+		case THREADBitmap:
+			if(eventP->screenY > 15 )
+			{
+		
+				if((prev_x) < 10)prev_x=10;
+				if((prev_y) < 10+15)prev_y=10+15;
+
+			  InArea = IsInArea(now_x,now_y); //LLP will set
+			  if(InArea)
+			  {
+				// check on node?
+				// LLP Áô§t¶Ç»¼
+				CheckOnNode(now_x,now_y,true,true);
+			  }
+				
+				// clear prev. icon image
+				DrawIcon(BLANKBitmap,prev_x+offset_x,prev_y+offset_y);
+				
+				frmP = FrmGetActiveForm(); //redraw form
+				//MainFormInit( frmP);
+				FrmDrawForm ( frmP);
+				
+				DrawDiagram(1); // redraw diagram
+				DrawMainRUN();
+				WireStart.BlockP = NULL;
+				WireStop.BlockP = NULL;
+
+			}
+		
+		break;
+		case SCISSORBitmap:
+				DrawDiagram(0); // erase diagram
+
+				if((prev_x) < 10)prev_x=10;
+				if((prev_y) < 10+15)prev_y=10+15;
+				
+			  InArea = IsInArea(now_x,now_y); //LLP will set
+			  if(InArea)
+			  {
+				// check on node?
+				// LLP Áô§t¶Ç»¼
+				CheckOnNode(now_x,now_y,true,true);
+			  }
+				// clear prev. icon image
+				DrawIcon(BLANKBitmap,prev_x+offset_x,prev_y+offset_y);
+				
+				frmP = FrmGetActiveForm(); //redraw form
+				//MainFormInit( frmP);
+				FrmDrawForm ( frmP);
+				
+				DrawDiagram(1); // redraw diagram
+				DrawMainRUN();
+				WireStart.BlockP = NULL;
+				WireStop.BlockP = NULL;
+			
+		break;
+		case KILLBitmap:
+				if((prev_x) < 10)prev_x=10;
+				if((prev_y) < 10+15)prev_y=10+15;
+				
+				// clear prev. icon image
+				DrawIcon(BLANKBitmap,prev_x+offset_x,prev_y+offset_y);
+				
+				frmP = FrmGetActiveForm(); //redraw form
+				//MainFormInit( frmP);
+				FrmDrawForm ( frmP);
+				
+				DrawDiagram(1); // redraw diagram
+				DrawMainRUN();
+			
+		break;
+		default:
+		break;
+	}
+}
+static void BlockpenDownProcess(EventPtr eventP)
+{
+	//Handle resH;
+	//BitmapType *bitmap;
+	UInt16 now_x,now_y;
+	Boolean InArea=false;
+	//BlockLink tempP;
+	//int i;
+	//BlockLink 
+	
+		if(eventP->screenX<10)now_x=10;else now_x = eventP->screenX;
+		if(eventP->screenY<10+15)now_y=10+15;else now_y = eventP->screenY;
+
+
+	//tempP = LLP;
+	
+	// tool = hand
+	switch(BlockPointerState){
+		case HANDBitmap:
+			InArea = IsInArea(now_x,now_y); //LLP will set
+			if(InArea)
+			{
+				// in boundary
+				DrawIcon(CLENCHBitmap,now_x+offset_x,now_y+offset_y);
+				HandPointer.HandState = CLENCHBitmap;
+				HandPointer.CatchWhat = LLP; // point now item.
+			}
+			else
+			{
+				DrawIcon(HANDBitmap,now_x+offset_x,now_y+offset_y);
+				HandPointer.HandState = HANDBitmap;
+			}
+		break;
+		case THREADBitmap:
+			InArea = IsInArea(now_x,now_y); //LLP will set
+			if(InArea)
+			{
+				// check on node?
+				// LLP Áô§t¶Ç»¼
+				CheckOnNode(now_x,now_y,true,true);
+			}
+			else
+			{
+				DrawIcon(THREADBitmap,now_x+offset_x,now_y+offset_y);
+		
+			}
+		break;
+		case SCISSORBitmap:
+			InArea = IsInArea(now_x,now_y); //LLP will set
+			if(InArea)
+			{
+				// check on node?
+				// LLP Áô§t¶Ç»¼
+				CheckOnNode(now_x,now_y,true,true);
+			}
+			else
+			{
+				DrawIcon(SCISSORBitmap,now_x+offset_x,now_y+offset_y);
+		
+			}
+		break;
+		case KILLBitmap:
+			DrawDiagram(0);
+			InArea = IsInArea(now_x,now_y); //LLP will set
+			if(InArea)
+			{
+				
+				// check on node?
+				// LLP Áô§t¶Ç»¼
+				// clear Block bitmap image
+				DrawIcon(BLANKBitmap,LLP->item.BlockXY.x,LLP->item.BlockXY.y);
+				// remove wire connection
+				RemoveWireConnection(LLP);
+				// remove Block Link
+				SYSHEAD = RemoveBlockLinkList(SYSHEAD,LLP);
+
+			}
+			else
+			{
+				DrawIcon(KILLBitmap,now_x+offset_x,now_y+offset_y);
+		
+			}
+			DrawDiagram(1);
+		break;
+		default:
+		break;
+		}
+		//
+			prev_x = now_x;
+			prev_y = now_y;
+			penMoveAverage = 0;
+
+	
+}
+static void BlockpenMoveProcess(EventPtr eventP)
+{
+
+	//Handle resH;
+	//BitmapType *bitmap;
+	UInt16 now_x,now_y;
+	//int i;
+	Boolean InArea=false;
+	
+		if(eventP->screenX<10)now_x=10;else now_x = eventP->screenX;
+		if(eventP->screenY<10+15)now_y=10+15;else now_y = eventP->screenY;
+		
+		DrawDiagram(0); // clear diagram
+		// clear prev. pointer icon
+		DrawIcon(BLANKBitmap,prev_x+offset_x,prev_y+offset_y);
+		
+		// tool = hand
+	switch(BlockPointerState){
+		case HANDBitmap:
+
+		
+			if(HandPointer.HandState == CLENCHBitmap)
+			{
+				setNewObjXY(now_x+offset_x,now_y+offset_y);
+				DrawDiagram(1); 
+				// redraw diagram
+				// in boundary
+				DrawIcon(CLENCHBitmap,now_x+offset_x,now_y+offset_y);
+			}
+			else if(HandPointer.HandState == HANDBitmap)
+			{
+				DrawDiagram(1); // redraw diagram
+				DrawIcon(HANDBitmap,now_x+offset_x,now_y+offset_y);
+			}
+
+		//
+		break;
+		case THREADBitmap:
+			DrawDiagram(1); // redraw diagram
+			
+		//if(LLP->item[0].UID != NULL)
+			//for(i=0;i<5 && !InArea;i++) // now have 5 items on diagram
+			
+			InArea = IsInArea(now_x,now_y);
+			// LLP is set
+			//CheckOnNode(prev_x,prev_y,false);
+
+			if(InArea)
+			{
+				// check on node?
+				CheckOnNode(now_x,now_y,true,false);
+			}
+			else
+			{
+			
+		// clear prev. bitmap
+				//DrawIcon(BLANKBitmap,prev_x-10,prev_y-10);
+			
+				DrawIcon(THREADBitmap,now_x+offset_x,now_y+offset_y);
+			}
+		
+		
+		break;
+		case SCISSORBitmap:
+			DrawDiagram(1); // redraw diagram
+			
+			
+			InArea = IsInArea(now_x,now_y);
+			// LLP is set
+
+			if(InArea)
+			{
+				//DrawDiagram(0);
+				// check on node?
+				CheckOnNode(now_x,now_y,true,false);
+				//DrawDiagram(1);
+			}
+			else
+			{
+			
+			
+				DrawIcon(SCISSORBitmap,now_x+offset_x,now_y+offset_y);
+			}
+			//DrawDiagram(1); // redraw diagram
+		break;
+		default:
+		break;
+		}
+		
+			prev_x = now_x;
+			prev_y = now_y;
+	
+}
+////////////////////////////////////////////////////////////////////////
+void ChangeControl(BlockLink BL,int i)
+{
+	switch(BL->item.PanelBitmapID)
+	{
+		case CTRLU8Bitmap:
+			if(i==0)
+			{
+				BL->item.IONodes[0].value = BL->item.IONodes[0].value + 1;
+			}
+			if(i==1)
+			{
+				BL->item.IONodes[0].value = BL->item.IONodes[0].value - 1;
+			}
+		break;
+		default:
+		break;
+	}
+}
+/***********************************************************************
+*	Panel event process routine
+*	
+*	
+*	
+*	
+*	
+*	
+************************************************************************/
+static void PanelpenUpProcess(EventPtr eventP)
+{
+//	Handle resH;
+//	BitmapType *bitmap;
+    FormPtr frmP;
+
+
+		// tool = hand
+	switch(PanelPointerState){
+		case HANDBitmap:
+		
+			if(eventP->screenY > 15 && HandPointer.HandState != NULL)
+			{
+		
+				if((prev_x) < 10)prev_x=10;
+				if((prev_y) < 10+15)prev_y=10+15;
+				// clear prev. icon image
+				DrawIcon(BLANKBitmap,prev_x+offset_x,prev_y+offset_y);
+				
+				frmP = FrmGetActiveForm(); //redraw form
+				//MainFormInit( frmP);
+				FrmDrawForm ( frmP);
+				
+				DrawPanel(1); // redraw diagram
+				DrawMainRUN();
+			}
+			HandPointer.HandState = NULL;
+		break;
+		case FINGERBitmap:
+		
+			if(eventP->screenY > 15 )
+			{
+		
+				if((prev_x) < 10)prev_x=10;
+				if((prev_y) < 10+15)prev_y=10+15;
+				
+				// clear prev. icon image
+				DrawIcon(BLANKBitmap,prev_x+offset_x,prev_y+offset_y);
+				
+				frmP = FrmGetActiveForm(); //redraw form
+				//MainFormInit( frmP);
+				FrmDrawForm ( frmP);
+				
+				DrawPanel(1); // redraw diagram
+				DrawMainRUN();
+			}
+		
+		break;
+		default:
+		break;
+	}
+}
+static void PanelpenDownProcess(EventPtr eventP)
+{
+	//Handle resH;
+	//BitmapType *bitmap;
+	UInt16 now_x,now_y;
+	Boolean InArea=false;
+	int i;
+	//BlockLink 
+	
+		if(eventP->screenX<10)now_x=10;else now_x = eventP->screenX;
+		if(eventP->screenY<10+15)now_y=10+15;else now_y = eventP->screenY;
+	
+	InArea = IsInArea(now_x,now_y); //LLP will set
+	
+	// tool = hand
+	switch(PanelPointerState){
+		case HANDBitmap:
+			if(InArea)
+			{
+				// in boundary
+				DrawIcon(CLENCHBitmap,now_x+offset_x,now_y+offset_y);
+				
+				HandPointer.HandState = CLENCHBitmap;
+				HandPointer.CatchWhat = LLP; // point now item.
+			}
+			else
+			{
+				DrawIcon(HANDBitmap,now_x+offset_x,now_y+offset_y);
+				
+				HandPointer.HandState = HANDBitmap;
+			}
+		break;
+		case FINGERBitmap:
+			if(InArea)
+			{
+				// check on node?
+				// LLP Áô§t¶Ç»¼
+				DrawIcon(PRESSFINGERBitmap,now_x+offset_x,now_y+offset_y);
+				if((i=CheckOnNode(now_x,now_y,true,false)) != -1)
+				{
+					ChangeControl(LLP,i);
+				}
+			}
+			else
+			{
+				DrawIcon(PRESSFINGERBitmap,now_x+offset_x,now_y+offset_y);
+		
+			}
+		
+		
+		break;
+		default:
+		break;
+		}
+		//
+			prev_x = now_x;
+			prev_y = now_y;
+			penMoveAverage = 0;
+	
+}
+static void PanelpenMoveProcess(EventPtr eventP)
+{
+
+	//Handle resH;
+	//BitmapType *bitmap;
+	UInt16 now_x,now_y;
+	//int i;
+	Boolean InArea=false;
+	
+		if(eventP->screenX<10)now_x=10;else now_x = eventP->screenX;
+		if(eventP->screenY<10+15)now_y=10+15;else now_y = eventP->screenY;
+		
+		DrawPanel(0); // clear diagram
+		// clear prev. pointer icon
+		DrawIcon(BLANKBitmap,prev_x+offset_x,prev_y+offset_y);
+		
+		// tool = hand
+	switch(PanelPointerState){
+		case HANDBitmap:
+
+		
+			if(HandPointer.HandState == CLENCHBitmap)
+			{
+				// in boundary
+				setNewObjXY(now_x+offset_x,now_y+offset_y);
+				DrawPanel(1); // redraw diagram
+				DrawIcon(CLENCHBitmap,now_x+offset_x,now_y+offset_y);
+			}
+			else if(HandPointer.HandState == HANDBitmap)
+			{
+				DrawPanel(1); // redraw diagram
+				DrawIcon(HANDBitmap,now_x+offset_x,now_y+offset_y);
+			}
+
+		//
+		break;
+		case FINGERBitmap:
+		
+			DrawPanel(1); // redraw diagram
+			
+			
+			InArea = IsInArea(now_x,now_y);
+			// LLP is set
+			//CheckOnNode(prev_x,prev_y,false);
+
+			if(InArea)
+			{
+				// check on node?
+				DrawIcon(PRESSFINGERBitmap,now_x+offset_x,now_y+offset_y);
+				CheckOnNode(now_x,now_y,true,false);
+			}
+			else
+			{
+			
+				//DrawIcon(,,);
+				DrawIcon(PRESSFINGERBitmap,now_x+offset_x,now_y+offset_y);
+			}
+		
+		
+		break;
+		default:
+		break;
+		}
+		
+			prev_x = now_x;
+			prev_y = now_y;
+	
+}
+/***********************************************************************
+ *
+ * FUNCTION:    RomVersionCompatible
+ *
+ * DESCRIPTION: This routine checks that a ROM version is meet your
+ *              minimum requirement.
+ *
+ * PARAMETERS:  requiredVersion - minimum rom version required
+ *                                (see sysFtrNumROMVersion in SystemMgr.h 
+ *                                for format)
+ *              launchFlags     - flags that indicate if the application 
+ *                                UI is initialized.
+ *
+ * RETURNED:    error code or zero if rom is compatible
+ *
+ * REVISION HISTORY:
+ *
+ ***********************************************************************/
+static Err RomVersionCompatible(DWord requiredVersion, Word launchFlags)
+{
+	DWord romVersion;
+
+	// See if we're on in minimum required version of the ROM or later.
+	FtrGet(sysFtrCreator, sysFtrNumROMVersion, &romVersion);
+	if (romVersion < requiredVersion)
+		{
+		if ((launchFlags & (sysAppLaunchFlagNewGlobals | sysAppLaunchFlagUIApp)) ==
+			(sysAppLaunchFlagNewGlobals | sysAppLaunchFlagUIApp))
+			{
+			FrmAlert (RomIncompatibleAlert);
+		
+			// Pilot 1.0 will continuously relaunch this app unless we switch to 
+			// another safe one.
+			if (romVersion < sysMakeROMVersion(2,0,0,sysROMStageRelease,0))
+				AppLaunchWithCommand(sysFileCDefaultApp, sysAppLaunchCmdNormalLaunch, NULL);
+			}
+		
+		return (sysErrRomIncompatible);
+		}
+
+	return (0);
+}
+
+
+/***********************************************************************
+ *
+ * FUNCTION:    GetObjectPtr
+ *
+ * DESCRIPTION: This routine returns a pointer to an object in the current
+ *              form.
+ *
+ * PARAMETERS:  formId - id of the form to display
+ *
+ * RETURNED:    VoidPtr
+ *
+ * REVISION HISTORY:
+ *
+ *
+ ***********************************************************************/
+static VoidPtr GetObjectPtr(Word objectID)
+	{
+	FormPtr frmP;
+
+
+	frmP = FrmGetActiveForm();
+	return (FrmGetObjectPtr(frmP, FrmGetObjectIndex(frmP, objectID)));
+}
+
+
+/***********************************************************************
+ *
+ * FUNCTION:    MainFormInit
+ *
+ * DESCRIPTION: This routine initializes the MainForm form.
+ *
+ * PARAMETERS:  frm - pointer to the MainForm form.
+ *
+ * RETURNED:    nothing
+ *
+ * REVISION HISTORY:
+ *
+ *
+ ***********************************************************************/
+static void MainFormInit(FormPtr frmP)
+{
+}
+
+
+/***********************************************************************
+ *
+ * FUNCTION:    MainFormDoCommand
+ *
+ * DESCRIPTION: This routine performs the menu command specified.
+ *
+ * PARAMETERS:  command  - menu item id
+ *
+ * RETURNED:    nothing
+ *
+ * REVISION HISTORY:
+ *
+ *
+ ***********************************************************************/
+/***********************************************************************
+*	Block DoCommand routine
+*	
+*	
+*	
+*	
+*	
+*	
+************************************************************************/
+static Boolean BlockDiagramFormDoCommand(Word command)
+{
+	Boolean handled = false;
+	FormPtr frmP;
+
+	switch (command)
+		{
+		case AboutMenu:
+			MenuEraseStatus (0);
+			//AbtShowAbout (appFileCreator);
+			frmP = FrmInitForm (AboutForm);
+			FrmDoDialog (frmP);					// Display the About Box.
+			FrmDeleteForm (frmP);
+			
+			handled = true;
+			break;
+		case BlockDiagramWorksBlockDiagram:
+			MenuEraseStatus (0);
+			FrmGotoForm(BlockDiagramForm);
+			handled = true;
+			break;
+		case BlockDiagramWorksFrontPanel:
+			MenuEraseStatus (0);
+			FrmGotoForm(FrontPanelForm);
+			handled = true;
+			break;
+			/*
+		case FileLoadTestData:
+			MenuEraseStatus (0);
+			DrawCanvas(0);
+			// prepare the test data
+			SetTestData();
+			DrawCanvas(1);
+			handled = true;
+			break;
+			*/
+		case RunRun:
+			MenuEraseStatus (0);
+			RUN = true;
+			DrawMainRUN();
+			handled = true;
+			break;
+		case RunStop:
+			MenuEraseStatus (0);
+			RUN = false;
+			DrawMainRUN();
+			handled = true;
+			break;
+		case BlockDiagramWorksFunctions:
+			MenuEraseStatus (0);
+			FrmGotoForm(FunctionsForm);
+			handled = true;
+			break;
+		case FileNEW:
+			MenuEraseStatus (0);
+			SYSHEAD = NEW(SYSHEAD);
+			SYSHEAD = InsertIconNode(SYSHEAD);
+			FrmGotoForm(BlockDiagramForm);
+			handled = true;
+			break;
+		case FileSAVE:
+			MenuEraseStatus (0);
+			FrmPopupForm(FileNameInputForm);
+			handled = true;
+			break;
+		case FileLOAD:
+			MenuEraseStatus (0);
+			//FrmGotoForm(FilesForm);
+			FrmPopupForm(FilesForm);
+			handled = true;
+			break;
+		}
+	return handled;
+}
+/***********************************************************************
+*	FrontPanel DoCommand routine
+*	
+*	
+*	
+*	
+*	
+*	
+************************************************************************/
+
+static Boolean FrontPanelFormDoCommand(Word command)
+{
+	Boolean handled = false;
+	FormPtr frmP;
+
+	switch (command)
+		{
+		case AboutMenu:
+			MenuEraseStatus (0);
+			//AbtShowAbout (appFileCreator);
+			frmP = FrmInitForm (AboutForm);
+			FrmDoDialog (frmP);					// Display the About Box.
+			FrmDeleteForm (frmP);
+			
+			handled = true;
+			break;
+		case FrontPanelWorksBlockDiagram:
+			MenuEraseStatus (0);
+			FrmGotoForm(BlockDiagramForm);
+			handled = true;
+			break;
+		case FrontPanelWorksFrontPanel:
+			MenuEraseStatus (0);
+			FrmGotoForm(FrontPanelForm);
+			handled = true;
+			break;
+		case FrontPanelWorksUIs:
+			MenuEraseStatus (0);
+			FrmGotoForm(UIsForm);
+			handled = true;
+			break;
+		case RunRun:
+			MenuEraseStatus (0);
+			RUN = true;
+			DrawMainRUN();
+			handled = true;
+			break;
+		case RunStop:
+			MenuEraseStatus (0);
+			RUN = false;
+			DrawMainRUN();
+			handled = true;
+			break;
+			/*
+		case FileLoadTestData:
+			MenuEraseStatus (0);
+			DrawCanvas(0);
+			// prepare the test data
+			SetTestData();
+			DrawCanvas(1);
+			handled = true;
+			break;
+			*/
+		case FileNEW:
+			MenuEraseStatus (0);
+			SYSHEAD = NEW(SYSHEAD);
+			SYSHEAD = InsertIconNode(SYSHEAD);
+			FrmGotoForm(FrontPanelForm);
+			handled = true;
+			break;
+		case FileSAVE:
+			MenuEraseStatus (0);
+			//FrmGotoForm(FileNameInputForm);
+			FrmPopupForm(FileNameInputForm);
+			handled = true;
+			break;
+		case FileLOAD:
+			MenuEraseStatus (0);
+			//FrmGotoForm(FilesForm);
+			FrmPopupForm(FilesForm);
+			handled = true;
+			break;
+		}
+	return handled;
+}
+/***********************************************************************
+ *
+ * FUNCTION:    MainFormHandleEvent
+ *
+ * DESCRIPTION: This routine is the event handler for the 
+ *              "MainForm" of this application.
+ *
+ * PARAMETERS:  eventP  - a pointer to an EventType structure
+ *
+ * RETURNED:    true if the event has handle and should not be passed
+ *              to a higher level handler.
+ *
+ * REVISION HISTORY:
+ *
+ *
+ ***********************************************************************/
+/***********************************************************************
+*	Block event process routine
+*	
+*	
+*	
+*	
+*	
+*	
+************************************************************************/
+static Boolean BlockDiagramFormHandleEvent(EventPtr eventP)
+{
+    Boolean handled = false;
+    FormPtr frmP;
+	//char str[10];
+	//Handle resH;
+	//BitmapType *bitmap;
+	//RectangleType Rtest;
+	//int i;
+	
+	switch (eventP->eType) 
+		{
+		case menuEvent:
+			return BlockDiagramFormDoCommand(eventP->data.menu.itemID);
+
+		case frmOpenEvent:
+			frmP = FrmGetActiveForm();
+			MainFormInit( frmP);
+			FrmDrawForm ( frmP);
+			
+			// Do draw diagram
+			DrawDiagram(1);
+			//DrawCanvas(1);
+			// draw main run button
+			DrawMainRUN();
+
+			
+			handled = true;
+			break;
+		case penDownEvent:
+			//frmP = FrmGetActiveForm();
+			//StrPrintF(str,"%d",FrmGetActiveFormID());
+			//WinDrawChars(str,StrLen(str),eventP->screenX,eventP->screenY);
+			
+			if(eventP->screenY > 15)
+			{
+				// Do check diagram
+				BlockpenDownProcess(eventP);
+			}
+			
+			handled = true;
+			break;
+		case penMoveEvent:
+				
+			penMoveAverage++;
+			if(penMoveAverage >= 10)
+			{
+				BlockpenMoveProcess(eventP);
+			 	penMoveAverage = 0;
+			}
+			
+			handled = true;
+			break;
+		case penUpEvent:
+		
+			BlockpenUpProcess(eventP);
+			
+			handled = true;
+			break;
+		case keyDownEvent:
+			switch(KeyCurrentState())
+			{
+				case keyBitPageUp:
+					if(BlockPointerState == HANDBitmap)
+					{
+						BlockPointerState = THREADBitmap;
+					}
+					else if(BlockPointerState == THREADBitmap)
+					{
+						BlockPointerState = SCISSORBitmap;
+					}
+					else if(BlockPointerState == SCISSORBitmap)
+					{
+						BlockPointerState = KILLBitmap;
+					}
+					else if(BlockPointerState == KILLBitmap)
+					{
+						BlockPointerState = HANDBitmap;
+					}
+					DrawCanvas(true);
+				break;
+				case keyBitPageDown:
+					if(CanvasState)
+					{
+						CanvasState = false;
+						FrmGotoForm(FrontPanelForm);
+						
+					}
+					else
+					{
+						CanvasState = true;
+						FrmGotoForm(BlockDiagramForm);
+						
+					}
+					handled = true;
+				break;
+			}
+			
+		break;
+		default:
+			break;
+		
+		}
+	
+	return handled;
+}
+/***********************************************************************
+*	Panel event process routine
+*	
+*	
+*	
+*	
+*	
+*	
+************************************************************************/
+static Boolean FrontPanelFormHandleEvent(EventPtr eventP)
+{
+    Boolean handled = false;
+    FormPtr frmP;
+	//char str[10];
+	//Handle resH;
+	//BitmapType *bitmap;
+	//RectangleType Rtest;
+	//int i;
+	
+	switch (eventP->eType) 
+		{
+		case menuEvent:
+			return FrontPanelFormDoCommand(eventP->data.menu.itemID);
+
+		case frmOpenEvent:
+			frmP = FrmGetActiveForm();
+			MainFormInit( frmP);
+			FrmDrawForm ( frmP);
+			
+			// Do draw diagram
+			DrawPanel(1);
+			//DrawCanvas(1);
+			// draw main run button
+			DrawMainRUN();
+
+			
+			handled = true;
+			break;
+		case penDownEvent:
+			//frmP = FrmGetActiveForm();
+			//StrPrintF(str,"%d",FrmGetActiveFormID());
+			//WinDrawChars(str,StrLen(str),eventP->screenX,eventP->screenY);
+			
+			if(eventP->screenY > 15)
+			{
+				// Do check diagram
+				PanelpenDownProcess(eventP);
+			}
+			
+			handled = true;
+			break;
+		case penMoveEvent:
+				
+			penMoveAverage++;
+			if(penMoveAverage >= 10)
+			{
+				PanelpenMoveProcess(eventP);
+			 	penMoveAverage = 0;
+			}
+			
+			handled = true;
+			break;
+		case penUpEvent:
+		
+			PanelpenUpProcess(eventP);
+			
+			handled = true;
+			break;
+		case keyDownEvent:
+			switch(KeyCurrentState())
+			{
+				case keyBitPageUp:
+					if(PanelPointerState == HANDBitmap)
+					{
+						PanelPointerState = FINGERBitmap;
+					}
+					else if(PanelPointerState == FINGERBitmap)
+					{
+						PanelPointerState = HANDBitmap;
+
+					}
+					DrawCanvas(true);
+				break;
+				case keyBitPageDown:
+					if(CanvasState)
+					{
+						CanvasState = false;
+						FrmGotoForm(FrontPanelForm);
+						
+					}
+					else
+					{
+						CanvasState = true;
+						FrmGotoForm(BlockDiagramForm);
+						
+					}
+					handled = true;
+				break;
+			}
+			
+		break;
+		default:
+			break;
+		
+		}
+	
+	return handled;
+}
+/***********************************************************************
+*	"Functions" event process routine
+*	
+*	
+*	
+*	
+*	
+*	
+************************************************************************/
+static Boolean FunctionsFormHandleEvent(EventPtr eventP)
+{
+    Boolean handled = false;
+    FormPtr frmP;
+	//char str[10];
+	//Handle resH;
+	//BitmapType *bitmap;
+	//RectangleType Rtest;
+	//int i;
+	
+	switch (eventP->eType) 
+		{
+		/*
+		case menuEvent:
+			return FrontPanelFormDoCommand(eventP->data.menu.itemID);
+		*/
+		case frmOpenEvent:
+			frmP = FrmGetActiveForm();
+			//MainFormInit( frmP);
+			FrmDrawForm ( frmP);
+			
+			// Do draw functions
+			DrawFunctionsForm();
+
+			
+			handled = true;
+			break;
+		case penDownEvent:
+			
+			if(eventP->screenY > 15)
+			{
+				// Do check diagram
+				FunctionspenDownProcess(eventP);
+			}
+			
+			handled = true;
+			break;
+		case penMoveEvent:
+				
+			penMoveAverage++;
+			if(penMoveAverage >= 10)
+			{
+				FunctionspenMoveProcess(eventP);
+			 	penMoveAverage = 0;
+			}
+			
+			handled = true;
+			break;
+		case penUpEvent:
+		
+			FunctionspenUpProcess(eventP);
+			
+			handled = true;
+			break;
+		default:
+			break;
+		
+		}
+	
+	return handled;
+}
+/***********************************************************************
+*	"Files" event process routine
+*	
+*	
+*	
+*	
+*	
+*	
+************************************************************************/
+static Boolean FilesFormHandleEvent(EventPtr eventP)
+{
+    Boolean handled = false;
+    FormPtr frmP;
+	//char str[10];
+	//Handle resH;
+	//BitmapType *bitmap;
+	//RectangleType Rtest;
+	//int i;
+	FormPtr		frm;
+	ListPtr		lst;
+	Word 		CurrentRecord;
+	
+	switch (eventP->eType) 
+		{
+		/*
+		case menuEvent:
+			return FrontPanelFormDoCommand(eventP->data.menu.itemID);
+		*/
+		case frmOpenEvent:
+			BuildLOADMenu();
+			
+			frmP = FrmGetActiveForm();
+			FrmDrawForm ( frmP);
+			
+			handled = true;
+			break;
+   		case ctlSelectEvent:  // A control button was pressed and released.
+			
+	   	// If the done button is pressed, go back to the main form.
+	   	if (eventP->data.ctlEnter.controlID == FilesLOADButton)
+	  		 	{
+					frm = FrmGetActiveForm();
+					lst = FrmGetObjectPtr(frm, FrmGetObjectIndex(frm, FilesFileListList));
+					CurrentRecord = LstGetSelection(lst);
+	   				SYSHEAD = LOAD(SYSHEAD,LstGetSelectionText(lst,CurrentRecord));
+					FrmReturnToForm(0);
+					handled = true;
+				}
+	   	if (eventP->data.ctlEnter.controlID == FilesCANCELButton)
+	  		 	{
+					FrmReturnToForm(0);
+					handled = true;
+				}
+			break;
+			/*
+  		case lstSelectEvent:  // P7. An entry in the list was selected.
+			// Get the current selection from the list and set the current record to edit.
+			frm = FrmGetActiveForm();
+			lst = FrmGetObjectPtr(frm, FrmGetObjectIndex(frm, FilesFileListList));
+			CurrentRecord = LstGetSelection(lst);
+			
+			// Go to the edit form.	
+			//FrmGotoForm(MemoPadEditForm);
+			LOAD(CurrentRecord);
+			FrmGotoForm(BlockDiagramForm);
+			handled = true;
+			break;
+		*/
+		case frmCloseEvent:	// P7. The form was told to close.
+			// Free the memory blocks allocated for the list.
+			if (ChoicesHandle)
+				{
+				MemHandleFree(ChoicesHandle);
+				ChoicesHandle = 0;
+				MemHandleFree(ChoicesPtrsHandle);
+				}
+			break;
+		case penDownEvent:
+			break;
+		case penMoveEvent:
+			break;
+		case penUpEvent:
+			break;
+		case keyDownEvent:
+			break;
+		default:
+			break;
+		
+		}
+	
+	return handled;
+}
+/***********************************************************************
+*	"FileNameInput" event process routine
+*	
+*	
+*	
+*	
+*	
+*	
+************************************************************************/
+static Boolean FileNameInputFormHandleEvent(EventPtr eventP)
+{
+    Boolean handled = false;
+    FormPtr frmP;
+	//char str[10];
+	//Handle resH;
+	//BitmapType *bitmap;
+	//RectangleType Rtest;
+	//int i;
+	//FormPtr		frm;
+	//ListPtr		lst;
+	//Word 		CurrentRecord;
+	FieldPtr	fldP;
+	
+	switch (eventP->eType) 
+		{
+		/*
+		case menuEvent:
+			return FrontPanelFormDoCommand(eventP->data.menu.itemID);
+		*/
+   		case ctlSelectEvent:  // A control button was pressed and released.
+			
+	   	// If the done button is pressed, go back to the main form.
+	   	if (eventP->data.ctlEnter.controlID == FileNameInputOKButton)
+	  		 	{
+	   				fldP = GetObjectPtr(FileNameInputFileNameField);
+	   				SAVE(fldP->text);
+					FrmReturnToForm(0);
+					handled = true;
+				}
+	   	if (eventP->data.ctlEnter.controlID == FileNameInputCANCELButton)
+	  		 	{
+					FrmReturnToForm(0);
+					handled = true;
+				}
+			break;
+		case frmOpenEvent:
+			frmP = FrmGetActiveForm();
+			FrmDrawForm ( frmP);
+			FrmSetFocus	(frmP,FrmGetObjectIndex(frmP,FileNameInputFileNameField));
+			handled = true;
+			break;
+		default:
+			break;
+		
+		}
+	
+	return handled;
+}
+/***********************************************************************
+ *
+ * FUNCTION:    AppHandleEvent
+ *
+ * DESCRIPTION: This routine loads form resources and set the event
+ *              handler for the form loaded.
+ *
+ * PARAMETERS:  event  - a pointer to an EventType structure
+ *
+ * RETURNED:    true if the event has handle and should not be passed
+ *              to a higher level handler.
+ *
+ * REVISION HISTORY:
+ *
+ *
+ ***********************************************************************/
+static Boolean AppHandleEvent( EventPtr eventP)
+{
+	Word formId;
+	FormPtr frmP;
+
+
+	if (eventP->eType == frmLoadEvent)
+		{
+		// Load the form resource.
+		formId = eventP->data.frmLoad.formID;
+		frmP = FrmInitForm(formId);
+		FrmSetActiveForm(frmP);
+
+		// Set the event handler for the form.  The handler of the currently
+		// active form is called by FrmHandleEvent each time is receives an
+		// event.
+		switch (formId)
+			{
+			case BlockDiagramForm:
+			//case FrontPanelForm:
+				FrmSetEventHandler(frmP, BlockDiagramFormHandleEvent);
+				break;
+			case FrontPanelForm:
+				FrmSetEventHandler(frmP, FrontPanelFormHandleEvent);
+				break;
+			case FunctionsForm:
+				FrmSetEventHandler(frmP, FunctionsFormHandleEvent);
+				break;
+			case FilesForm:
+				FrmSetEventHandler(frmP, FilesFormHandleEvent);
+				break;
+			case FileNameInputForm:
+				FrmSetEventHandler(frmP, FileNameInputFormHandleEvent);
+				break;
+				
+			default:
+//				ErrFatalDisplay("Invalid Form Load Event");
+				break;
+
+			}
+		return true;
+		}
+	
+	return false;
+}
+
+
+/***********************************************************************
+ *
+ * FUNCTION:    AppEventLoop
+ *
+ * DESCRIPTION: This routine is the event loop for the application.  
+ *
+ * PARAMETERS:  nothing
+ *
+ * RETURNED:    nothing
+ *
+ * REVISION HISTORY:
+ *
+ *
+ ***********************************************************************/
+static void AppEventLoop(void)
+{
+	Word error;
+	EventType event;
+
+
+	do {
+		//EvtGetEvent(&event, evtWaitForever);
+		EvtGetEvent(&event, 1);
+		if(RUN)
+			DoRun(SYSHEAD.BlockLLHead,SYSHEAD.WireLLHead);
+		
+		if (! SysHandleEvent(&event))
+			if (! MenuHandleEvent(0, &event, &error))
+				if (! AppHandleEvent(&event))
+					FrmDispatchEvent(&event);
+
+	} while (event.eType != appStopEvent);
+}
+
+
+/***********************************************************************
+ *
+ * FUNCTION:     AppStart
+ *
+ * DESCRIPTION:  Get the current application's preferences.
+ *
+ * PARAMETERS:   nothing
+ *
+ * RETURNED:     Err value 0 if nothing went wrong
+ *
+ * REVISION HISTORY:
+ *
+ *
+ ***********************************************************************/
+static Err AppStart(void)
+{
+    StarterPreferenceType prefs;
+    Word prefsSize;
+
+	// add by peng
+	// set the "functions"
+	//
+	SetFunctionsLL();
+	//
+	// estabilish the ICON node.
+	//
+	SYSHEAD.BlockLLHead = NULL;
+	SYSHEAD.WireLLHead = NULL;
+	SYSHEAD = NEW(SYSHEAD);
+	SYSHEAD = InsertIconNode(SYSHEAD);
+	// Read the saved preferences / saved-state information.
+	prefsSize = sizeof(StarterPreferenceType);
+	if (PrefGetAppPreferences(appFileCreator, appPrefID, &prefs, &prefsSize, true) != 
+		noPreferenceFound)
+		{
+		}
+	
+   return 0;
+}
+
+
+/***********************************************************************
+ *
+ * FUNCTION:    AppStop
+ *
+ * DESCRIPTION: Save the current state of the application.
+ *
+ * PARAMETERS:  nothing
+ *
+ * RETURNED:    nothing
+ *
+ * REVISION HISTORY:
+ *
+ *
+ ***********************************************************************/
+static void AppStop(void)
+{
+   StarterPreferenceType prefs;
+   
+   
+	// Write the saved preferences / saved-state information.  This data 
+	// will be backed up during a HotSync.
+	PrefSetAppPreferences (appFileCreator, appPrefID, appPrefVersionNum, 
+		&prefs, sizeof (prefs), true);
+}
+
+
+
+/***********************************************************************
+ *
+ * FUNCTION:    StarterPilotMain
+ *
+ * DESCRIPTION: This is the main entry point for the application.
+ * PARAMETERS:  cmd - word value specifying the launch code. 
+ *              cmdPB - pointer to a structure that is associated with the launch code. 
+ *              launchFlags -  word value providing extra information about the launch.
+ *
+ * RETURNED:    Result of launch
+ *
+ * REVISION HISTORY:
+ *
+ *
+ ***********************************************************************/
+static DWord StarterPilotMain(Word cmd, Ptr cmdPBP, Word launchFlags)
+{
+	Err error;
+
+
+	error = RomVersionCompatible (ourMinVersion, launchFlags);
+	if (error) return (error);
+
+
+	switch (cmd)
+		{
+		case sysAppLaunchCmdNormalLaunch:
+			error = AppStart();
+			if (error) 
+				return error;
+				
+			FrmGotoForm(BlockDiagramForm);
+			AppEventLoop();
+			AppStop();
+			break;
+
+		default:
+			break;
+
+		}
+	
+	return 0;
+}
+
+
+/***********************************************************************
+ *
+ * FUNCTION:    PilotMain
+ *
+ * DESCRIPTION: This is the main entry point for the application.
+ *
+ * PARAMETERS:  cmd - word value specifying the launch code. 
+ *              cmdPB - pointer to a structure that is associated with the launch code. 
+ *              launchFlags -  word value providing extra information about the launch.
+ * RETURNED:    Result of launch
+ *
+ * REVISION HISTORY:
+ *
+ *
+ ***********************************************************************/
+DWord PilotMain( Word cmd, Ptr cmdPBP, Word launchFlags)
+{
+    return StarterPilotMain(cmd, cmdPBP, launchFlags);
+}
+
