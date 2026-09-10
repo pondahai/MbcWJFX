@@ -1225,6 +1225,12 @@ function relocateCtrlNodes(b) {
     }
     // SCPAGEDOWN 在左上角，不用動
   }
+  /* block.c:2567「5-18 修改輸出節點位置」—— 邊框上的輸出節點（TYPE 0）貼在
+     右邊，改完寬度要跟著搬。輸入節點（TYPE 1）在左邊 x=0，不用動；y 也不動，
+     跟原版一樣照著內部元件當初的位置。 */
+  for (const n of b.bap.IONodeLLHead || []) {
+    if (n.TYPE === 0) n.TL.x = b.bap.SIZE.x - 6;
+  }
 }
 
 // 一個方塊所屬的線段串列（它父層的 hook；沒有父層就是最外層）
