@@ -6,6 +6,7 @@
 web/
 ├── vpl.html                  ← 用瀏覽器直接開這個檔
 ├── README.md
+├── PLAN.md                   ← 移植進度表（112 個函式逐一對照）
 ├── samples/
 │   └── demo.pdb              ← 測試用存檔
 └── tools/
@@ -325,6 +326,9 @@ FileStream 在記錄裡還有自己的表頭，格式沒有公開文件，所以
 存的 `.pdb`。如果你手上找得到，值得拿來試，特別是 FileStream 容器那一層。
 
 ## 下一步
+
+完整的移植進度表在 **[PLAN.md](PLAN.md)** —— 112 個函式逐一標了狀態，
+包含 4 個「行為跟原版不一樣」的已知缺陷。下面是摘要：
 
 - [ ] 拿真正的 Palm `.pdb` 驗證讀檔器
 - [ ] 編輯：拖曳元件、拉線（`Src/block.c` 的 `BlockpenDownProcess` / `BlockpenMoveProcess`）
