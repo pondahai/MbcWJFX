@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MbcWJFX</title>
+<link rel="canonical" href="web/vpl.html">
+<style>
+  :root{--bg:#faf9f7;--fg:#1a1a1a;--mut:#6b6b6b;--card:#fff;--bd:#e2e0dc;--accent:#3a6ea5}
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#16171a;--fg:#e8e6e3;--mut:#9a9894;--card:#1f2125;--bd:#31343a;--accent:#7aa7d9}
+  }
+  body{background:var(--bg);color:var(--fg);margin:0;min-height:100vh;
+       display:flex;align-items:center;justify-content:center;padding:24px;
+       font:15px/1.65 ui-sans-serif,system-ui,"Segoe UI","Noto Sans TC",sans-serif}
+  main{max-width:460px;background:var(--card);border:1px solid var(--bd);
+       border-radius:14px;padding:28px 30px}
+  h1{font-size:20px;margin:0 0 6px}
+  p{margin:0 0 14px;color:var(--mut);font-size:14px}
+  a.go{display:inline-block;background:var(--accent);color:#fff;text-decoration:none;
+       border-radius:9px;padding:9px 18px;font-size:14px;font-weight:600}
+  a{color:var(--accent)}
+  ul{margin:16px 0 0;padding-left:20px;color:var(--mut);font-size:13.5px}
+  li{margin:3px 0}
+</style>
+</head>
+<body>
+<main>
+  <h1>MbcWJFX</h1>
+  <p>2003 年寫在 Palm OS 上的視覺化程式語言，改寫成瀏覽器版本。
+     方塊圖、前面板、資料流執行引擎，單一 HTML 檔。</p>
+  <p><a class="go" href="web/vpl.html">開啟</a></p>
+  <ul>
+    <li><a href="web/README.md">網頁版說明</a>（跟 C 原始碼的對照）</li>
+    <li><a href="web/PLAN.md">移植進度表</a>（112 個函式逐一標狀態）</li>
+    <li><a href="https://github.com/pondahai/MbcWJFX">原始碼</a></li>
+  </ul>
+</main>
+<script>
+  // 直接連過來的就自動進去；從 repo 連結點進來的還看得到這頁
+  if (!document.referrer.includes('github.com')) location.replace('web/vpl.html');
+</script>
+</body>
+</html>
