@@ -4,6 +4,7 @@
 的補課 —— 前面幾步是深度優先做下去的，所以漏了 panel 和工具列這種整塊的東西。
 
 圖例：✅ 完成 ｜ ⚠️ 部分 ｜ ❌ 未做 ｜ ➖ 不適用（Palm 平台專屬）
+｜ 🚧 **原版自己就沒做完**（不是這次移植的缺口，別當成待辦）
 
 ---
 
@@ -21,7 +22,7 @@
 | `BreakWireConnection` | ✅ | 併在 `removeBlock()` 裡 |
 | `ChangeLinkList` | ✅ | 拖曳落在結構上就搬進去（`structAt` + `reparent`），拖到空白處回主串列 |
 | `PenDownInBlockToolArea` | ✅ | `toolbarHit()`，含點標題切換 form（`block.c:2008`） |
-| `BlockpenDownProcess` | ⚠️ | HAND／THREAD／SCISSOR／KILL／DRAG 做了；PENCIL 沒做 |
+| `BlockpenDownProcess` | ✅ 🚧 | HAND／THREAD／SCISSOR／KILL／DRAG 都做了；PENCIL 在 `block.c:2251` 和 `block.c:2858` 兩段整個被註解掉，原版按了也沒反應 |
 | `BlockpenMoveProcess` | ✅ | 拖曳元件、拉大小、拉線 |
 | `BlockDiagramFormDoCommand` | ✅ | 下拉選單（File / Works / Run / About），內容取自 `Starter.prc` 的 MBAR 1000 / 1100 |
 
@@ -57,7 +58,7 @@
 | `DoRun_WireRun` | ✅ | |
 | `DoRun_BlockRun` | ✅ | |
 | `DoRun_LOOPBLOCK` | ✅ | 含 IO 點角色對調 |
-| `DoItemRUN` | ⚠️ | 算術／邏輯／比較都有；`SWITCHCASE` 原版就是空的 |
+| `DoItemRUN` | ✅ 🚧 | 算術／邏輯／比較都有；`SWITCHCASE` 在 `run.c:145` 和 `run.c:421` 都是空 case |
 | `CheckConnection` | ✅ | |
 | `ResetWireStatus` | ✅ | |
 | `MoveNodeData` | ✅ | |
@@ -80,7 +81,7 @@
 | `EraseDecimalIntKeyboard` | ➖ | 網頁版整張重畫 |
 | `KeyboardPendownProcess` | ✅ | `keyboardHit()` |
 | `AutoFindIOnodesSetIntoICONnode` | ➖ | 原始碼裡是**空函式**，從沒實作 |
-| `IsTheSameWireLLHead` | ❌ | 自訂元件用 |
+| `IsTheSameWireLLHead` | ➖ | 死碼：唯一的呼叫點 `block.c:1378` 是註解掉的 |
 | `NestReDraw` / `NestItemMoveToLastPosition` | ➖ | 為了省重畫；網頁版整張重畫 |
 | `GetObjectPtr` / `MainFormInit` | ➖ | Palm 表單管線 |
 
@@ -92,7 +93,8 @@
 | `read_a_str` | ✅ | |
 | `FindNodeByID` / `FindIONodeByID` | ✅ | |
 | `ProcessCUSTOMLoad` | ✅ | `makeCustomBlock()`，改用元件庫而不是檔名查找 |
-| `LOADFormHandleEvent` / `ConvertFileName2RecordIndex` | ❌ | 檔案清單介面 |
+| `LOADFormHandleEvent` / `BuildLOADMenu` | ✅ | LOADForm 畫在畫面裡（tFRM 1400），LOAD／DELETE／CANCEL 都有，含 Talt 1000 的刪除確認 |
+| `ConvertFileName2RecordIndex` | ➖ | 原版拿檔名換 record index；網頁版直接用檔名當 key |
 
 ## save.c（632 行）
 
@@ -104,7 +106,7 @@
 | `CountInputNode` / `CountOutputNode` | ✅ | `countIO()` |
 | `AddString` | ➖ | JS 用陣列 join |
 | `RemoveDarkWire` | ➖ | 暗線段是存檔時才生出來的，不留在場景裡 |
-| `SAVEFormHandleEvent` | ⚠️ | 用瀏覽器的 `prompt()` 問檔名 |
+| `SAVEFormHandleEvent` | ✅ | SAVEForm 畫在畫面裡（tFRM 1600），欄位接實體鍵盤，上限 32 字照資源 |
 
 ## linklist.c（836 行）
 
@@ -188,6 +190,16 @@
 - 右邊那一欄（執行控制、場景、節點狀態表）是原版沒有的除錯用介面。
   工具列上的圖示和它們共用同一份狀態，兩邊按都一樣。
 - 數字鍵盤旁邊會顯示正在輸入的數字，原版沒有。
+- **存檔區用 `localStorage`**。原版一個存檔就是一部機器上的一個 Palm
+  database（`load.c:820`），`BuildLOADMenu` 用 `DmGetNextDatabaseByTypeCreator`
+  把 creator `wjfx` 的全部列出來。瀏覽器沒有那種東西，改用 `localStorage`，
+  key 是 `mbcwjfx:file:<檔名>`。匯入 `.pdb` 時也會寫進去一份，等同原版
+  HotSync 把檔案放進機器裡，這樣 LOADForm 才看得到。
+- 右邊那欄的「存成 .pdb」是網頁版另外加的下載出口，原版只存在機器裡。
+- **方塊圖的工具列少一個 PENCIL**。原版 `linklist.c:set_block_tools_palette`
+  排了六個工具，但 PENCIL 在 `block.c:2251` / `block.c:2858` 的處理整段是
+  註解掉的 —— 選了不會有任何反應。與其擺一顆死按鈕，網頁版就不列它。
+  （前面板的 PENCIL 是有作用的，那是叫數字鍵盤。）
 - Palm 是按硬體的 Menu 鍵叫出下拉選單，網頁沒有那顆鍵，改成右邊那欄的
   「選單（Menu）」按鈕。選單本身還是畫在 160×160 螢幕裡面。
 - 關於畫面的 `Last compiled:` 原版印編譯時的 `__DATE__ __TIME__`，

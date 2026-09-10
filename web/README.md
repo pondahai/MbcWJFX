@@ -19,12 +19,14 @@ web/
 目前可以讀 Palm 的 `.pdb` 存檔、把 block diagram 畫在 160×160 的畫布上、
 點選元件、看場景結構，**能執行**（執行／單步／停止，附即時的節點狀態表和
 線段動畫），有**前面板**（Block / Panel 兩個分頁，面板上的控制鈕按得動），
-也**能編輯** —— 從元件面板拿元件、拖曳、接線、剪線、刪除。
+也**能編輯** —— 從元件面板拿元件、拖曳（含拖進／拖出結構元件）、接線
+（含跨結構邊界）、剪線、刪除、改結構元件的大小。還有下拉選單、
+存檔／載入的檔案清單、自訂元件，以及關於畫面。
 
 選「空白（自己畫）」場景就可以從零做一支程式。
 
 排版和行為對照的是 repo 根目錄那幾張當年的截圖：`1.png` 是方塊圖、
-`mbcwjfx.jpg` 是前面板、`2.png` 是元件面板（還沒做）。
+`mbcwjfx.jpg` 是前面板、`2.png` 是元件面板。
 
 載入方式是選檔或把檔案拖到畫面上 —— `file://` 底下瀏覽器不准 fetch 本機檔案，
 所以沒辦法自動載入。預設顯示的是內建測試場景，對應 `Src/testdata.c` 裡
@@ -283,6 +285,21 @@ for 迴圈的條件判斷（`Src/run.c:1293`）比較迴圈內第一個元件（
 - `DoRun_HOOKBLOCK()`（`Src/run.c:746`）—— 自訂元件的執行
 - switch case 的執行（原版 `DoItemRUN` 裡 `SWITCHCASEBitmap` 就是空的）
 
+## 存檔與載入
+
+選單的 **File → SAVE / LOAD** 走的是原版那兩張表單（`SAVEForm` tFRM 1600、
+`LOADForm` tFRM 1400），畫在 160×160 的畫面裡，幾何照 `Src/StarterRsc.h`
+的資源註解。原版一個存檔就是機器上的一個 Palm database（`load.c:820`），
+網頁版拿 `localStorage` 當那個「機器裡的檔案區」，key 是
+`mbcwjfx:file:<檔名>`。匯入 `.pdb` 時也會寫一份進去（等同 HotSync 把檔案
+放進機器裡），這樣 `LOADForm` 才看得到。
+
+元件面板的 **FUNCCUST** 那一格不是元件格，是自訂元件的入口 ——
+`functions.c:1005` 設 `CUSTOMLOAD=true` 然後開 `LOADForm`，選到的存檔會
+被當成一顆元件加進圖裡。
+
+右邊那欄的「存成 .pdb」是網頁版另外加的下載出口，原版只存在機器裡。
+
 ## 存檔格式
 
 `.pdb` 裡面是**純 ASCII**，不是二進位 struct dump —— `Src/save.c` 的
@@ -351,12 +368,10 @@ FileStream 在記錄裡還有自己的表頭，格式沒有公開文件，所以
 ## 下一步
 
 完整的移植進度表在 **[PLAN.md](PLAN.md)** —— 112 個函式逐一標了狀態，
-包含 4 個「行為跟原版不一樣」的已知缺陷。下面是摘要：
+含刻意的介面差異，以及**原版自己就沒做完**的那幾處（標 🚧，別當成待辦）。
 
-- [ ] 拿真正的 Palm `.pdb` 驗證讀檔器
-- [ ] 編輯：拖曳元件、拉線（`Src/block.c` 的 `BlockpenDownProcess` / `BlockpenMoveProcess`）
-- [ ] 跨層接線（`Src/block.c:1206` `CrossWire()`）
-- [ ] DRAG 工具：改變結構元件的大小
-- [ ] 存檔（寫出 `.pdb`，格式已經知道了）
-- [ ] 自訂元件的執行（`DoRun_HOOKBLOCK`）
-- [ ] 面板上的數字鍵盤（`DrawDecimalIntKeyboard`）（`Src/panel.c`、`Src/functions.c`）
+原本列在這裡的待辦都做完了。剩下的是：
+
+- [ ] 拿真正的 Palm `.pdb` 驗證讀檔器（手邊只有 `tools/make_sample_pdb.py`
+      照 `save.c` 格式生出來的樣本）
+- [ ] switch case 的分頁名稱在存檔格式裡是遺失的（見「存檔格式」那節的第 2 點）

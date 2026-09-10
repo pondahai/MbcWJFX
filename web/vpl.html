@@ -815,8 +815,10 @@ function doCommand(cmd) {
   menu = null;
   switch (cmd) {
     case 'FileNEW': setScene(buildEmptyScene); view = 'block'; runStatus('NEW —— 空白的圖'); break;
-    case 'FileSAVE': saveFile(); break;
-    case 'FileLOAD': document.getElementById('file').click(); break;
+    // block.c:2957 FrmPopupForm(SAVEForm)
+    case 'FileSAVE': dialog = { kind: 'save', text: '' }; break;
+    // block.c:2963 CUSTOMLOAD=false 之後 FrmPopupForm(LOADForm)
+    case 'FileLOAD': dialog = { kind: 'load', names: fileList(), sel: 0, custom: false }; break;
     case 'WorksBlockDiagram': view = 'block'; keyboardObject = null; break;
     case 'WorksFrontPanel': view = 'panel'; keyboardObject = null; break;
     case 'WorksFunctions': popup = { kind: 'functions', cat: null }; break;
@@ -853,6 +855,216 @@ function menuPenDown(px, py) {
   render();
   return true;
 }
+
+/* ==========================================================================
+   存檔／載入對話框 — save.c:565 SAVEFormHandleEvent、load.c:775 LOADFormHandleEvent
+
+   原版每一個存檔就是一個 Palm database（load.c:820 的註解「每一個 database
+   代表一個存檔」），LOADForm 用 DmGetNextDatabaseByTypeCreator 把 creator
+   'wjfx' 的資料庫全部列出來。瀏覽器沒有那種東西，改用 localStorage 當那個
+   「機器裡的檔案區」，一個 key 一個存檔。
+
+   兩張表單的幾何完全照 Src/StarterRsc.h 的資源註解，按鈕文字取自
+   Starter.prc 的 tFRM 1400 / 1600。刪除確認框是 Talt 1000。
+   ========================================================================== */
+
+const FILE_PREFIX = 'mbcwjfx:file:';
+
+// 無痕視窗或被擋掉的時候 localStorage 會直接丟例外，全部包起來
+function fileList() {
+  const out = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(FILE_PREFIX)) out.push(k.slice(FILE_PREFIX.length));
+    }
+  } catch (e) { /* 沒得存就是沒有檔案 */ }
+  return out.sort();
+}
+const fileRead = n => { try { return localStorage.getItem(FILE_PREFIX + n); } catch (e) { return null; } };
+const fileWrite = (n, t) => { try { localStorage.setItem(FILE_PREFIX + n, t); return true; } catch (e) { return false; } };
+const fileDelete = n => { try { localStorage.removeItem(FILE_PREFIX + n); } catch (e) {} };
+
+// StarterRsc.h: SAVEForm (1,94) 158x64、LOADForm (1,22) 158x136
+const FORM_SAVE = { x: 1, y: 94, w: 158, h: 64 };
+const FORM_LOAD = { x: 1, y: 22, w: 158, h: 136 };
+// 表單內的相對座標，一樣照資源註解
+const SAVE_FIELD = { x: 8, y: 24, w: 144, h: 16 };
+const SAVE_BTNS = [
+  { id: 'ok', x: 114, y: 47, w: 36, h: 12, text: 'OK' },
+  { id: 'cancel', x: 65, y: 47, w: 40, h: 12, text: 'CANCEL' },
+];
+const LOAD_LIST = { x: 2, y: 14, w: 154, rows: 9, h: 11 };   // Visible Items = 9
+const LOAD_BTNS = [
+  { id: 'load', x: 119, y: 120, w: 36, h: 12, text: 'LOAD' },
+  { id: 'delete', x: 74, y: 120, w: 40, h: 12, text: 'DELETE' },
+  { id: 'cancel', x: 29, y: 120, w: 40, h: 12, text: 'CANCEL' },
+];
+const CONFIRM_FORM = { x: 10, y: 50, w: 140, h: 60 };
+const CONFIRM_BTNS = [
+  { id: 'ok', x: 96, y: 44, w: 36, h: 12, text: 'OK' },
+  { id: 'cancel', x: 48, y: 44, w: 40, h: 12, text: 'CANCEL' },
+];
+
+/* null | {kind:'save', text}
+        | {kind:'load', names, sel, custom}     custom = functions.c:1007 的 CUSTOMLOAD
+        | {kind:'confirm', name, back}          Talt 1000 DeleteFileComfirAlert */
+let dialog = null;
+
+function drawButton(f, b) {
+  eraseRect(f.x + b.x, f.y + b.y, b.w, b.h);
+  rect(f.x + b.x, f.y + b.y, b.w, b.h);
+  ctx.font = 'bold 10px ui-sans-serif,system-ui,sans-serif';
+  ctx.textBaseline = 'top';
+  const w = ctx.measureText(b.text).width;
+  ctx.fillText(b.text, f.x + b.x + (b.w - w) / 2, f.y + b.y + 1);
+}
+
+function drawDialog() {
+  if (!dialog) return;
+  if (dialog.kind === 'save') {
+    const f = FORM_SAVE;
+    drawFormFrame(f, 'Input File Name');
+    // Underline = 1 的欄位：只有底下那一條線
+    line(f.x + SAVE_FIELD.x, f.y + SAVE_FIELD.y + SAVE_FIELD.h,
+         f.x + SAVE_FIELD.x + SAVE_FIELD.w, f.y + SAVE_FIELD.y + SAVE_FIELD.h);
+    ctx.font = '10px ui-sans-serif,system-ui,sans-serif';
+    ctx.textBaseline = 'top';
+    ctx.fillText(dialog.text, f.x + SAVE_FIELD.x + 1, f.y + SAVE_FIELD.y + 3);
+    const w = ctx.measureText(dialog.text).width;   // 游標
+    line(f.x + SAVE_FIELD.x + 2 + w, f.y + SAVE_FIELD.y + 3,
+         f.x + SAVE_FIELD.x + 2 + w, f.y + SAVE_FIELD.y + 13);
+    SAVE_BTNS.forEach(b => drawButton(f, b));
+    return;
+  }
+  if (dialog.kind === 'load') {
+    const f = FORM_LOAD, L = LOAD_LIST;
+    drawFormFrame(f, 'Files');
+    ctx.font = '10px ui-sans-serif,system-ui,sans-serif';
+    ctx.textBaseline = 'top';
+    if (!dialog.names.length) ctx.fillText('(no files)', f.x + L.x + 2, f.y + L.y + 1);
+    dialog.names.slice(0, L.rows).forEach((n, i) => {
+      const y = f.y + L.y + i * L.h;
+      if (i === dialog.sel) {                       // 選到的那一列反白
+        ctx.fillRect(f.x + L.x, y, L.w, L.h);
+        ctx.fillStyle = '#fff';
+      }
+      ctx.fillText(n, f.x + L.x + 2, y + 1);
+      ctx.fillStyle = '#111';
+    });
+    LOAD_BTNS.forEach(b => drawButton(f, b));
+    return;
+  }
+  if (dialog.kind === 'confirm') {
+    // Talt 1000：標題 Delete?、內文 "The file" / "^1 ?"、按鈕 OK / CANCEL
+    const f = CONFIRM_FORM;
+    drawFormFrame(f, 'Delete?');
+    ctx.font = '10px ui-sans-serif,system-ui,sans-serif';
+    ctx.textBaseline = 'top';
+    ctx.fillText('The file', f.x + 6, f.y + 18);
+    ctx.fillText(dialog.name + ' ?', f.x + 6, f.y + 30);
+    CONFIRM_BTNS.forEach(b => drawButton(f, b));
+  }
+}
+
+function btnHit(f, btns, px, py) {
+  return btns.find(b => px >= f.x + b.x && px < f.x + b.x + b.w &&
+                        py >= f.y + b.y && py < f.y + b.y + b.h) || null;
+}
+
+// save.c:594 按 OK：檔名不可空白，存下去然後 FrmReturnToForm(0)
+function doSave(name) {
+  const text = serializeSave(scene, name);
+  const ok = fileWrite(name, text);
+  dialog = null;
+  if (!ok) { runStatus('存不進去 —— 這個瀏覽器不讓用 localStorage'); return; }
+  runStatus('存成 "' + name + '"（' + text.split('\n').length + ' 行，放在瀏覽器裡）');
+}
+
+// load.c:842 CUSTOMLOAD == false 就換掉整張圖，true 就當自訂元件加進來
+function doLoad(name, custom) {
+  const text = fileRead(name);
+  if (text === null) { runStatus('讀不到 "' + name + '"'); return; }
+  try {
+    if (custom) {
+      makeCustomBlock(text, name);          // 先驗證讀得動
+      library.set(name, text);
+      renderLibrary();
+      dialog = null;
+      view = 'block';                       // functions.c:1041 回方塊圖
+      addCustomToScene(name);               // functions.c:1040 AddCUSTtoSYSHOOK
+      return;
+    }
+    const parsed = parseSave(text);
+    killTimer(); RUN = 0; STOP = 0; ticks = 0;
+    scene = parsed;
+    selected = null;
+    resetRun();
+    syncUI();
+    dialog = null;
+    runStatus('載入 "' + name + '"：' + scene.wires.length + ' 條線段');
+  } catch (err) {
+    dialog = null;
+    runStatus('讀取失敗：' + err.message);
+  }
+}
+
+// 傳回 true 代表這一下被對話框吃掉了（modal，什麼都不放行）
+function dialogPenDown(px, py) {
+  if (!dialog) return false;
+  if (dialog.kind === 'save') {
+    const b = btnHit(FORM_SAVE, SAVE_BTNS, px, py);
+    if (b && b.id === 'ok') { if (dialog.text.trim()) doSave(dialog.text.trim()); }
+    else if (b && b.id === 'cancel') dialog = null;        // save.c:614
+    render();
+    return true;
+  }
+  if (dialog.kind === 'load') {
+    const f = FORM_LOAD, L = LOAD_LIST;
+    const b = btnHit(f, LOAD_BTNS, px, py);
+    if (b) {
+      const name = dialog.names[dialog.sel];
+      if (b.id === 'cancel') dialog = null;                                    // load.c:915
+      else if (b.id === 'load') { if (name != null) doLoad(name, dialog.custom); }
+      else if (b.id === 'delete') { if (name != null) dialog = { kind: 'confirm', name, back: dialog }; }
+      render();
+      return true;
+    }
+    if (px >= f.x + L.x && px < f.x + L.x + L.w &&
+        py >= f.y + L.y && py < f.y + L.y + L.rows * L.h) {
+      const i = Math.floor((py - f.y - L.y) / L.h);
+      if (i < dialog.names.length) dialog.sel = i;
+    }
+    render();
+    return true;
+  }
+  if (dialog.kind === 'confirm') {
+    const b = btnHit(CONFIRM_FORM, CONFIRM_BTNS, px, py);
+    if (b) {
+      const back = dialog.back;
+      if (b.id === 'ok') fileDelete(dialog.name);         // load.c:826 FileDelete
+      back.names = fileList();
+      back.sel = Math.min(back.sel, back.names.length - 1);
+      dialog = back;                                      // load.c:828 FrmGotoForm(LOADForm)
+    }
+    render();
+    return true;
+  }
+  return false;
+}
+
+/* save.c:591 欄位是 Palm 的 Field 物件，靠 Graffiti 輸入；網頁版接實體鍵盤。
+   Max Characters = 32 照資源的限制。 */
+window.addEventListener('keydown', ev => {
+  if (!dialog || dialog.kind !== 'save') return;
+  if (ev.key === 'Enter') { if (dialog.text.trim()) doSave(dialog.text.trim()); }
+  else if (ev.key === 'Escape') dialog = null;
+  else if (ev.key === 'Backspace') dialog.text = dialog.text.slice(0, -1);
+  else if (ev.key.length === 1 && dialog.text.length < 32) dialog.text += ev.key;
+  else return;
+  ev.preventDefault();
+  render();
+});
 
 function popupHit(px, py) {
   if (!popup) return -2;
@@ -1382,7 +1594,8 @@ function render() {
   drawToolbar();     // block.c:1166 工具列是最後畫的，蓋在圖上面
   drawPopup();       // 彈出視窗又蓋在工具列上面
   drawMenu();        // 選單再蓋在彈出視窗上面
-  drawAbout();       // AboutForm 是 modal，整片蓋掉
+  drawDialog();      // SAVEForm / LOADForm 是 modal，蓋在選單上面
+  drawAbout();       // AboutForm 也是 modal，整片蓋掉
   renderTree();
 }
 
@@ -2261,6 +2474,7 @@ async function loadFile(file) {
     }
 
     const parsed = parseSave(text);
+    fileWrite(name, text);   // 等同原版 HotSync 把 .pdb 放進機器裡，LOADForm 才看得到
     killTimer(); RUN = 0; STOP = 0;
     ticks = 0;
     scene = parsed;
@@ -2363,6 +2577,8 @@ cv.addEventListener('pointerdown', ev => {
 
   // 選單和 AboutForm 在最上層（Palm 的選單會蓋掉整個 form）
   if (menuPenDown(px, py)) return;
+  // SAVEForm / LOADForm 是 modal，開著就什麼都不放行
+  if (dialogPenDown(px, py)) return;
 
   // 彈出視窗在下一層，先攔
   if (popup) {
@@ -2376,7 +2592,12 @@ cv.addEventListener('pointerdown', ev => {
       keyboardObject = null;                 // panel.c:525 碰工具列就收掉鍵盤
       runStatus('工具：' + (SPRITES[pointerStateGet()] || {}).n);
     } else if (popup.cat === null) {
-      if (PALETTE[hit].items.length) popup = { kind: 'functions', cat: hit };
+      /* functions.c:1005 FUNCCUST 這一格不是元件格，是「自訂元件」的入口：
+         設 CUSTOMLOAD=true 然後開 LOADForm，選到的檔案會被當成元件加進圖裡。 */
+      if (PALETTE[hit].name === 'FUNCCUST') {
+        popup = null;
+        dialog = { kind: 'load', names: fileList(), sel: 0, custom: true };
+      } else if (PALETTE[hit].items.length) popup = { kind: 'functions', cat: hit };
       else runStatus(PALETTE[hit].name.replace('FUNC', '') + ' 這個分類當年沒做完，是空的');
     } else {
       const b = addToSysHook(PALETTE[popup.cat].items[hit]);
@@ -2739,7 +2960,7 @@ document.getElementById('speed').addEventListener('input', e => {
 /* ========================= 場景切換 ========================= */
 function setScene(builder, label) {
   popup = null; wireStart = null; hoverNode = null; penPos = null; drag = null; resize = null; keyboardObject = null;
-  menu = null; about = false; panelDrag = null;
+  menu = null; about = false; panelDrag = null; dialog = null;
   killTimer(); RUN = 0; STOP = 0;
   ticks = 0;
   scene = builder();
@@ -2762,6 +2983,7 @@ document.getElementById('file').addEventListener('change', e => {
 });
 document.getElementById('save').addEventListener('click', saveFile);
 document.getElementById('menu').addEventListener('click', () => {
+  if (dialog) return;                    // modal 對話框開著的時候按不動
   menu = menu ? null : { open: null };   // Palm 的 Menu 鍵：叫出來 / 收回去
   about = false;
   render();
