@@ -359,8 +359,14 @@ FileStream 在記錄裡還有自己的表頭，格式沒有公開文件，所以
 ### 驗證程度
 
 `web/samples/demo.pdb` 是用 `tools/make_sample_pdb.py` 照 `save.c` 的格式
-產生的，涵蓋了 HOOKBLOCK 外框、巢狀迴圈、switch case 兩頁、pap 面板外觀
-和線段，載進去畫得出來也跑得動。
+產生的，涵蓋了 HOOKBLOCK 外框（含 `FindInputNode` / `FindOutputNode` 長出來的
+接腳和暗線段）、巢狀迴圈、迴圈邊框接到內部 N 的線、switch case 兩頁、
+pap 面板外觀和線段。
+
+**它是格式的測試檔，不是一支跑得完的程式。** 裡面有 switch case，而
+`DoItemRUN` 的 `SWITCHCASE` 在原版就是空 case（`run.c:145`、`run.c:421`），
+所以含它的圖永遠算不完；線段也是為了涵蓋各種格式而接的，不構成有意義的
+資料流。要看執行，用內建的「資料流（可執行）」場景，或自己畫一張。
 
 **但是還沒有拿真正由 Palm 寫出來的檔案驗證過** —— repo 裡沒有留下任何當年
 存的 `.pdb`。如果你手上找得到，值得拿來試，特別是 FileStream 容器那一層。

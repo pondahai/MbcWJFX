@@ -121,7 +121,13 @@ def build():
                              ios=[(0, 0, (0, 0), (10, 10), 0)]),
             lambda w: w.node(10, FUNCBLOCK, FUNCARITH, (30, 15), (32, 32),
                              ios=[(0, 1, (0, 0), (32, 32), 0)]),
-        ], [(9, 0, 10, 0)])
+        ], [
+            # 迴圈邊框上的 IO 點（block 4 的 node 0）餵給 N。這種「一端是擁有
+            # 這個 hook 的結構元件本身」的線正是 block.c:1503 那一類，
+            # 讀檔時要從 SelfBlockLLHead 開始找才認得出來（load.c:687）。
+            (4, 0, 8, 0),   # 迴圈邊框 -> N
+            (9, 0, 10, 0),  # I -> 算術元件
+        ])
 
     # switch case 的兩頁。注意 save.c 沒有把 hook->name 寫進檔案，
     # 所以分頁名稱（原本的 "true"/"false"）在存檔裡是遺失的。
@@ -154,6 +160,14 @@ def build():
                          ctrls=[(1, (39, 33), (7, 7)), (2, (39, 1), (6, 13)), (3, (1, 1), (6, 13))],
                          cases=[case_true, case_false]),
     ], [
+        # save.c:310 / :366 FindInputNode / FindOutputNode 產生的「暗線段」。
+        # 每個控制鈕／顯示器在 HOOKBLOCK 上長一個接腳，並拉一條線連過去；
+        # 這個存檔被當成自訂元件載入時，run.c:811 / :944 就是靠這兩條線
+        # 把外面的值推進來、把裡面的結果抽出去。少了它們，元件永遠等不到
+        # 輸入，DoRun_HOOKBLOCK 會一直回傳 handle=true 空轉。
+        # 方向照 save.c：一律從 HOOKBLOCK 出發。
+        (1, 0, 2, 0),   # HOOKBLOCK 的輸入接腳 -> 控制鈕
+        (1, 1, 3, 0),   # HOOKBLOCK 的輸出接腳 -> 顯示器
         (2, 0, 3, 0),   # 控制鈕 -> 顯示器
         (2, 0, 4, 0),   # 控制鈕 -> 迴圈
         (4, 0, 5, 0),   # 迴圈 -> switch case

@@ -1235,6 +1235,20 @@ function scopeOf(block) {
 }
 function depthOf(block) { let d = 0; for (let p = block.parent; p; p = p.parent) d++; return d; }
 
+/* block.c:1582「輸出不可接在一起」的判斷要站在**線段將來所在的那一層**去看。
+
+   結構元件邊框上的 IO 點角色是會對調的 —— run.c:1115 DoRun_LOOPBLOCK 進去
+   之前把 IONodeLLHead 的 TYPE 全翻一次，從外面看是輸出的點，站在迴圈裡面
+   看就是輸入。所以「迴圈裡的 i（輸出）接到邊框上的輸出點」其實是合法的，
+   那正是把值送出迴圈的作法；照節點上記的 TYPE 直接比就會被誤擋。
+
+   原版有同樣的判斷，但原版的邊框節點只能由 CrossWire 自動長出來、使用者
+   碰不到，所以踩不到；網頁版可以手動接，就得補上這個換算。 */
+function effectiveType(end, other) {
+  const flipped = end.block === other.block.parent;      // end 是 other 的父結構
+  return flipped ? (end.node.TYPE === 1 ? 0 : 1) : end.node.TYPE;
+}
+
 function makeWire(a, b) {
   return {
     StartBlockP: a.block, StartNodeP: a.node,
@@ -2782,7 +2796,8 @@ cv.addEventListener('pointermove', ev => {
     const { x: px, y: py } = canvasPos(ev);
     penPos = { x: px, y: py };
     const n = nodeHit(scene.blocks, px, py);
-    hoverNode = n && n.node !== wireStart.node && n.block !== wireStart.block ? n : null;
+    hoverNode = n && n.node !== wireStart.node && n.block !== wireStart.block &&
+                !(effectiveType(wireStart, n) === 0 && effectiveType(n, wireStart) === 0) ? n : null;
     render();
     return;
   }
@@ -2824,7 +2839,7 @@ cv.addEventListener('pointerup', ev => {
     } else if (n.block === wireStart.block) {
       // block.c:1593 起終點不能是同一個元件
       runStatus('接線失敗：兩端不能是同一個元件');
-    } else if (n.node.TYPE === 0 && wireStart.node.TYPE === 0) {
+    } else if (effectiveType(wireStart, n) === 0 && effectiveType(n, wireStart) === 0) {
       // block.c:1582 兩個輸出不能接在一起
       runStatus('接線失敗：輸出不能接輸出');
     } else {
@@ -2895,10 +2910,43 @@ function syncUI() {
   render();
 }
 
+/* 原版沒有這個。DoRun_HOOKBLOCK（run.c:781）和 DoRun_LOOPBLOCK 在「輸入還沒
+   到齊」時是回傳 handle=true 的，所以一張永遠等不到輸入的圖（接腳沒接線、或
+   自訂元件的暗線段缺了）會無止盡空轉 —— 原版就是這樣，要使用者自己按 STOP。
+   網頁版多一道熄火：連續這麼多個 tick 整個執行狀態都沒變，就當作卡住了，
+   停下來並說明原因，不然畫面上看起來只是「跑不完」。 */
+const STALL_TICKS = 64;
+let stallFingerprint = '', stallCount = 0;
+
+function runFingerprint() {
+  const out = [];
+  const walk = sc => {
+    for (const b of sc.blocks) {
+      out.push(b.bap.INodeNUM, b.bap.ONodeNUM);
+      for (const n of b.bap.IONodeLLHead) out.push(n.NotReady ? 1 : 0, n.value);
+      for (const h of b.hooks || []) walk(h);
+    }
+    for (const w of sc.wires) {
+      out.push(w.DIRTY ? 1 : 0, w.RUNSEG, w.RUNPOINT ? w.RUNPOINT.x + ',' + w.RUNPOINT.y : '-');
+    }
+  };
+  walk(scene);
+  return out.join('|');
+}
+
 function tick() {
   const busy = doRun(scene.blocks, scene.wires);
   ticks++;
   if (busy) {
+    const fp = runFingerprint();
+    if (fp === stallFingerprint) stallCount++; else { stallFingerprint = fp; stallCount = 0; }
+    if (stallCount >= STALL_TICKS) {
+      killTimer(); RUN = 0; STOP = 0;
+      runStatus('卡住了：連續 ' + STALL_TICKS + ' 個 tick 沒有任何進展（' + ticks + ' ticks）。'
+              + '通常是有元件的輸入沒接線，或自訂元件的接腳沒接上。');
+      syncUI();
+      return;
+    }
     if (ticks >= MAX_TICKS) { killTimer(); RUN = 0; STOP = 0; runStatus(`第 ${ticks} 個 tick 仍未結束，已中止`); }
     else runStatus(`執行中… ${ticks} ticks`);
     syncUI();
@@ -2912,7 +2960,7 @@ function tick() {
 
 // block.c:1970 執行鈕：靜止→執行、執行→暫停、暫停→執行
 function runButton() {
-  if (RUN === 0) { STOP = 1; RUN = 1; ticks = 0; resetRun(); startTimer(); runStatus('執行中…'); }
+  if (RUN === 0) { STOP = 1; RUN = 1; ticks = 0; stallFingerprint = ''; stallCount = 0; resetRun(); startTimer(); runStatus('執行中…'); }
   else if (RUN === 1) { RUN = 2; killTimer(); runStatus(`暫停於 ${ticks} ticks`); }
   else { RUN = 1; startTimer(); }
   syncUI();
