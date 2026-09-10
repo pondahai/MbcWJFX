@@ -91,16 +91,17 @@
 | `ProcessCUSTOMLoad` | ❌ | 載入自訂元件 |
 | `LOADFormHandleEvent` / `ConvertFileName2RecordIndex` | ❌ | 檔案清單介面 |
 
-## save.c（632 行）— **整個檔案都還沒做**
+## save.c（632 行）
 
 | 函式 | 狀態 | 備註 |
 | --- | --- | --- |
-| `DataStruct2ASCII` | ❌ | 格式已經完全弄懂了，反過來寫就行 |
-| `SAVE` | ❌ | |
-| `FindInputNode` / `FindOutputNode` | ❌ | 存檔時在 HOOKBLOCK 上長出 IO 點和暗線段 |
-| `CountInputNode` / `CountOutputNode` | ❌ | |
-| `RemoveDarkWire` | ❌ | |
-| `SAVEFormHandleEvent` | ❌ | 檔名輸入介面 |
+| `DataStruct2ASCII` | ✅ | `serializeSave()`，往返測試通過 |
+| `SAVE` | ✅ | `saveFile()`，下載成 `.pdb` |
+| `FindInputNode` / `FindOutputNode` | ✅ | `buildHookNodes()` |
+| `CountInputNode` / `CountOutputNode` | ✅ | `countIO()` |
+| `AddString` | ➖ | JS 用陣列 join |
+| `RemoveDarkWire` | ➖ | 暗線段是存檔時才生出來的，不留在場景裡 |
+| `SAVEFormHandleEvent` | ⚠️ | 用瀏覽器的 `prompt()` 問檔名 |
 
 ## linklist.c（836 行）
 
@@ -132,12 +133,16 @@
    （`block.c:2151` 那個 case 才是，我原本分類錯了）
 4. ~~執行中還可以編輯~~ — 已修（`stopForEdit()`，`block.c:2049`）
 
+存檔那邊有一個設計差異：原版是把暗線段和 HOOKBLOCK 的 IO 點**真的加進場景裡**
+（`save.c:596` 每次存檔前還要先把上一次的清掉，不然會重複），網頁版是存檔的
+當下才生出來、不留在場景裡，所以不需要 `RemoveDarkWire`。
+
 ## 建議順序
 
 1. ~~4 個已知缺陷~~ ✅
 2. ~~數字鍵盤~~ ✅
 3. ~~DRAG 工具（改大小 + 翻頁）~~ ✅
-4. **存檔** — 做完編輯循環才閉合，格式已經完全知道了
+4. ~~存檔~~ ✅
 5. `ChangeLinkList` — 把元件拖進／拖出結構元件
 6. 自訂元件一整套（`HOOKBLOCK`）：`DoRun_HOOKBLOCK`、`AddCUSTtoSYSHOOK`、
    `ProcessCUSTOMLoad`、`DrawCUSTOMBLOCKLattice`、存檔時的暗線段

@@ -106,7 +106,8 @@
       </label>
       <p class="hint">也可以把檔案直接拖到左邊畫面上。範例檔在 <code>web/samples/demo.pdb</code>。</p>
       <p id="status"></p>
-      <p><button id="reset" type="button">回到內建測試場景</button></p>
+      <p><button id="save" type="button">存成 .pdb</button>
+         <button id="reset" type="button">回到內建測試場景</button></p>
     </div>
 
     <div class="panel">
@@ -1561,6 +1562,196 @@ function parseSave(text) {
   return { blocks, wires, hookBlock };
 }
 
+/* ==========================================================================
+   寫存檔 — 對應 Src/save.c
+
+   格式跟讀檔是同一套（見上面 parseSave）。比較不直覺的是存檔前要先在
+   最外層的 HOOKBLOCK 上「長出」IO 點和暗線段：這個存檔將來被別的圖當成
+   自訂元件載入時，那些 IO 點就是它對外的接腳。
+   ========================================================================== */
+
+// save.c:271 / :290 —— 數一數圖裡有幾個控制鈕、幾個顯示器（迴圈內的也算）
+function countIO(blocks, wanted) {
+  let n = 0;
+  for (const b of blocks) {
+    const id = b.bap.BITMAPID;
+    if (wanted === 'in' && (id === B.CTRLU8BLOCKBitmap || id === B.LOGICCTRLBitmap)) n++;
+    if (wanted === 'out' && (id === B.INDICATOR8BLOCKBitmap || id === B.LOGICINDICATORBitmap)) n++;
+    if (id === B.FORLOOPBitmap || id === B.WHILELOOPBitmap) {
+      if (b.hooks) n += countIO(b.hooks[0].blocks, wanted);
+    }
+  }
+  return n;
+}
+
+/* save.c:310 / :366 FindInputNode / FindOutputNode
+   在 hook block 上長出接腳，並拉一條「暗線段」連到對應的控制鈕／顯示器。
+   接腳沿著 32 像素高平均分配，輸入靠左半、輸出靠右半。 */
+function buildHookNodes(hookBlock, blocks, wanted, state) {
+  const total = countIO(blocks, wanted);
+  const latticeY = total ? Math.floor(32 / total) : 0;
+  let idx = 0;
+
+  const walk = bs => {
+    for (const b of bs) {
+      const id = b.bap.BITMAPID;
+      const isIn = wanted === 'in' && (id === B.CTRLU8BLOCKBitmap || id === B.LOGICCTRLBitmap);
+      const isOut = wanted === 'out' && (id === B.INDICATOR8BLOCKBitmap || id === B.LOGICINDICATORBitmap);
+      if (isIn || isOut) {
+        const node = {
+          ID: state.ioid++, TYPE: wanted === 'in' ? 1 : 0, NotReady: false, BYTES: 2, value: 0,
+          TL: { x: wanted === 'in' ? 0 : 16, y: idx * latticeY },
+          EXT: { x: 16, y: latticeY },
+        };
+        hookBlock.bap.IONodeLLHead.push(node);
+        state.wires.push({
+          StartBlockP: hookBlock, StartNodeP: node,
+          EndBlockP: b, EndNodeP: b.bap.IONodeLLHead[0],
+        });
+        idx++;
+      }
+      if (id === B.FORLOOPBitmap || id === B.WHILELOOPBitmap) {
+        if (b.hooks) walk(b.hooks[0].blocks);
+      }
+    }
+  };
+  walk(blocks);
+}
+
+// save.c:36 DataStruct2ASCII
+function serializeSave(sc, filename) {
+  const out = [];
+  const L = v => out.push(String(v));
+
+  // 最外層的 HOOKBLOCK：ID 一定是 1（load.c:676 靠這個認出它）
+  const hookBlock = {
+    ID: 1, TYPE: HOOKBLOCK, filename,
+    bap: { BITMAPID: B.CUSTOMBLOCKBitmap, XY: { x: 0, y: 0 }, SIZE: { x: 32, y: 32 },
+           IONodeLLHead: [], CTRLNodeLLHead: [] },
+    pap: null, hooks: null,
+  };
+  const state = { ioid: 0, wires: [] };
+  buildHookNodes(hookBlock, sc.blocks, 'in', state);
+  buildHookNodes(hookBlock, sc.blocks, 'out', state);
+
+  // 重編 ID：hook block 是 1，其餘從 2 開始
+  const ids = new Map([[hookBlock, 1]]);
+  let next = 2;
+  const number = bs => {
+    for (const b of bs) {
+      ids.set(b, next++);
+      for (const h of b.hooks || []) number(h.blocks);
+    }
+  };
+  number(sc.blocks);
+
+  function ioNodes(list) {
+    if (!list.length) return;
+    L('NEWIONODEP');
+    for (const n of list) {
+      L('ADDIONODE');
+      L('ID'); L(n.ID);
+      L('TYPE'); L(n.TYPE);
+      L('BYTES'); L(n.BYTES || 2);
+      L('VALUE'); L(n.value | 0);
+      L('TL'); L(n.TL.x); L(n.TL.y);
+      L('SIZE'); L(n.EXT.x); L(n.EXT.y);
+    }
+  }
+  function ctrlNodes(list) {
+    if (!list || !list.length) return;
+    L('NEWCTRLNODEP');
+    for (const n of list) {
+      L('ADDCTRLNODE');
+      L('ID'); L(n.ID);
+      L('TL'); L(n.TL.x); L(n.TL.y);
+      L('SIZE'); L(n.EXT.x); L(n.EXT.y);
+    }
+  }
+  function node(b) {
+    L('NEWNODE');
+    L('ID'); L(ids.get(b));
+    L('TYPE'); L(b.TYPE);
+    L('NEWBAP');
+    L('BITMAPID'); L(b.bap.BITMAPID);
+    L('XY'); L(b.bap.XY.x); L(b.bap.XY.y);
+    L('SIZE'); L(b.bap.SIZE.x); L(b.bap.SIZE.y);
+    ioNodes(b.bap.IONodeLLHead);
+    ctrlNodes(b.bap.CTRLNodeLLHead);
+    L('ENDBAP');
+    if (b.pap) {
+      L('NEWPAP');
+      L('BITMAPID'); L(b.pap.BITMAPID);
+      L('XY'); L(b.pap.XY.x); L(b.pap.XY.y);
+      L('SIZE'); L(b.pap.SIZE.x); L(b.pap.SIZE.y);
+      ctrlNodes(b.pap.CTRLNodeLLHead);
+      L('ENDPAP');
+    }
+    if (b.TYPE === LOOPBLOCK && b.hooks) {      // save.c:202 迴圈只有一個 hook
+      L('NEWLOOPHOOK');
+      L('NEWHOOK');
+      body(b.hooks[0]);
+    }
+    if (b.TYPE === CASEBLOCK && b.hooks) {      // save.c:209 case 有一串
+      L('NEWCASEHOOK');
+      for (const h of b.hooks) { L('NEWHOOK'); body(h); }
+    }
+    if (b.filename) { L('FILENAME'); L(b.filename); }
+    L('ENDNODE');
+  }
+  function body(scope) {
+    L('STARTBLOCK');
+    for (const b of scope.blocks) node(b);
+    L('ENDBLOCK');
+    L('STARTWIRE');
+    for (const w of scope.wires) {
+      L('STARTBID'); L(ids.get(w.StartBlockP));
+      L('STARTNID'); L(w.StartNodeP.ID);
+      L('ENDBID'); L(ids.get(w.EndBlockP));
+      L('ENDNID'); L(w.EndNodeP.ID);
+    }
+    L('ENDWIRE');
+  }
+
+  // 最外層：hook block 排第一，暗線段跟著頂層線段一起寫出去
+  body({ blocks: [hookBlock, ...sc.blocks], wires: [...state.wires, ...sc.wires] });
+  return out.join('\n') + '\n';
+}
+
+// 最小的 PDB 容器，跟 tools/make_sample_pdb.py 寫的是同一套
+function textToPdb(name, text) {
+  const enc = s => Uint8Array.from([...s].map(c => c.charCodeAt(0) & 0xff));
+  const hdr = new Uint8Array(78);
+  hdr.set(enc(name.slice(0, 31)), 0);
+  const dv = new DataView(hdr.buffer);
+  const now = Math.floor(Date.now() / 1000) + 2082844800;   // Palm 的原點是 1904
+  dv.setUint32(36, now); dv.setUint32(40, now);
+  hdr.set(enc('save'), 60); hdr.set(enc('wjfx'), 64);
+  dv.setUint16(76, 1);                                       // numRecords
+  const entry = new Uint8Array(8);
+  new DataView(entry.buffer).setUint32(0, 78 + 8 + 2);
+  entry[7] = 1;
+  const payload = enc(text);
+  const out = new Uint8Array(78 + 8 + 2 + payload.length);
+  out.set(hdr, 0); out.set(entry, 78); out.set(payload, 88);
+  return out;
+}
+
+function saveFile() {
+  const name = (prompt('存檔名稱', 'untitled') || '').trim();
+  if (!name) return;
+  const text = serializeSave(scene, name);
+  const blob = new Blob([textToPdb(name, text)], { type: 'application/octet-stream' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name + '.pdb';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  const st = document.getElementById('status');
+  st.textContent = `存成 ${name}.pdb（${text.split('\n').length} 行）`;
+  st.className = 'ok';
+}
+
 async function loadFile(file) {
   const status = document.getElementById('status');
   try {
@@ -1923,6 +2114,7 @@ sel.addEventListener('change', e => setScene(SCENES[e.target.value].build));
 document.getElementById('file').addEventListener('change', e => {
   if (e.target.files[0]) loadFile(e.target.files[0]);
 });
+document.getElementById('save').addEventListener('click', saveFile);
 document.getElementById('reset').addEventListener('click', () => {
   setScene(SCENES[document.getElementById('scene').value].build);
 });
