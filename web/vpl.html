@@ -47,6 +47,8 @@
   #tree{font:12px/1.6 ui-monospace,"Cascadia Code",Consolas,monospace;margin:0;white-space:pre;
         overflow-x:auto}
   #tree .sel{background:var(--accent);color:#fff;border-radius:3px}
+  #lib{display:flex;flex-wrap:wrap;gap:6px}
+  #lib button{font-size:12px;padding:5px 10px}
   .hint{color:var(--mut);font-size:12px;margin:10px 0 0}
   .filebtn{display:inline-block;border:1px solid var(--bd);border-radius:8px;padding:7px 13px;
            cursor:pointer;font-size:13px;background:var(--bg)}
@@ -115,6 +117,7 @@
       </label>
       <p class="hint">也可以把檔案直接拖到左邊畫面上。範例檔在 <code>web/samples/demo.pdb</code>。</p>
       <p id="status"></p>
+      <label class="row"><input type="checkbox" id="asComponent">把 .pdb 當成元件加入（不取代目前的圖）</label>
       <p><button id="save" type="button">存成 .pdb</button>
          <button id="reset" type="button">回到內建測試場景</button></p>
     </div>
@@ -127,6 +130,13 @@
       <label class="row"><input type="checkbox" id="showValues">在圖上疊節點數值</label>
       <label class="row"><input type="checkbox" id="showNotReady">顯示 NotReady 旗標</label>
       <label class="row"><input type="checkbox" id="showGrid">格線</label>
+    </div>
+
+    <div class="panel">
+      <h2>自訂元件</h2>
+      <div id="lib"></div>
+      <p class="hint">一張存好的圖可以當成一顆元件用。存檔時最外層會長出接腳，
+         接到圖裡的控制鈕（輸入）和顯示器（輸出）。</p>
     </div>
 
     <div class="panel">
@@ -541,6 +551,31 @@ function drawDiagram(blocks, wires, wx, wy) {
         drawDiagram(h.blocks, h.wires, x, y);
         break;
       }
+      case HOOKBLOCK: {                                   // block.c:714
+        // block.c:301 DrawCUSTOMBLOCKLattice：一個矩形從中間切兩半，
+        // 左半按輸入數畫橫線、右半按輸出數畫橫線，就是接腳的格子。
+        eraseRect(x, y, SIZE.x, SIZE.y);
+        rect(x, y, SIZE.x, SIZE.y);
+        const mid = x + Math.floor(SIZE.x / 2);
+        line(mid, y, mid, y + SIZE.y - 1);
+        const ins = b.bap.IONodeLLHead.filter(n => n.TYPE === 1).length;
+        const outs = b.bap.IONodeLLHead.filter(n => n.TYPE === 0).length;
+        for (let i = 1; i <= ins - 1; i++) {
+          const hy = Math.floor(SIZE.y / ins) * i + y;
+          line(x, hy, mid, hy);
+        }
+        for (let i = 1; i <= outs - 1; i++) {
+          const hy = Math.floor(SIZE.y / outs) * i + y;
+          line(mid, hy, x + SIZE.x - 1, hy);
+        }
+        if (b.filename) {                                 // block.c:717 檔名畫在下面
+          ctx.font = '9px ui-monospace,Consolas,monospace';
+          ctx.textBaseline = 'top';
+          ctx.fillText(b.filename, x, y + SIZE.y + 1);
+        }
+        // 內部不畫 —— 原版的 HOOKBLOCK case 也沒有遞迴進去
+        break;
+      }
       default:                                            // block.c:949，FUNCBLOCK 等
         icon(b.bap.BITMAPID, x, y);
     }
@@ -751,6 +786,7 @@ function nodeHit(blocks, px, py) {
   for (let i = blocks.length - 1; i >= 0; i--) {
     const b = blocks[i];
     for (const h of b.hooks || []) {
+      if (b.TYPE === HOOKBLOCK) continue;      // 自訂元件是個黑盒子，不鑽進去
       if (b.TYPE === CASEBLOCK && h !== b.hooks[b.CurrentHOOK]) continue;
       const inner = nodeHit(h.blocks, px, py);
       if (inner) return inner;
@@ -769,6 +805,7 @@ function ctrlHit(blocks, px, py) {
   for (let i = blocks.length - 1; i >= 0; i--) {
     const b = blocks[i];
     for (const h of b.hooks || []) {
+      if (b.TYPE === HOOKBLOCK) continue;      // 自訂元件是個黑盒子，不鑽進去
       if (b.TYPE === CASEBLOCK && h !== b.hooks[b.CurrentHOOK]) continue;
       const inner = ctrlHit(h.blocks, px, py);
       if (inner) return inner;
@@ -832,6 +869,7 @@ function wireHit(scope, px, py) {
   }
   for (const b of scope.blocks) {
     for (const h of b.hooks || []) {
+      if (b.TYPE === HOOKBLOCK) continue;      // 自訂元件是個黑盒子，不鑽進去
       if (b.TYPE === CASEBLOCK && h !== b.hooks[b.CurrentHOOK]) continue;
       const hit = wireHit(h, px, py);
       if (hit) return hit;
@@ -1079,6 +1117,7 @@ function drawRunPoints(blocks, wires) {
   }
   for (const b of blocks) {
     for (const h of b.hooks || []) {
+      if (b.TYPE === HOOKBLOCK) continue;
       if (b.TYPE === CASEBLOCK && h !== b.hooks[b.CurrentHOOK]) continue;
       drawRunPoints(h.blocks, h.wires);
     }
@@ -1389,13 +1428,84 @@ function doRunLoopBlock(b) {
   return handle;
 }
 
+/* run.c:746 DoRun_HOOKBLOCK —— 自訂元件的執行
+
+   自訂元件就是一整張存好的圖被當成一個方塊。它的 IO 點（存檔時長出來的接腳）
+   透過「暗線段」連到內部的控制鈕和顯示器。執行的順序是：
+
+     1. 把接腳上的資料沿暗線段推進去，餵給內部的控制鈕
+     2. 把接腳的角色對調（跟迴圈同一招），遞迴執行內部
+     3. 內部算完之後，沿暗線段把內部顯示器的值抽回接腳
+
+   內部執行時會強制關掉動畫（run.c:869）—— 看不到的東西不需要跑動畫。 */
+function findWireByNode(wires, node) {
+  return wires.find(w => w.StartNodeP === node || w.EndNodeP === node) || null;
+}
+
+function doRunHookBlock(b) {
+  let handle = false;
+  if (!inputsReady(b)) return true;
+  if (!outputsPending(b)) return false;
+
+  const inner = b.hooks[0];
+
+  // run.c:811 把輸入接腳的值沿暗線段推給內部元件
+  for (const n of b.bap.IONodeLLHead) {
+    if (n.TYPE !== 1) continue;
+    const w = findWireByNode(inner.wires, n);
+    if (!w) continue;
+    if (w.StartBlockP === b) { moveNodeData(w.EndNodeP, w.StartNodeP); w.EndNodeP.NotReady = false; }
+    if (w.EndBlockP === b) { moveNodeData(w.StartNodeP, w.EndNodeP); w.StartNodeP.NotReady = false; }
+    w.DIRTY = true;
+  }
+  // run.c:836 輸出側的暗線段也標成已處理，內部執行時不要再動它
+  for (const n of b.bap.IONodeLLHead) {
+    if (n.TYPE !== 0) continue;
+    const w = findWireByNode(inner.wires, n);
+    if (w) w.DIRTY = true;
+  }
+
+  const swap = () => {
+    const t = b.bap.ONodeNUM; b.bap.ONodeNUM = b.bap.INodeNUM; b.bap.INodeNUM = t;
+    for (const n of b.bap.IONodeLLHead) n.TYPE = n.TYPE === 1 ? 0 : 1;
+  };
+
+  swap();
+  const lampWas = LAMP;
+  LAMP = false;                       // run.c:869 內部不跑動畫
+  const innerBusy = doRun(inner.blocks, inner.wires);
+  LAMP = lampWas;
+  swap();
+
+  if (innerBusy) {
+    handle = true;
+    for (const n of b.bap.IONodeLLHead) if (n.TYPE === 0) n.NotReady = true;
+    return handle;
+  }
+
+  // run.c:944 內部算完了，把結果沿暗線段抽回輸出接腳
+  for (const n of b.bap.IONodeLLHead) {
+    if (n.TYPE !== 0) continue;
+    const w = findWireByNode(inner.wires, n);
+    if (!w) continue;
+    if (w.StartBlockP === b && !w.EndNodeP.NotReady) {
+      moveNodeData(w.StartNodeP, w.EndNodeP); w.StartNodeP.NotReady = false; b.bap.ONodeNUM--;
+    }
+    if (w.EndBlockP === b && !w.StartNodeP.NotReady) {
+      moveNodeData(w.EndNodeP, w.StartNodeP); w.EndNodeP.NotReady = false; b.bap.ONodeNUM--;
+    }
+  }
+  if (b.bap.ONodeNUM !== 0 && b.bap.ONodeNUM !== -1) handle = true;
+  return handle;
+}
+
 // run.c:1356 DoRun_BlockRun
 function doRunBlockRun(blocks) {
   let handle = false;
   blocks.forEach((b, i) => {
     switch (b.TYPE) {
       case HOOKBLOCK:
-        // 自訂元件（run.c:746 DoRun_HOOKBLOCK）還沒移植
+        if (doRunHookBlock(b)) handle = true;
         break;
       case LOOPBLOCK:
         if (doRunLoopBlock(b)) handle = true;
@@ -1597,7 +1707,8 @@ function parseSave(text) {
      時的外框，畫面上不顯示它，接到它身上的線段也不畫。 */
   const blocks = root.blocks.filter(b => b !== hookBlock);
   const wires = root.wires.filter(w => w.StartBlockP !== hookBlock && w.EndBlockP !== hookBlock);
-  return { blocks, wires, hookBlock };
+  // allWires 保留暗線段，載成自訂元件時要靠它把接腳接到內部元件
+  return { blocks, wires, hookBlock, allWires: root.wires };
 }
 
 /* ==========================================================================
@@ -1790,10 +1901,127 @@ function saveFile() {
   st.className = 'ok';
 }
 
+/* ==========================================================================
+   自訂元件 — 對應 Src/load.c:755 ProcessCUSTOMLoad 與
+   Src/functions.c:515 AddCUSTtoSYSHOOK
+
+   一個存好的 .pdb 可以被另一張圖當成單一元件用。檔案裡最外層的 HOOKBLOCK
+   就是那顆元件的外殼，它的接腳（存檔時長出來的）透過暗線段連到內部的
+   控制鈕與顯示器 —— 也就是這顆元件的輸入和輸出。
+
+   原版是照檔名去 Palm 的資料庫裡找（load.c:589 遞迴呼叫 LOAD）。瀏覽器
+   不能憑檔名讀本機檔案，所以改成「元件庫」：載進來的 .pdb 留一份原文，
+   要用的時候再複製一份實例化。
+   ========================================================================== */
+
+const library = new Map();   // filename -> 存檔原文
+
+// 深拷貝一份場景，讓同一個元件可以放很多顆而不會互相干擾
+function cloneScope(scope) {
+  const map = new Map();
+  const cloneNode = n => {
+    if (!map.has(n)) map.set(n, { ...n, TL: { ...n.TL }, EXT: { ...n.EXT } });
+    return map.get(n);
+  };
+  const cloneBlock = b => {
+    if (map.has(b)) return map.get(b);
+    const nb = {
+      ...b,
+      bap: {
+        ...b.bap,
+        XY: { ...b.bap.XY }, SIZE: { ...b.bap.SIZE },
+        IONodeLLHead: b.bap.IONodeLLHead.map(cloneNode),
+        CTRLNodeLLHead: (b.bap.CTRLNodeLLHead || []).map(c => ({ ...c, TL: { ...c.TL }, EXT: { ...c.EXT } })),
+      },
+      pap: b.pap ? {
+        ...b.pap, XY: { ...b.pap.XY }, SIZE: { ...b.pap.SIZE },
+        CTRLNodeLLHead: (b.pap.CTRLNodeLLHead || []).map(c => ({ ...c, TL: { ...c.TL }, EXT: { ...c.EXT } })),
+      } : null,
+      hooks: null,
+    };
+    map.set(b, nb);
+    if (b.hooks) nb.hooks = b.hooks.map(h => ({ name: h.name, blocks: h.blocks.map(cloneBlock), wires: [] }));
+    return nb;
+  };
+  const cloneWire = w => ({
+    ...w,
+    StartBlockP: cloneBlock(w.StartBlockP), StartNodeP: cloneNode(w.StartNodeP),
+    EndBlockP: cloneBlock(w.EndBlockP), EndNodeP: cloneNode(w.EndNodeP),
+    RUNPOINT: { x: 0, y: 0 },
+  });
+  const walk = (src, dst) => {
+    dst.wires = src.wires.map(cloneWire);
+    src.blocks.forEach((b, i) => {
+      const nb = map.get(b);
+      (b.hooks || []).forEach((h, j) => walk(h, nb.hooks[j]));
+    });
+  };
+  const out = { blocks: scope.blocks.map(cloneBlock), wires: [] };
+  walk(scope, out);
+  return out;
+}
+
+/* load.c:762 —— 檔案裡的 HOOKBLOCK 變成元件外殼，其餘方塊和「全部」線段
+   （含暗線段）都收進它的 hook 裡。 */
+function makeCustomBlock(text, name) {
+  const parsed = parseSave(text);
+  if (!parsed.hookBlock) throw new Error('這個檔案沒有 HOOKBLOCK 外框，不能當成元件');
+
+  const hb = parsed.hookBlock;
+  hb.TYPE = HOOKBLOCK;
+  hb.bap.BITMAPID = B.CUSTOMBLOCKBitmap;   // functions.c:520
+  hb.bap.XY = { x: 10, y: 20 };
+  hb.bap.SIZE = { x: 32, y: 32 };
+  hb.filename = name;
+  hb.hooks = [{ name: null, blocks: parsed.blocks, wires: parsed.allWires }];
+  return { blocks: [hb], wires: [] };
+}
+
+function addCustomToScene(name) {
+  const text = library.get(name);
+  if (!text) return;
+  const proto = makeCustomBlock(text, name);
+  const copy = cloneScope(proto);
+  const b = copy.blocks[0];
+  b.ID = nextId++;
+  b.parent = null;
+  scene.blocks.push(b);
+  linkParents(scene.blocks);
+  resetRun();
+  selected = b;
+  b.bap.DrawBorder = true;
+  const ins = b.bap.IONodeLLHead.filter(n => n.TYPE === 1).length;
+  const outs = b.bap.IONodeLLHead.filter(n => n.TYPE === 0).length;
+  runStatus(`加入自訂元件 "${name}"（${ins} 進 ${outs} 出），用手工具拖到想要的位置`);
+  render();
+}
+
+function renderLibrary() {
+  const el = document.getElementById('lib');
+  if (!library.size) { el.innerHTML = '<span class="hint">還沒有元件。載入 .pdb 時勾「當成元件」就會收進這裡。</span>'; return; }
+  el.innerHTML = [...library.keys()]
+    .map(n => `<button type="button" data-lib="${esc(n)}">${esc(n)}</button>`).join(' ');
+  el.querySelectorAll('button').forEach(btn =>
+    btn.addEventListener('click', () => addCustomToScene(btn.dataset.lib)));
+}
+
 async function loadFile(file) {
   const status = document.getElementById('status');
   try {
-    const parsed = parseSave(pdbToText(await file.arrayBuffer()));
+    const text = pdbToText(await file.arrayBuffer());
+    const name = file.name.replace(/\.pdb$/i, '');
+
+    // 當成元件：收進元件庫，不動目前的圖
+    if (document.getElementById('asComponent').checked) {
+      makeCustomBlock(text, name);          // 先驗證讀得動
+      library.set(name, text);
+      renderLibrary();
+      status.textContent = `"${name}" 已加入元件庫，點一下就能放進圖裡`;
+      status.className = 'ok';
+      return;
+    }
+
+    const parsed = parseSave(text);
     killTimer(); RUN = 0; STOP = 0;
     ticks = 0;
     scene = parsed;
@@ -2232,6 +2460,8 @@ for (const k of ['showId', 'showNodes', 'showGrid', 'showValues', 'showNotReady'
 matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => render());
 
 /* ========================= 啟動 ========================= */
+renderLibrary();
+
 (async function boot() {
   await Promise.all(Object.values(SPRITES).map(s => new Promise(res => {
     s.img = new Image();

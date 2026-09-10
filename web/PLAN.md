@@ -13,8 +13,8 @@
 | --- | --- | --- |
 | `DrawWires` | ✅ | `drawWires()` |
 | `DrawRunPointOnWire` | ✅ | `stepRunPoints()` / `drawRunPoints()` |
-| `DrawDiagram` | ⚠️ | `HOOKBLOCK` 那個 case 沒做 |
-| `DrawCUSTOMBLOCKLattice` | ❌ | 自訂元件的格子外觀 |
+| `DrawDiagram` | ✅ | |
+| `DrawCUSTOMBLOCKLattice` | ✅ | 併在 `drawDiagram()` 的 HOOKBLOCK case |
 | `CrossWire` | ❌ | 跨層接線 |
 | `StartStopAddIntoWLL` | ⚠️ | `addWire()` 是簡化版，用共同父層決定歸屬 |
 | `CheckWireLink` | ⚠️ | 擋掉了自我連線；其餘合法性檢查沒做 |
@@ -44,8 +44,8 @@
 | `AddToSYSHOOK` | ✅ | `addToSysHook()` |
 | `FunctionsFormHandleEvent` | ✅ | |
 | `FunctionspenUp/Down/MoveProcess` | ➖ | Palm 的事件分派 |
-| `FindInputNode` / `FindOutputNode` | ❌ | 存成自訂元件時自動長出 IO 點 |
-| `AddCUSTtoSYSHOOK` | ❌ | 把自訂元件放進圖裡 |
+| `FindInputNode` / `FindOutputNode` | ✅ | 存檔時就做掉了（`buildHookNodes()`） |
+| `AddCUSTtoSYSHOOK` | ✅ | `addCustomToScene()` |
 
 ## run.c（1692 行）
 
@@ -60,8 +60,8 @@
 | `ResetWireStatus` | ✅ | |
 | `MoveNodeData` | ✅ | |
 | `FindNodeByID` | ✅ | |
-| `DoRun_HOOKBLOCK` | ❌ | 自訂元件的執行 |
-| `FindWireNodeByIONode` | ❌ | 只有 `DoRun_HOOKBLOCK` 在用 |
+| `DoRun_HOOKBLOCK` | ✅ | `doRunHookBlock()` |
+| `FindWireNodeByIONode` | ✅ | `findWireByNode()` |
 | `DoWireRun` / `DoBlockRun` | ➖ | 原始碼裡整段被註解掉，是舊版遺留 |
 
 ## misc.c（1024 行）
@@ -77,7 +77,7 @@
 | `DrawDecimalIntKeyboard` | ✅ | `drawKeyboard()` |
 | `EraseDecimalIntKeyboard` | ➖ | 網頁版整張重畫 |
 | `KeyboardPendownProcess` | ✅ | `keyboardHit()` |
-| `AutoFindIOnodesSetIntoICONnode` | ❌ | 自訂元件用 |
+| `AutoFindIOnodesSetIntoICONnode` | ➖ | 原始碼裡是**空函式**，從沒實作 |
 | `IsTheSameWireLLHead` | ❌ | 自訂元件用 |
 | `NestReDraw` / `NestItemMoveToLastPosition` | ➖ | 為了省重畫；網頁版整張重畫 |
 | `GetObjectPtr` / `MainFormInit` | ➖ | Palm 表單管線 |
@@ -89,7 +89,7 @@
 | `parse_loop` / `LOAD` | ✅ | `parseSave()`，而且補了原版沒做完的 `NEWCASEHOOK` |
 | `read_a_str` | ✅ | |
 | `FindNodeByID` / `FindIONodeByID` | ✅ | |
-| `ProcessCUSTOMLoad` | ❌ | 載入自訂元件 |
+| `ProcessCUSTOMLoad` | ✅ | `makeCustomBlock()`，改用元件庫而不是檔名查找 |
 | `LOADFormHandleEvent` / `ConvertFileName2RecordIndex` | ❌ | 檔案清單介面 |
 
 ## save.c（632 行）
@@ -158,9 +158,11 @@
 3. ~~DRAG 工具（改大小 + 翻頁）~~ ✅
 4. ~~存檔~~ ✅
 5. `ChangeLinkList` — 把元件拖進／拖出結構元件
-6. 自訂元件一整套（`HOOKBLOCK`）：`DoRun_HOOKBLOCK`、`AddCUSTtoSYSHOOK`、
-   `ProcessCUSTOMLoad`、`DrawCUSTOMBLOCKLattice`、存檔時的暗線段
-7. `CrossWire` 跨層接線
+6. ~~自訂元件一整套（`HOOKBLOCK`）~~ ✅
+7. **`CrossWire` 跨層接線** —— 迴圈的跨內外資料流靠它：把迴圈外的元件接到
+   迴圈內的元件時，會自動在迴圈邊框上長出 5×5 的 IO 節點，再把線拆成
+   外→邊框、邊框→內兩段（`block.c:1206`）。**沒有它，for 迴圈的 N 就只能
+   來自迴圈內部，不能從外面餵。**
 8. 選單、關於畫面
 9. `ItemMoveToLastPosition` — 點選時把元件移到最上層
 
