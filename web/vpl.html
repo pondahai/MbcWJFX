@@ -669,7 +669,7 @@ function drawPopup() {
     popupItems().forEach((it, i) => {
       const x = f.x + 11, y = f.y + 16 + i * 18;
       icon(it.bmp, x, y);
-      if (it.bmp === pointerState) rect(x - 2, y - 2, 22, 22);   // 目前選的工具
+      if (it.bmp === pointerStateGet()) rect(x - 2, y - 2, 22, 22);   // 目前選的工具
     });
     return;
   }
@@ -1161,7 +1161,7 @@ function drawToolbar() {
   icon(STOP === 2 ? B.STOPBitmap : STOP === 0 ? B.STOPUNUSEBitmap : B.STOPWAITBitmap, 80, 0);
   icon(LAMP ? B.LAMPLIGHTBitmap : B.LAMPBitmap, 100, 0);
   icon(B.ADDBitmap, 120, 0);                        // 元件面板（尚未實作）
-  icon(pointerState, view === 'panel' ? 142 : 140, 0);
+  icon(pointerStateGet(), view === 'panel' ? 142 : 140, 0);
 }
 
 // block.c:1934 PenDownInBlockToolArea / panel.c:408 PenDownInPanelToolArea
@@ -2356,6 +2356,7 @@ function canvasPos(ev) {
 
 let drag = null;     // {block, dx, dy}
 let resize = null;   // {block, ox, oy} —— DRAG 工具改結構元件大小
+let panelDrag = null;// {block, dx, dy} —— 前面板的手工具（panel.c:534）
 
 cv.addEventListener('pointerdown', ev => {
   const { x: px, y: py } = canvasPos(ev);
@@ -2369,10 +2370,11 @@ cv.addEventListener('pointerdown', ev => {
     if (hit === -2) { popup = null; render(); return; }       // 點視窗外就關掉
     if (hit === -1) { render(); return; }
     if (popup.kind === 'tools') {
-      pointerState = popupItems()[hit].bmp;
+      pointerStateSet(popupItems()[hit].bmp);
       wireStart = null;
       popup = null;
-      runStatus('工具：' + (SPRITES[pointerState] || {}).n);
+      keyboardObject = null;                 // panel.c:525 碰工具列就收掉鍵盤
+      runStatus('工具：' + (SPRITES[pointerStateGet()] || {}).n);
     } else if (popup.cat === null) {
       if (PALETTE[hit].items.length) popup = { kind: 'functions', cat: hit };
       else runStatus(PALETTE[hit].name.replace('FUNC', '') + ' 這個分類當年沒做完，是空的');
@@ -2404,31 +2406,58 @@ cv.addEventListener('pointerdown', ev => {
     return;
   }
 
+  /* panel.c:533 PanelpenDownProcess —— 前面板的三個工具各做各的事：
+     HAND 搬位置、FINGER 操作控制項、PENCIL 叫數字鍵盤。 */
   if (view === 'panel') {
-    if (keyboardHit(px, py)) { render(); return; }        // 鍵盤在最上層
-
     if (selected) { selected.bap.DrawBorder = false; if (selected.pap) selected.pap.DrawBorder = false; }
     const hit = panelHit(scene.blocks, px, py);
+
+    if (pointerStateGet() === B.HANDBitmap) {
+      // panel.c:534 抓住面板物件搬位置。面板座標是絕對值（panel.c:257），
+      // 所以 setNewObjXY 在 FrontPanelForm 這一支直接寫 pap->XY，不扣父層位移。
+      stopForEdit();                                      // panel.c:536 執行中不可編輯
+      keyboardObject = null;
+      selected = hit ? hit.block : null;
+      if (hit) {
+        hit.block.pap.DrawBorder = true;
+        panelDrag = { block: hit.block, dx: px - hit.block.pap.XY.x, dy: py - hit.block.pap.XY.y };
+        cv.setPointerCapture(ev.pointerId);
+        runStatus(`搬 #${hit.block.ID} 的面板位置`);
+      } else runStatus('手：要抓在面板上的元件');
+      render();
+      return;
+    }
+
+    if (pointerStateGet() === B.PENCILBitmap) {
+      // panel.c:588 鍵盤開著的時候，筆點先給鍵盤（misc.c:929 KeyboardPendownProcess）
+      if (keyboardHit(px, py)) { render(); return; }
+      selected = hit ? hit.block : null;
+      if (hit) {
+        hit.block.pap.DrawBorder = true;
+        // panel.c:617 只有 CTRLU8Bitmap 會叫出鍵盤
+        if (hit.block.pap.BITMAPID === B.CTRLU8Bitmap) {
+          keyboardObject = keyboardObject === hit.block ? null : hit.block;
+          keyboardText = '';
+          runStatus(keyboardObject ? '數字鍵盤：打完按 E 送出、c 清除' : '');
+        }
+      } else keyboardObject = null;
+      render();
+      return;
+    }
+
+    // panel.c:561 FINGER：按在控制點上就改值（panel.c:367 ChangeControl）
+    keyboardObject = null;
     selected = hit ? hit.block : null;
     if (hit) {
       hit.block.pap.DrawBorder = true;
-      if (hit.node) {
-        changeControl(hit.block, hit.node);               // 按在加減鈕上就改值
-      } else if (hit.block.pap.BITMAPID === B.CTRLU8Bitmap) {
-        // 按在控制鈕的框體上：叫出數字鍵盤直接打字
-        keyboardObject = keyboardObject === hit.block ? null : hit.block;
-        keyboardText = '';
-        runStatus(keyboardObject ? '數字鍵盤：打完按 E 送出、c 清除' : '');
-      }
-    } else {
-      keyboardObject = null;
+      if (hit.node) changeControl(hit.block, hit.node);
     }
     render();
     return;
   }
 
   // 接線工具：在節點上按下、拖到另一個節點放開（block.c:1591 的 WireStart/WireStop）
-  if (pointerState === B.THREADBitmap) {
+  if (pointerStateGet() === B.THREADBitmap) {
     stopForEdit();
     const n = nodeHit(scene.blocks, px, py);
     wireStart = n;
@@ -2442,7 +2471,7 @@ cv.addEventListener('pointerdown', ev => {
   }
 
   // DRAG 工具：拉右下角改大小，或翻 switch case 的頁（block.c:2151）
-  if (pointerState === B.DRAGBitmap) {
+  if (pointerStateGet() === B.DRAGBitmap) {
     stopForEdit();
     const hit = ctrlHit(scene.blocks, px, py);
     if (!hit) { runStatus('拖拉：要點在結構元件的控制點上'); render(); return; }
@@ -2464,7 +2493,7 @@ cv.addEventListener('pointerdown', ev => {
   }
 
   // 剪刀：剪掉一條線段
-  if (pointerState === B.SCISSORBitmap) {
+  if (pointerStateGet() === B.SCISSORBitmap) {
     stopForEdit();
     const hit = wireHit(scene, px, py);
     if (hit) {
@@ -2477,7 +2506,7 @@ cv.addEventListener('pointerdown', ev => {
   }
 
   // 刪除工具
-  if (pointerState === B.KILLBitmap) {
+  if (pointerStateGet() === B.KILLBitmap) {
     stopForEdit();
     const b = hitTest(scene.blocks, px, py);
     if (b) {
@@ -2496,7 +2525,7 @@ cv.addEventListener('pointerdown', ev => {
     // block.c:2056 「凡落在範圍內的元件移到串列最後面」，5-30 跳開預設元件
     if (selected.TYPE !== CTRLBLOCK) itemMoveToLast(selected);
     // 手工具才能拖。座標是相對於元件所屬的層，所以要扣掉父層的位移
-    if (pointerState === B.HANDBitmap) {
+    if (pointerStateGet() === B.HANDBitmap) {
       stopForEdit();
       const o = absOrigin(selected);
       drag = { block: selected, dx: px - o.x - selected.bap.XY.x, dy: py - o.y - selected.bap.XY.y,
@@ -2508,6 +2537,15 @@ cv.addEventListener('pointerdown', ev => {
 });
 
 cv.addEventListener('pointermove', ev => {
+  /* panel.c:662 + misc.c:791 setNewObjXY(now_x - RelativePoint, now_y - RelativePoint)。
+     CaculateNowXNowY 的夾限換算過來就是 x 不能小於 0、y 不能上到標題列裡面。 */
+  if (panelDrag) {
+    const { x: px, y: py } = canvasPos(ev);
+    panelDrag.block.pap.XY.x = Math.max(0, px - panelDrag.dx);
+    panelDrag.block.pap.XY.y = Math.max(15, py - panelDrag.dy);
+    render();
+    return;
+  }
   // 拉線中：把筆下的節點反白（block.c:2615 CheckOnNode）
   if (wireStart) {
     const { x: px, y: py } = canvasPos(ev);
@@ -2543,6 +2581,7 @@ cv.addEventListener('pointermove', ev => {
 });
 
 cv.addEventListener('pointerup', ev => {
+  if (panelDrag) { panelDrag = null; render(); return; }   // panel.c:742 放手就放開
   if (resize) { relocateCtrlNodes(resize.block); resize = null; render(); return; }
 
   // 接線：在另一個節點上放開才算數（block.c:1591）
@@ -2580,7 +2619,7 @@ cv.addEventListener('pointerup', ev => {
   drag = null;
 });
 
-cv.addEventListener('pointercancel', () => { drag = null; resize = null; wireStart = null; hoverNode = null; penPos = null; });
+cv.addEventListener('pointercancel', () => { drag = null; resize = null; panelDrag = null; wireStart = null; hoverNode = null; penPos = null; });
 
 
 
@@ -2591,7 +2630,14 @@ cv.addEventListener('pointercancel', () => { drag = null; resize = null; wireSta
 // mbcwjfx.c:63  STOP: 0=無用 1=可用 2=停止（2 從來沒被指派過，是個死狀態）
 // mbcwjfx.c:98  RUN:  0=靜止 1=執行 2=暫停
 let RUN = 0, STOP = 0, RUNFOREVER = false, ticks = 0, timer = null;
-let pointerState = B.HANDBitmap;   // mbcwjfx.c:69 BlockPointerState / PanelPointerState
+/* mbcwjfx.c:69 —— 原版是兩個獨立的公共變數 BlockPointerState 和
+   PanelPointerState，兩個 form 各記各的工具，切過去不會互相影響。
+   之前這裡只有一個變數，所以在前面板選了工具再切回方塊圖會帶過去，
+   反過來也會讓前面板拿到 THREAD 之類根本不屬於它的工具。 */
+let blockPointerState = B.HANDBitmap;
+let panelPointerState = B.HANDBitmap;
+function pointerStateGet() { return view === 'panel' ? panelPointerState : blockPointerState; }
+function pointerStateSet(v) { if (view === 'panel') panelPointerState = v; else blockPointerState = v; }
 const MAX_TICKS = 50000;   // 保險絲：接錯線的圖有可能永遠跑不完
 
 function runStatus(msg) {
@@ -2693,7 +2739,7 @@ document.getElementById('speed').addEventListener('input', e => {
 /* ========================= 場景切換 ========================= */
 function setScene(builder, label) {
   popup = null; wireStart = null; hoverNode = null; penPos = null; drag = null; resize = null; keyboardObject = null;
-  menu = null; about = false;
+  menu = null; about = false; panelDrag = null;
   killTimer(); RUN = 0; STOP = 0;
   ticks = 0;
   scene = builder();

@@ -34,6 +34,8 @@
 | `DrawRUNPanel` | ➖ | 原版為了省重畫而分出來的，網頁版整張重畫 |
 | `ChangeControl` | ✅ | |
 | `PenDownInPanelToolArea` | ✅ | |
+| `PanelpenDown/Move/UpProcess` | ✅ | 三個工具分開：HAND 搬位置、FINGER 操作控制項、PENCIL 叫鍵盤 |
+| `setNewObjXY`（FrontPanelForm 那一支） | ✅ | 面板座標是絕對值，直接寫 `pap.XY`，不扣父層位移 |
 
 ## functions.c（1053 行）
 
