@@ -82,7 +82,8 @@
         <button id="step" type="button">單步</button>
         <button id="stop" type="button">停止</button>
       </div>
-      <div class="ctl"><span>速度</span><input type="range" id="speed" min="1" max="60" step="1" value="8"><span id="speedv">8/s</span></div>
+      <div class="ctl"><span>速度</span><input type="range" id="speed" min="1" max="240" step="1" value="8"><span id="speedv">8/s</span></div>
+      <label class="row"><input type="checkbox" id="lamp">線段動畫（LAMP）</label>
       <label class="row"><input type="checkbox" id="forever">跑完自動重來（RUNFOREVER）</label>
       <p id="runstat"></p>
     </div>
@@ -530,6 +531,20 @@ function drawDiagram(blocks, wires, wx, wy) {
   }
 }
 
+/* block.c:529 執行點畫成 5x5 的方塊（Palm 的 WinDrawRectangle 是實心的）。
+   座標已經是絕對值，所以不跟著 drawDiagram 的 window 位移。 */
+function drawRunPoints(blocks, wires) {
+  for (const w of wires) {
+    if (w.RUNPOINT && w.STARTRUN) ctx.fillRect(w.RUNPOINT.x - 2, w.RUNPOINT.y - 2, 5, 5);
+  }
+  for (const b of blocks) {
+    for (const h of b.hooks || []) {
+      if (b.TYPE === CASEBLOCK && h !== b.hooks[b.CurrentHOOK]) continue;
+      drawRunPoints(h.blocks, h.wires);
+    }
+  }
+}
+
 function render() {
   ctx.fillStyle = ctx.strokeStyle = '#111';
   ctx.lineWidth = 1;
@@ -542,6 +557,7 @@ function render() {
     ctx.restore();
   }
   drawDiagram(scene.blocks, scene.wires, 0, 0);
+  if (LAMP) drawRunPoints(scene.blocks, scene.wires);
   renderTree();
 }
 
@@ -595,6 +611,9 @@ function renderTree() {
 
 const to16 = v => (v << 16) >> 16;          // Palm 的 int 是 16 bit
 
+// block.c:1949 的燈泡按鈕：開著就跑線段動畫，關著資料一次搬到位
+let LAMP = false;
+
 // run.c:63 CheckConnection —— 重算 IO 計數並設定初始的 NotReady 狀態
 function checkConnection(blocks, ioBlockClear) {
   for (const b of blocks) {
@@ -637,7 +656,7 @@ function checkConnection(blocks, ioBlockClear) {
 
 // run.c:24 ResetWireStatus
 function resetWireStatus(blocks, wires) {
-  for (const w of wires) { w.DIRTY = false; w.STARTRUN = false; w.RUNSEG = 0; }
+  for (const w of wires) { w.DIRTY = false; w.STARTRUN = false; w.RUNSEG = 0; w.RUNPOINT = { x: 0, y: 0 }; }
   for (const b of blocks) {
     if (b.TYPE === HOOKBLOCK || b.TYPE === LOOPBLOCK) {
       if (b.hooks) resetWireStatus(b.hooks[0].blocks, b.hooks[0].wires);
@@ -679,26 +698,90 @@ function doItemRun(b, blocks, idx) {
   }
 }
 
+/* block.c:363 DrawRunPointOnWire —— 線段上的執行點動畫
+
+   這裡是整個執行流程最精巧的一段：動畫和資料搬移是連動的，不是先算完
+   再放動畫。執行點每個 tick 沿線走一個像素，走到終點就把 RUNPOINT 設成
+   (-1,-1)，而 doRunWireRun() 只搬「已抵達」的線段（run.c:592 的判斷）。
+   所以資料是真的跟著那個點在跑。
+
+   回傳 true 表示還有點在路上，doRun() 這一輪就先不搬資料。
+   RUNPOINT 用 null 代表原版的 (-1,-1)。 */
+function stepRunPoints(wires) {
+  let anyMoving = false;
+  let notFinish = true;
+
+  for (const w of wires) {
+    // block.c:405 動畫一律由輸出往輸入跑，方向不對就把兩端對調
+    if (w.EndNodeP.TYPE === 0) {
+      [w.StartBlockP, w.EndBlockP] = [w.EndBlockP, w.StartBlockP];
+      [w.StartNodeP, w.EndNodeP] = [w.EndNodeP, w.StartNodeP];
+    }
+    if (w.DIRTY) continue;
+    if (!(w.StartNodeP.NotReady === false && w.EndNodeP.NotReady === true)) continue;
+    if (w.RUNPOINT === null) continue;              // 已抵達，等著被搬資料
+
+    anyMoving = true;
+    const s = nodeCenter(w.StartBlockP, w.StartNodeP);
+    const e = nodeCenter(w.EndBlockP, w.EndNodeP);
+    const [t1, t2] = turnLine(s, e);
+
+    if (!w.STARTRUN) { w.STARTRUN = true; w.RUNPOINT = { x: s.x, y: s.y }; w.RUNSEG = 0; }
+    const p = w.RUNPOINT;
+
+    // 三段式走法：先水平到轉折點、再垂直、再水平到終點
+    switch (w.RUNSEG) {
+      case 0:
+        if (p.x === t1.x && p.y === t1.y) w.RUNSEG = 1;
+        else p.x += t1.x > p.x ? 1 : -1;
+        break;
+      case 1:
+        if (p.x === t2.x && p.y === t2.y) w.RUNSEG = 2;
+        else p.y += t2.y > p.y ? 1 : -1;
+        break;
+      case 2:
+        if (p.x === e.x && p.y === e.y) w.RUNSEG = 3;
+        else p.x += e.x > p.x ? 1 : -1;
+        break;
+    }
+
+    if (p.x === e.x && p.y === e.y) {
+      w.RUNPOINT = null;                            // 原版的 (-1,-1)
+      w.STARTRUN = false;
+      // 原版這個旗標是所有線段共用的：只要有一條抵達，這一輪就去搬資料，
+      // 還在路上的線段下一個 tick 繼續走（block.c:544）
+      notFinish = false;
+    }
+  }
+  return anyMoving ? notFinish : false;
+}
+
 // run.c:582 DoRun_WireRun —— 資料沿線段搬移
 function doRunWireRun(wires) {
   for (const w of wires) {
     if (w.DIRTY) continue;
+    // run.c:592 開動畫時，只有執行點已經抵達的線段才搬資料
+    if (LAMP && w.RUNPOINT !== null) continue;
     const s = w.StartNodeP, e = w.EndNodeP;
 
     // 輸出端備妥 -> 搬給還沒備妥的輸入端
     if (!s.NotReady && s.TYPE === 0 && e.NotReady) {
       moveNodeData(e, s); e.NotReady = false; w.EndBlockP.bap.INodeNUM--;
+      if (LAMP) w.DIRTY = true;
     }
     if (!e.NotReady && e.TYPE === 0 && s.NotReady) {
       moveNodeData(s, e); s.NotReady = false; w.StartBlockP.bap.INodeNUM--;
+      if (LAMP) w.DIRTY = true;
     }
     // 兩端都是輸入時（迴圈邊上會出現），備妥的那端餵給另一端
     if (s.TYPE === 1 && e.TYPE === 1) {
       if (s.NotReady && !e.NotReady) {
         moveNodeData(s, e); s.NotReady = false; w.StartBlockP.bap.INodeNUM--;
+        if (LAMP) w.DIRTY = true;
       }
       if (!s.NotReady && e.NotReady) {
         moveNodeData(e, s); e.NotReady = false; w.EndBlockP.bap.INodeNUM--;
+        if (LAMP) w.DIRTY = true;
       }
     }
   }
@@ -780,6 +863,8 @@ function doRunBlockRun(blocks) {
 
 // run.c:1498 DoRun —— 一次 tick。回傳 true 表示還沒跑完
 function doRun(blocks, wires) {
+  // run.c:1542 開動畫時先讓執行點走，走完了才搬資料、才讓元件運算
+  if (LAMP && stepRunPoints(wires)) return true;
   doRunWireRun(wires);
   return doRunBlockRun(blocks);
 }
@@ -1078,6 +1163,14 @@ document.getElementById('speed').addEventListener('input', e => {
   if (RUN === 1) { clearInterval(timer); timer = setInterval(tick, 1000 / +e.target.value); }
 });
 document.getElementById('forever').addEventListener('change', e => { RUNFOREVER = e.target.checked; });
+document.getElementById('lamp').addEventListener('change', e => {
+  LAMP = e.target.checked;
+  // 執行點一個 tick 只走一像素，所以開動畫時要把 tick 率拉高才看得順
+  const sp = document.getElementById('speed');
+  sp.value = LAMP ? 120 : 8;
+  sp.dispatchEvent(new Event('input'));
+  render();
+});
 
 /* ========================= 場景切換 ========================= */
 function setScene(builder, label) {

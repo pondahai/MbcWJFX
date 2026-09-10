@@ -46,6 +46,7 @@ JS 這邊的欄位名稱沿用 C 的寫法，函式上面標了對應的原始�
 | `checkConnection()` | `Src/run.c:63` `CheckConnection()` |
 | `resetWireStatus()` | `Src/run.c:24` `ResetWireStatus()` |
 | `tick()` 的驅動迴圈 | `Src/block.c:3096` 的 `nilEvent` 處理 |
+| `stepRunPoints()` / `drawRunPoints()` | `Src/block.c:363` `DrawRunPointOnWire()` |
 
 C 版本裡 `Src/linklist.c` 那 836 行在手動維護 `PREV`/`NEXT` 雙向鏈結串列，
 JS 直接用陣列和物件參照，所以那一整層不需要重寫。
@@ -119,12 +120,35 @@ t6                                 I=3
 t8  N==I，I 歸零，迴圈結束 → 完成
 ```
 
+### 線段動畫（LAMP）
+
+`stepRunPoints()` 對應 `Src/block.c:363` 的 `DrawRunPointOnWire()`。這一段
+是整個執行流程最精巧的地方：**動畫和資料搬移是連動的**，不是先算完再放動畫。
+
+執行點每個 tick 沿線走一個像素（三段式：水平→垂直→水平），走到終點就把
+`RUNPOINT` 設成 `(-1,-1)`；而 `doRunWireRun()` 只搬「已抵達」的線段
+（`Src/run.c:592` 的判斷）。所以資料是真的跟著那個點在跑。搬完之後
+`DIRTY` 設為 true，那條線這一輪就不會再動 —— `DIRTY` 就是為了動畫而存在的。
+
+`stepRunPoints()` 回傳「還有點在路上」時，`doRun()` 這一輪就直接結束，
+不搬資料也不讓元件運算。
+
+同一張圖開不開動畫，結果一樣，只有 tick 數差很多：
+
+| | ticks | 結果 |
+| --- | --- | --- |
+| `LAMP=false` | 8 | `ind=8, I=0, 迴圈內顯示器=3` |
+| `LAMP=true` | 397 | 同上 |
+
+所以動畫開著的時候要把 tick 率拉高（介面會自動調到 120/s）才看得順。
+
+有一個原版就有的怪癖照抄了：`not_finish` 是所有線段共用的旗標，只要**任何
+一條**線的點抵達終點，這一輪就會去搬資料，還在路上的線段下一個 tick 再繼續
+走（`Src/block.c:544`）。
+
 ### 還沒移植的部分
 
 - `DoRun_HOOKBLOCK()`（`Src/run.c:746`）—— 自訂元件的執行
-- 線段上的執行點動畫（`DrawRunPointOnWire()`，`Src/block.c:363`）。
-  原版的 `LAMP` 旗標開啟時會先跑完動畫才搬資料，`DIRTY` 就是為此存在的；
-  這裡直接走 `LAMP=false` 那條路徑，資料一次搬到位。
 - switch case 的執行（原版 `DoItemRUN` 裡 `SWITCHCASEBitmap` 就是空的）
 
 ## 存檔格式
@@ -185,5 +209,4 @@ FileStream 在記錄裡還有自己的表頭，格式沒有公開文件，所以
 - [ ] 拿真正的 Palm `.pdb` 驗證讀檔器
 - [ ] 編輯：拖曳元件、拉線（`Src/block.c` 的 `BlockpenDownProcess` / `BlockpenMoveProcess`）
 - [ ] 自訂元件的執行（`DoRun_HOOKBLOCK`）
-- [ ] 線段上的執行點動畫（`LAMP` 那條路徑）
 - [ ] 元件面板與工具列（`Src/panel.c`、`Src/functions.c`）
