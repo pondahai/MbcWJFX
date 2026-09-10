@@ -2155,7 +2155,19 @@ function reparent(b, newParent) {
   b.bap.XY.x = Math.max(0, ax - no.x);
   b.bap.XY.y = Math.max(0, ay - no.y);
   linkParents(scene.blocks);
+  itemMoveToLast(b);                           // block.c:2720
   resetRun();
+}
+
+/* linklist.c:653 ItemMoveToLastPosition + misc.c:410 NestItemMoveToLastPosition
+   點到的元件移到所屬串列的最後面，畫的時候就會蓋在最上面（拿到最大 Z）。
+   巢狀的話連它的上層也要一路往後移，不然整個結構還是被別人蓋住。 */
+function itemMoveToLast(b) {
+  for (let cur = b; cur; cur = cur.parent) {
+    const arr = scopeOf(cur).blocks;
+    const i = arr.indexOf(cur);
+    if (i >= 0 && i !== arr.length - 1) { arr.splice(i, 1); arr.push(cur); }
+  }
 }
 
 function canvasPos(ev) {
@@ -2255,6 +2267,7 @@ cv.addEventListener('pointerdown', ev => {
     stopForEdit();
     const hit = ctrlHit(scene.blocks, px, py);
     if (!hit) { runStatus('拖拉：要點在結構元件的控制點上'); render(); return; }
+    itemMoveToLast(hit.block);                 // block.c:2163
     if (hit.node.ID === 1 /*DRAGNODE*/) {
       const o = absOrigin(hit.block);
       resize = { block: hit.block, ox: o.x + hit.block.bap.XY.x, oy: o.y + hit.block.bap.XY.y };
@@ -2301,6 +2314,8 @@ cv.addEventListener('pointerdown', ev => {
   selected = hitTest(scene.blocks, px, py);
   if (selected) {
     selected.bap.DrawBorder = true;
+    // block.c:2056 「凡落在範圍內的元件移到串列最後面」，5-30 跳開預設元件
+    if (selected.TYPE !== CTRLBLOCK) itemMoveToLast(selected);
     // 手工具才能拖。座標是相對於元件所屬的層，所以要扣掉父層的位移
     if (pointerState === B.HANDBitmap) {
       stopForEdit();

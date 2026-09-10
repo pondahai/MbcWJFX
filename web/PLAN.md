@@ -19,7 +19,7 @@
 | `StartStopAddIntoWLL` | ✅ | `addWire()`，三種情況都照 `block.c:1493` 分派 |
 | `CheckWireLink` | ✅ | 擋自我連線與輸出接輸出（`block.c:1582`） |
 | `BreakWireConnection` | ✅ | 併在 `removeBlock()` 裡 |
-| `ChangeLinkList` | ❌ | 把元件拖進／拖出結構元件 |
+| `ChangeLinkList` | ✅ | 拖曳落在結構上就搬進去（`structAt` + `reparent`），拖到空白處回主串列 |
 | `PenDownInBlockToolArea` | ✅ | `toolbarHit()`，含點標題切換 form（`block.c:2008`） |
 | `BlockpenDownProcess` | ⚠️ | HAND／THREAD／SCISSOR／KILL／DRAG 做了；PENCIL 沒做 |
 | `BlockpenMoveProcess` | ✅ | 拖曳元件、拉大小、拉線 |
@@ -110,7 +110,7 @@
 | --- | --- | --- |
 | `allocate_*` / `InsertInto*` / `Remove*` | ➖ | JS 用陣列和物件參照，整層不需要 |
 | `set_block_tools_palette` / `set_panel_tools_palette` | ✅ | `BLOCK_TOOLS` / `PANEL_TOOLS` |
-| `ItemMoveToLastPosition` | ❌ | 點選時把元件移到最上層 |
+| `ItemMoveToLastPosition` | ✅ | 點選時把元件移到串列最後（最上層），巢狀連上層一起 |
 | `CountIONODEs` | ✅ | |
 
 ## 其他
@@ -157,11 +157,11 @@
 2. ~~數字鍵盤~~ ✅
 3. ~~DRAG 工具（改大小 + 翻頁）~~ ✅
 4. ~~存檔~~ ✅
-5. `ChangeLinkList` — 把元件拖進／拖出結構元件
+5. ~~`ChangeLinkList` — 把元件拖進／拖出結構元件~~ ✅
 6. ~~自訂元件一整套（`HOOKBLOCK`）~~ ✅
 7. ~~`CrossWire` 跨層接線~~ ✅
 8. 選單、關於畫面
-9. `ItemMoveToLastPosition` — 點選時把元件移到最上層
+9. ~~`ItemMoveToLastPosition` — 點選時把元件移到最上層~~ ✅
 
 ## 跨越結構邊界的資料流
 
