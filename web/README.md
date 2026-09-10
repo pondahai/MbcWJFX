@@ -16,8 +16,12 @@ web/
 ## 現況
 
 目前可以讀 Palm 的 `.pdb` 存檔、把 block diagram 畫在 160×160 的畫布上、
-點選元件、看場景結構，**而且能執行**（執行／單步／停止，附即時的節點狀態表）。
+點選元件、看場景結構，**能執行**（執行／單步／停止，附即時的節點狀態表和
+線段動畫），也有**前面板**（Block / Panel 兩個分頁，面板上的控制鈕按得動）。
 還不能編輯。
+
+排版和行為對照的是 repo 根目錄那幾張當年的截圖：`1.png` 是方塊圖、
+`mbcwjfx.jpg` 是前面板、`2.png` 是元件面板（還沒做）。
 
 載入方式是選檔或把檔案拖到畫面上 —— `file://` 底下瀏覽器不准 fetch 本機檔案，
 所以沒辦法自動載入。預設顯示的是內建測試場景，對應 `Src/testdata.c` 裡
@@ -36,6 +40,9 @@ JS 這邊的欄位名稱沿用 C 的寫法，函式上面標了對應的原始�
 | `absOrigin()` | `Src/block.c:166-189`，沿 `SelfBlockLLHead` 累加出絕對座標 |
 | `icon()` | `Src/misc.c:84` `DrawIcon()` |
 | `hitTest()` | `Src/misc.c:477` `IsInArea()`（簡化版） |
+| `drawPanel()` | `Src/panel.c:239` `DrawPanel()` |
+| `valueDisplay()` | `Src/panel.c:108` `ValueDisplay()` |
+| `changeControl()` | `Src/panel.c:367` `ChangeControl()` |
 | `parseSave()` | `Src/load.c:359` `parse_loop()` |
 | `pdbToText()` | `Src/load.c:733` `LOAD()` 的 `FileOpen`／`FileRead` |
 | `doRun()` | `Src/run.c:1498` `DoRun()` |
@@ -80,6 +87,30 @@ Palm 的 bitmap 是**不透明**的（白底黑點），所以畫布底色必須
 
 另外 `WinDrawLine` 畫的是 1 像素無反鋸齒的線，canvas 要畫出一樣的效果
 得把座標對到像素中心（`+0.5`），否則線會糊成兩像素的灰。
+
+## 前面板
+
+這是 LabVIEW 的 front panel 概念：同一個元件有兩種外觀 —— `bap` 畫在方塊圖上
+（「程式」那一面），`pap` 畫在前面板上（「使用者介面」那一面）。介面上的
+Block / Panel 兩個分頁就是原版的兩個 form。
+
+面板元件的樣子直接取自資源檔：`CTRLU8Bitmap`（32×16）是點陣邊框的方框加上
+右側的上下箭頭，`INDICATOR8Bitmap` 是同樣的方框但沒有箭頭。值畫在
+`pap.XY + (3,3)`，元件 ID 畫在 `pap.XY.y - 11`（`Src/panel.c:279`）。
+
+按鈕的判定區來自 `Src/functions.c:641`：右邊 4px 寬的直條切成上下兩半，
+`CONTROLUP` 是 `TL(28,0) EXT(4,8)`、`CONTROLDOWN` 是 `TL(28,8)`。
+`SWON`/`SWOFF`（16×32 的搖頭開關）和 `LEDON`/`LEDOFF` 是靠換圖來表示狀態的。
+
+兩個容易誤會的地方：
+
+1. **面板座標是絕對值，不跟著巢狀位移。** `DrawPanel()` 遞迴進迴圈的時候
+   並沒有加上父元件的位移（`Src/panel.c:257`），所以迴圈裡的控制鈕在面板上
+   是獨立擺放的 —— 跟方塊圖那邊完全不同的規則。
+2. **switch case 不上面板**（`Src/panel.c:255` 直接 break）。
+
+還沒做的是那個數字鍵盤（`DrawDecimalIntKeyboard`，`Src/misc.c:854`），
+原版可以點一下控制鈕直接打字輸入數值。
 
 ## 執行模型
 
@@ -209,4 +240,5 @@ FileStream 在記錄裡還有自己的表頭，格式沒有公開文件，所以
 - [ ] 拿真正的 Palm `.pdb` 驗證讀檔器
 - [ ] 編輯：拖曳元件、拉線（`Src/block.c` 的 `BlockpenDownProcess` / `BlockpenMoveProcess`）
 - [ ] 自訂元件的執行（`DoRun_HOOKBLOCK`）
+- [ ] 面板上的數字鍵盤（`DrawDecimalIntKeyboard`）
 - [ ] 元件面板與工具列（`Src/panel.c`、`Src/functions.c`）

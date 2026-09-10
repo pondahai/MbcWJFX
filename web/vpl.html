@@ -58,6 +58,9 @@
          background:var(--bg);color:var(--fg);flex:1}
   #status.ok{color:var(--accent)} #status.err{color:#c0392b}
   .lcd.drop{outline:2px dashed var(--accent);outline-offset:3px}
+  .tabs{display:flex;gap:5px;margin-bottom:10px}
+  .tab{border-radius:8px 8px 0 0;padding:5px 16px;font-size:12.5px}
+  .tab.on{background:var(--accent);color:#fff;border-color:var(--accent)}
   code{font:12px ui-monospace,Consolas,monospace;background:var(--bd);padding:1px 5px;border-radius:4px}
 </style>
 </head>
@@ -71,6 +74,10 @@
 
 <div class="wrap">
   <div class="stage">
+    <div class="tabs">
+      <button class="tab on" data-view="block" type="button">Block</button>
+      <button class="tab" data-view="panel" type="button">Panel</button>
+    </div>
     <div class="lcd"><canvas id="screen" width="160" height="160"></canvas></div>
   </div>
 
@@ -231,11 +238,29 @@ function block(TYPE, BITMAPID, XY, SIZE, opt = {}) {
       CTRLNodeLLHead: opt.ctrl || [],
       DrawBorder: false,
     },
+    // 前面板外觀（PA）。同一個元件在方塊圖和前面板上有兩種樣子：
+    // bap 是「程式」那一面，pap 是「使用者介面」那一面。
+    pap: opt.pap || null,
     hooks: opt.hooks || null,     // [{name, blocks, wires}]
     CurrentHOOK: 0,               // switch case 目前顯示第幾頁
     filename: opt.filename || null,
     parent: null,
   };
+}
+
+/* 面板上的控制鈕：右邊 4px 的直條切成上下兩半當加減鈕。
+   幾何取自 Src/functions.c:641。 */
+function panelCtrl(XY) {
+  return {
+    BITMAPID: B.CTRLU8Bitmap, XY, SIZE: { x: 32, y: 16 },
+    CTRLNodeLLHead: [
+      { ID: 4 /*CONTROLUP*/,   TL: { x: 28, y: 0 }, EXT: { x: 4, y: 8 } },
+      { ID: 5 /*CONTROLDOWN*/, TL: { x: 28, y: 8 }, EXT: { x: 4, y: 8 } },
+    ],
+  };
+}
+function panelIndicator(XY) {
+  return { BITMAPID: B.INDICATOR8Bitmap, XY, SIZE: { x: 32, y: 16 }, CTRLNodeLLHead: [] };
 }
 
 // struct wList。C 裡存的是節點指標，這裡存物件參照，語意相同。
@@ -262,11 +287,11 @@ function buildScene() {
 
   // 一個輸出元件（CTRLU8：8-bit 控制鈕）
   const ctrl = block(FUNCBLOCK, B.CTRLU8BLOCKBitmap, { x: 6, y: 16 }, { x: 32, y: 16 },
-    { io: [ioNode(0, { x: 0, y: 0 }, { x: 32, y: 16 })] });
+    { io: [ioNode(0, { x: 0, y: 0 }, { x: 32, y: 16 })], pap: panelCtrl({ x: 12, y: 30 }) });
 
   // 一個輸入元件（INDICATOR8：8-bit 顯示器）
   const ind = block(FUNCBLOCK, B.INDICATOR8BLOCKBitmap, { x: 108, y: 16 }, { x: 32, y: 16 },
-    { io: [ioNode(1, { x: 0, y: 0 }, { x: 32, y: 16 })] });
+    { io: [ioNode(1, { x: 0, y: 0 }, { x: 32, y: 16 })], pap: panelIndicator({ x: 100, y: 30 }) });
 
   // FORLOOP：結構元件，內部自己有一份 blocks/wires（C 的 LoopBlockHOOKP）。
   // 迴圈內預設元件 N 和 I 的位置由 block.c:760-766 寫死。
@@ -322,9 +347,9 @@ function buildRunScene() {
   nextId = 1;
 
   const ctrlA = block(FUNCBLOCK, B.CTRLU8BLOCKBitmap, { x: 2, y: 16 }, { x: 32, y: 16 },
-    { io: [ioNode(0, { x: 0, y: 0 }, { x: 32, y: 16 })] });
+    { io: [ioNode(0, { x: 0, y: 0 }, { x: 32, y: 16 })], pap: panelCtrl({ x: 12, y: 24 }) });
   const ctrlB = block(FUNCBLOCK, B.CTRLU8BLOCKBitmap, { x: 2, y: 38 }, { x: 32, y: 16 },
-    { io: [ioNode(0, { x: 0, y: 0 }, { x: 32, y: 16 })] });
+    { io: [ioNode(0, { x: 0, y: 0 }, { x: 32, y: 16 })], pap: panelCtrl({ x: 12, y: 48 }) });
   ctrlA.bap.IONodeLLHead[0].value = 5;
   ctrlB.bap.IONodeLLHead[0].value = 3;
 
@@ -337,7 +362,7 @@ function buildRunScene() {
     ],
   });
   const ind = block(FUNCBLOCK, B.INDICATOR8BLOCKBitmap, { x: 110, y: 27 }, { x: 32, y: 16 },
-    { io: [ioNode(1, { x: 0, y: 0 }, { x: 32, y: 16 })] });
+    { io: [ioNode(1, { x: 0, y: 0 }, { x: 32, y: 16 })], pap: panelIndicator({ x: 100, y: 36 }) });
 
   // 迴圈內部。blocks[0] 必須是 N、blocks[1] 必須是 I ——
   // run.c:1293 的迴圈條件判斷就是照這個順序取的。
@@ -346,11 +371,12 @@ function buildRunScene() {
     { io: [ioNode(1, { x: 0, y: 0 }, { x: 10, y: 10 })] });
   const I = block(FUNCBLOCK, B.FORLOOPIBitmap, { x: 8, y: loopSize.y - 17 }, { x: 10, y: 10 },
     { io: [ioNode(0, { x: 0, y: 0 }, { x: 10, y: 10 })] });
+  // 迴圈內的元件在前面板上也要出現（panel.c:238「panel 也要巢狀解析」）
   const count = block(FUNCBLOCK, B.CTRLU8BLOCKBitmap, { x: 28, y: 8 }, { x: 32, y: 16 },
-    { io: [ioNode(0, { x: 0, y: 0 }, { x: 32, y: 16 })] });
+    { io: [ioNode(0, { x: 0, y: 0 }, { x: 32, y: 16 })], pap: panelCtrl({ x: 12, y: 96 }) });
   count.bap.IONodeLLHead[0].value = 3;
   const show = block(FUNCBLOCK, B.INDICATOR8BLOCKBitmap, { x: 28, y: 38 }, { x: 32, y: 16 },
-    { io: [ioNode(1, { x: 0, y: 0 }, { x: 32, y: 16 })] });
+    { io: [ioNode(1, { x: 0, y: 0 }, { x: 32, y: 16 })], pap: panelIndicator({ x: 100, y: 96 }) });
 
   const forloop = block(LOOPBLOCK, B.FORLOOPBitmap, { x: 4, y: 82 }, loopSize, {
     ctrl: [{ ID: 1, TL: { x: loopSize.x - 7, y: loopSize.y - 7 }, EXT: { x: 7, y: 7 } }],
@@ -387,7 +413,7 @@ const SCENES = {
 const cv = document.getElementById('screen');
 const ctx = cv.getContext('2d');
 const opts = { showId: false, showNodes: false, showGrid: false, showValues: false, showNotReady: false };
-let scene = null, selected = null;
+let scene = null, selected = null, view = 'block';
 
 // Palm 的 WinEraseRectangle 是清成白色；LCD 色調由 CSS 的 .lcd::after 疊上去
 const PAPER = '#ffffff';
@@ -531,6 +557,90 @@ function drawDiagram(blocks, wires, wx, wy) {
   }
 }
 
+/* ==========================================================================
+   前面板 — 對應 Src/panel.c
+
+   同一個元件有兩種外觀：bap 畫在方塊圖上（「程式」那一面），pap 畫在前面板
+   上（「使用者介面」那一面）。這是 LabVIEW 的 front panel 概念。
+   面板座標是絕對值，巢狀元件也一樣 —— DrawPanel() 遞迴進迴圈時並沒有加上
+   位移（panel.c:257），所以迴圈裡的控制鈕在面板上是獨立擺放的。
+   ========================================================================== */
+
+// panel.c:108 ValueDisplay
+function valueDisplay(b) {
+  const v = b.bap.IONodeLLHead[0] ? b.bap.IONodeLLHead[0].value | 0 : 0;
+  switch (b.pap.BITMAPID) {
+    case B.CTRLU8Bitmap:
+    case B.INDICATOR8Bitmap:
+      ctx.font = '9px ui-monospace,Consolas,monospace';
+      ctx.textBaseline = 'top';
+      ctx.fillText(String(v), b.pap.XY.x + 3, b.pap.XY.y + 3);
+      break;
+    case B.LEDOFFBitmap:
+    case B.LEDONBitmap:
+      // LED 是靠換圖來亮／滅的，值本身就決定用哪張圖
+      b.pap.BITMAPID = v ? B.LEDONBitmap : B.LEDOFFBitmap;
+      icon(b.pap.BITMAPID, b.pap.XY.x, b.pap.XY.y);
+      break;
+  }
+}
+
+// panel.c:239 DrawPanel
+function drawPanel(blocks) {
+  for (const b of blocks) {
+    switch (b.bap.BITMAPID) {
+      case B.SWITCHCASEBitmap:
+        break;                                     // panel.c:255 switch case 不上面板
+      case B.FORLOOPBitmap:
+      case B.WHILELOOPBitmap:
+        if (b.hooks) drawPanel(b.hooks[0].blocks);  // 迴圈內的元件也要出現
+        break;
+      default:
+        if (!b.pap) break;
+        if (opts.showId) {                          // panel.c:279 ID 標在元件上方
+          ctx.font = '8px ui-monospace,Consolas,monospace';
+          ctx.textBaseline = 'top';
+          ctx.fillText(String(b.ID), b.pap.XY.x, b.pap.XY.y - 10);
+        }
+        icon(b.pap.BITMAPID, b.pap.XY.x, b.pap.XY.y);
+        valueDisplay(b);
+        if (b.pap.DrawBorder) rect(b.pap.XY.x - 1, b.pap.XY.y - 1, b.pap.SIZE.x + 3, b.pap.SIZE.y + 3);
+    }
+  }
+}
+
+// panel.c:367 ChangeControl —— 面板上按下去會改動元件的值
+function changeControl(b, node) {
+  const io = b.bap.IONodeLLHead[0];
+  if (!io) return;
+  switch (b.pap.BITMAPID) {
+    case B.CTRLU8Bitmap:
+      if (node.ID === 4 /*CONTROLUP*/) io.value = to16(io.value + 1);
+      if (node.ID === 5 /*CONTROLDOWN*/) io.value = to16(io.value - 1);
+      break;
+    case B.SWOFFBitmap: io.value = 1; b.pap.BITMAPID = B.SWONBitmap; break;
+    case B.SWONBitmap:  io.value = 0; b.pap.BITMAPID = B.SWOFFBitmap; break;
+  }
+}
+
+// 面板上的點擊：先找到元件，再看有沒有落在某個控制點上
+function panelHit(blocks, px, py) {
+  for (const b of blocks) {
+    if (b.bap.BITMAPID === B.FORLOOPBitmap || b.bap.BITMAPID === B.WHILELOOPBitmap) {
+      if (b.hooks) { const hit = panelHit(b.hooks[0].blocks, px, py); if (hit) return hit; }
+      continue;
+    }
+    if (b.bap.BITMAPID === B.SWITCHCASEBitmap || !b.pap) continue;
+    const { XY, SIZE } = b.pap;
+    if (px < XY.x || px >= XY.x + SIZE.x || py < XY.y || py >= XY.y + SIZE.y) continue;
+    const node = (b.pap.CTRLNodeLLHead || []).find(n =>
+      px >= XY.x + n.TL.x && px < XY.x + n.TL.x + n.EXT.x &&
+      py >= XY.y + n.TL.y && py < XY.y + n.TL.y + n.EXT.y);
+    return { block: b, node };
+  }
+  return null;
+}
+
 /* block.c:529 執行點畫成 5x5 的方塊（Palm 的 WinDrawRectangle 是實心的）。
    座標已經是絕對值，所以不跟著 drawDiagram 的 window 位移。 */
 function drawRunPoints(blocks, wires) {
@@ -556,8 +666,12 @@ function render() {
     for (let i = 16; i < 160; i += 16) { line(i, 0, i, 159); line(0, i, 159, i); }
     ctx.restore();
   }
-  drawDiagram(scene.blocks, scene.wires, 0, 0);
-  if (LAMP) drawRunPoints(scene.blocks, scene.wires);
+  if (view === 'panel') {
+    drawPanel(scene.blocks);
+  } else {
+    drawDiagram(scene.blocks, scene.wires, 0, 0);
+    if (LAMP) drawRunPoints(scene.blocks, scene.wires);
+  }
   renderTree();
 }
 
@@ -1093,11 +1207,30 @@ cv.addEventListener('pointerdown', ev => {
   const r = cv.getBoundingClientRect();
   const px = Math.floor((ev.clientX - r.left) / (r.width / cv.width));
   const py = Math.floor((ev.clientY - r.top) / (r.height / cv.height));
+
+  if (view === 'panel') {
+    if (selected) { selected.bap.DrawBorder = false; if (selected.pap) selected.pap.DrawBorder = false; }
+    const hit = panelHit(scene.blocks, px, py);
+    selected = hit ? hit.block : null;
+    if (hit) {
+      hit.block.pap.DrawBorder = true;
+      if (hit.node) changeControl(hit.block, hit.node);   // 按在加減鈕上就改值
+    }
+    render();
+    return;
+  }
+
   if (selected) selected.bap.DrawBorder = false;
   selected = hitTest(scene.blocks, px, py);
   if (selected) selected.bap.DrawBorder = true;
   render();
 });
+
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
+  view = t.dataset.view;
+  render();
+}));
 
 /* ========================= 執行的驅動 =========================
    block.c:3096 的 nilEvent 迴圈：RUN==1 的時候每個 event 跑一次 DoRun，
