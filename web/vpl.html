@@ -20,12 +20,15 @@
     --accent:#7aa7d9; --palm:#b9c3a8;
   }
   *{box-sizing:border-box}
-  body{background:var(--bg);color:var(--fg);margin:0;padding:28px 22px;
+  /* 畫布區塊排在最前面，說明文字挪到後面 —— 一打開就看到那台機器 */
+  body{background:var(--bg);color:var(--fg);margin:0;padding:20px 22px 28px;
+       display:flex;flex-direction:column;
        font:14px/1.55 ui-sans-serif,system-ui,"Segoe UI","Noto Sans TC",sans-serif}
-  header{max-width:1000px;margin:0 auto 22px}
+  .wrap{order:1}
+  header{order:2;max-width:1000px;margin:22px auto 0}
   h1{font-size:19px;margin:0 0 3px;letter-spacing:.01em}
   header p{margin:0;color:var(--mut);font-size:13px}
-  .wrap{max-width:1000px;margin:0 auto;display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+  .wrap{max-width:1000px;margin:0 auto;width:100%;display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
   .stage{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px}
   /* Palm 的 bitmap 是不透明的白底黑點，所以畫布一定要是白的，否則每張圖
      都會拖一塊白方框。LCD 的綠色調用 multiply 疊在上層，白變綠、黑仍是黑。 */
@@ -64,9 +67,9 @@
   code{font:12px ui-monospace,Consolas,monospace;background:var(--bd);padding:1px 5px;border-radius:4px}
   /* 手機：讓 160x160 的畫面撐滿寬度，最接近當年握著 PDA 的比例 */
   @media (max-width:640px){
-    body{padding:12px 10px}
+    body{padding:10px 10px 16px}
     h1{font-size:17px}
-    header{margin-bottom:14px}
+    header{margin-top:16px}
     .wrap{gap:14px}
     .stage{padding:10px;width:100%;display:flex;justify-content:center}
     .side{min-width:0;width:100%}
