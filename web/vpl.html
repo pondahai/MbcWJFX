@@ -2137,12 +2137,22 @@ function parseSave(text) {
   }
   const hookBlock = root.blocks.find(b => b.TYPE === HOOKBLOCK) || null;
 
-  function resolve(scope) {
+  /* load.c:687 —— 找起點是 SelfBlockLLHead，也就是**擁有這個 hook 的那顆結構
+     元件**，不是 hook 裡面的串列。load.c:672 的註解把兩種情況寫得很清楚：
+
+       1. IO 點位在迴圈結構上 → 傳回 SelfBlockLLHead 自己
+       2. IO 點位在迴圈結構內 → FindNodeByID 向內探尋
+
+     第 1 種就是 block.c:1503「一端是結構元件本身、另一端在它裡面」那種線，
+     還有 CrossWire 長在邊框上的節點 —— 這些線住在 hook 裡，但有一端指向
+     hook 的擁有者。只從 hook 自己的串列找就會找不到，線段整條被丟掉。 */
+  function resolve(scope, owner) {
     const { blocks, rawWires } = scope;
+    const searchRoot = owner ? [owner] : blocks;
     scope.wires = [];
     for (const r of rawWires) {
-      const sb = (r.sb === 1 && hookBlock) ? hookBlock : findBlock(blocks, r.sb);
-      const eb = (r.eb === 1 && hookBlock) ? hookBlock : findBlock(blocks, r.eb);
+      const sb = (r.sb === 1 && hookBlock) ? hookBlock : findBlock(searchRoot, r.sb);
+      const eb = (r.eb === 1 && hookBlock) ? hookBlock : findBlock(searchRoot, r.eb);
       if (!sb || !eb) continue;                          // 壞掉的參照就跳過，不要整個炸掉
       const sn = sb.bap.IONodeLLHead.find(n => n.ID === r.sn);
       const en = eb.bap.IONodeLLHead.find(n => n.ID === r.en);
@@ -2150,9 +2160,9 @@ function parseSave(text) {
       scope.wires.push({ StartBlockP: sb, StartNodeP: sn, EndBlockP: eb, EndNodeP: en, DIRTY: false });
     }
     delete scope.rawWires;
-    for (const b of blocks) for (const h of b.hooks || []) resolve(h);
+    for (const b of blocks) for (const h of b.hooks || []) resolve(h, b);
   }
-  resolve(root);
+  resolve(root, null);
   linkParents(root.blocks);
 
   /* block.c:132「跳過暗線段」：最外層的 HOOKBLOCK 是這個存檔當成自訂元件
