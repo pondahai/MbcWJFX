@@ -45,6 +45,16 @@
         overflow-x:auto}
   #tree .sel{background:var(--accent);color:#fff;border-radius:3px}
   .hint{color:var(--mut);font-size:12px;margin:10px 0 0}
+  .filebtn{display:inline-block;border:1px solid var(--bd);border-radius:8px;padding:7px 13px;
+           cursor:pointer;font-size:13px;background:var(--bg)}
+  .filebtn:hover{border-color:var(--accent);color:var(--accent)}
+  .filebtn input{display:none}
+  button{border:1px solid var(--bd);border-radius:8px;padding:6px 12px;cursor:pointer;
+         font:13px inherit;background:var(--bg);color:var(--fg)}
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  #status{font-size:12px;margin:10px 0 0;min-height:1em}
+  #status.ok{color:var(--accent)} #status.err{color:#c0392b}
+  .lcd.drop{outline:2px dashed var(--accent);outline-offset:3px}
   code{font:12px ui-monospace,Consolas,monospace;background:var(--bd);padding:1px 5px;border-radius:4px}
 </style>
 </head>
@@ -62,6 +72,17 @@
   </div>
 
   <div class="side">
+    <div class="panel">
+      <h2>存檔</h2>
+      <label class="filebtn">
+        <input type="file" id="file" accept=".pdb,application/octet-stream">
+        選擇 .pdb 檔…
+      </label>
+      <p class="hint">也可以把檔案直接拖到左邊畫面上。範例檔在 <code>web/samples/demo.pdb</code>。</p>
+      <p id="status"></p>
+      <p><button id="reset" type="button">回到內建測試場景</button></p>
+    </div>
+
     <div class="panel">
       <h2>顯示</h2>
       <div class="ctl"><span>縮放</span><input type="range" id="zoom" min="1" max="6" step="1" value="3"><span id="zoomv">3×</span></div>
@@ -454,6 +475,207 @@ function renderTree() {
   document.getElementById('tree').innerHTML = out.join('\n');
 }
 
+/* ==========================================================================
+   讀 Palm 存檔（.pdb）— 對應 Src/save.c 的 DataStruct2ASCII() 與
+   Src/load.c 的 parse_loop()
+
+   存檔內容是純 ASCII，一行關鍵字一行值，位置固定；外面包一層 Palm
+   FileStream 的 PDB 容器（type 'save'、creator 'wjfx'）。
+   ========================================================================== */
+
+// PDB 表頭 78 bytes，記錄表每筆 8 bytes。Palm 的 FileStream 在記錄裡還有
+// 自己的表頭，格式沒有公開文件，所以這裡直接掃 "STARTBLOCK" 取內文 ——
+// 不管中間夾了什麼表頭都讀得到。
+function pdbToText(buf) {
+  const bytes = new Uint8Array(buf);
+  let text = '';
+  for (let i = 0; i < bytes.length; i++) text += String.fromCharCode(bytes[i]);
+  const start = text.indexOf('STARTBLOCK');
+  if (start < 0) throw new Error('這個檔案裡找不到 STARTBLOCK，不像是 MbcWJFX 的存檔');
+  const end = text.lastIndexOf('ENDWIRE');
+  return text.slice(start, end < 0 ? undefined : end + 'ENDWIRE'.length);
+}
+
+function parseSave(text) {
+  const lines = text.split('\n').map(s => s.replace(/\r$/, ''));
+  let p = 0;
+  const next = () => (p < lines.length ? lines[p++] : '');
+  const num = () => parseInt(next(), 10) || 0;
+
+  // 一個 hook 的內容：STARTBLOCK…ENDBLOCK 之後跟著 STARTWIRE…ENDWIRE。
+  // load.c 的 parse_loop() 就是這個結構，遇到結構元件會遞迴。
+  function body() {
+    while (p < lines.length && next() !== 'STARTBLOCK') { /* 找起點 */ }
+
+    const blocks = [];
+    for (;;) {
+      let tok = next();                                  // NEWNODE 或 ENDBLOCK
+      if (tok === 'ENDBLOCK' || tok === '') break;
+
+      next(); const ID = num();                          // ID
+      next(); const TYPE = num();                        // TYPE
+      next();                                            // NEWBAP，一定有
+      next(); const BITMAPID = num();
+      next(); const XY = { x: num(), y: num() };
+      next(); const SIZE = { x: num(), y: num() };
+
+      const io = [], ctrl = [];
+      tok = next();                                      // NEWIONODEP / NEWCTRLNODEP / ENDBAP
+      if (tok === 'NEWIONODEP') {
+        tok = next();
+        while (tok === 'ADDIONODE') {
+          next(); const nID = num();
+          next(); const nTYPE = num();
+          next(); const BYTES = num();
+          next(); const value = num();                   // save.c 只在 BYTES 是 2/4 時寫
+          next(); const TL = { x: num(), y: num() };
+          next(); const EXT = { x: num(), y: num() };
+          io.push({ ID: nID, TYPE: nTYPE, BYTES, value, NotReady: false, TL, EXT });
+          tok = next();
+        }
+      }
+      if (tok === 'NEWCTRLNODEP') {
+        tok = next();
+        while (tok === 'ADDCTRLNODE') {
+          next(); const cID = num();
+          next(); const TL = { x: num(), y: num() };
+          next(); const EXT = { x: num(), y: num() };
+          ctrl.push({ ID: cID, TL, EXT });
+          tok = next();
+        }
+      }
+      // tok 這時應該是 ENDBAP
+
+      let pap = null;
+      tok = next();                                      // NEWPAP 或下一個關鍵字
+      if (tok === 'NEWPAP') {
+        next(); const pBITMAPID = num();
+        next(); const pXY = { x: num(), y: num() };
+        next(); const pSIZE = { x: num(), y: num() };
+        const pctrl = [];
+        tok = next();
+        if (tok === 'NEWCTRLNODEP') {
+          tok = next();
+          while (tok === 'ADDCTRLNODE') {
+            next(); const cID = num();
+            next(); const TL = { x: num(), y: num() };
+            next(); const EXT = { x: num(), y: num() };
+            pctrl.push({ ID: cID, TL, EXT });
+            tok = next();
+          }
+        }
+        pap = { BITMAPID: pBITMAPID, XY: pXY, SIZE: pSIZE, CTRLNodeLLHead: pctrl };
+        tok = next();                                    // 跳過 ENDPAP 之後那一行
+      }
+
+      let hooks = null;
+      if (tok === 'NEWLOOPHOOK') {                       // save.c:202，迴圈只有一個 hook
+        next();                                          // NEWHOOK
+        hooks = [{ name: null, ...body() }];
+        tok = next();
+      }
+      if (tok === 'NEWCASEHOOK') {                       // save.c:209，switch case 有一串
+        hooks = [];
+        tok = next();
+        while (tok === 'NEWHOOK') {
+          // 存檔格式沒有寫 hook->name，原本的分頁名稱（"true"/"false"）
+          // 在存檔時就遺失了，只能用序號代替。
+          hooks.push({ name: 'case ' + hooks.length, ...body() });
+          tok = next();
+        }
+      }
+
+      let filename = null;
+      if (tok === 'FILENAME') {
+        filename = next();
+        tok = next();
+      }
+      // tok 這時是 ENDNODE
+
+      const b = {
+        ID, TYPE,
+        bap: { BITMAPID, XY, SIZE, IONodeLLHead: io, CTRLNodeLLHead: ctrl, DrawBorder: false },
+        pap, hooks, CurrentHOOK: 0, filename, parent: null,
+      };
+      blocks.push(b);
+      if (tok === 'ENDBLOCK') break;
+    }
+
+    while (p < lines.length && next() !== 'STARTWIRE') { /* 找線段區 */ }
+
+    const raw = [];
+    for (;;) {
+      const tok = next();
+      if (tok === 'ENDWIRE' || tok === '') break;
+      if (tok !== 'STARTBID') continue;
+      const sb = num();
+      next(); const sn = num();                          // STARTNID
+      next(); const eb = num();                          // ENDBID
+      next(); const en = num();                          // ENDNID
+      raw.push({ sb, sn, eb, en });
+    }
+    return { blocks, rawWires: raw };
+  }
+
+  const root = body();
+
+  /* 線段存的是 ID，載入時要換回物件參照。load.c:686 的 FindNodeByID 會
+     往結構元件內部找，所以這裡也遞迴搜。ID 1 是特例：load.c:676 把它當成
+     最外層的 HOOKBLOCK（自訂元件的外框）。 */
+  function findBlock(scope, id) {
+    for (const b of scope) {
+      if (b.ID === id) return b;
+      for (const h of b.hooks || []) {
+        const hit = findBlock(h.blocks, id);
+        if (hit) return hit;
+      }
+    }
+    return null;
+  }
+  const hookBlock = root.blocks.find(b => b.TYPE === HOOKBLOCK) || null;
+
+  function resolve(scope) {
+    const { blocks, rawWires } = scope;
+    scope.wires = [];
+    for (const r of rawWires) {
+      const sb = (r.sb === 1 && hookBlock) ? hookBlock : findBlock(blocks, r.sb);
+      const eb = (r.eb === 1 && hookBlock) ? hookBlock : findBlock(blocks, r.eb);
+      if (!sb || !eb) continue;                          // 壞掉的參照就跳過，不要整個炸掉
+      const sn = sb.bap.IONodeLLHead.find(n => n.ID === r.sn);
+      const en = eb.bap.IONodeLLHead.find(n => n.ID === r.en);
+      if (!sn || !en) continue;
+      scope.wires.push({ StartBlockP: sb, StartNodeP: sn, EndBlockP: eb, EndNodeP: en, DIRTY: false });
+    }
+    delete scope.rawWires;
+    for (const b of blocks) for (const h of b.hooks || []) resolve(h);
+  }
+  resolve(root);
+  linkParents(root.blocks);
+
+  /* block.c:132「跳過暗線段」：最外層的 HOOKBLOCK 是這個存檔當成自訂元件
+     時的外框，畫面上不顯示它，接到它身上的線段也不畫。 */
+  const blocks = root.blocks.filter(b => b !== hookBlock);
+  const wires = root.wires.filter(w => w.StartBlockP !== hookBlock && w.EndBlockP !== hookBlock);
+  return { blocks, wires, hookBlock };
+}
+
+async function loadFile(file) {
+  const status = document.getElementById('status');
+  try {
+    const parsed = parseSave(pdbToText(await file.arrayBuffer()));
+    scene = parsed;
+    selected = null;
+    render();
+    const n = (bs) => bs.reduce((s, b) => s + 1 + (b.hooks || []).reduce((t, h) => t + n(h.blocks), 0), 0);
+    status.textContent = `${file.name}：${n(scene.blocks)} 個元件、${scene.wires.length} 條線段`
+      + (parsed.hookBlock ? `（外框 HOOKBLOCK "${parsed.hookBlock.filename || '?'}" 未顯示）` : '');
+    status.className = 'ok';
+  } catch (err) {
+    status.textContent = '讀取失敗：' + err.message;
+    status.className = 'err';
+  }
+}
+
 /* ========================= 互動 ========================= */
 // misc.c:477 IsInArea 的簡化版：由後往前找（後畫的在上層）
 function hitTest(blocks, px, py, wx = 0, wy = 0) {
@@ -478,6 +700,30 @@ cv.addEventListener('pointerdown', ev => {
   selected = hitTest(scene.blocks, px, py);
   if (selected) selected.bap.DrawBorder = true;
   render();
+});
+
+document.getElementById('file').addEventListener('change', e => {
+  if (e.target.files[0]) loadFile(e.target.files[0]);
+});
+document.getElementById('reset').addEventListener('click', () => {
+  scene = buildScene();
+  selected = null;
+  document.getElementById('status').textContent = '';
+  document.getElementById('status').className = '';
+  render();
+});
+
+// 拖放：file:// 底下沒辦法 fetch 本機檔案，所以拖放和檔案挑選是唯二的入口
+const lcd = document.querySelector('.lcd');
+for (const ev of ['dragenter', 'dragover']) {
+  lcd.addEventListener(ev, e => { e.preventDefault(); lcd.classList.add('drop'); });
+}
+for (const ev of ['dragleave', 'drop']) {
+  lcd.addEventListener(ev, e => { e.preventDefault(); lcd.classList.remove('drop'); });
+}
+lcd.addEventListener('drop', e => {
+  const f = e.dataTransfer.files[0];
+  if (f) loadFile(f);
 });
 
 function setZoom(z) {

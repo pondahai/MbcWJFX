@@ -6,18 +6,21 @@
 web/
 ├── vpl.html                  ← 用瀏覽器直接開這個檔
 ├── README.md
+├── samples/
+│   └── demo.pdb              ← 測試用存檔
 └── tools/
-    └── extract_bitmaps.py    ← 從 Starter.prc 抽圖的一次性工具
+    ├── extract_bitmaps.py    ← 從 Starter.prc 抽圖的一次性工具
+    └── make_sample_pdb.py    ← 產生上面那個測試存檔
 ```
 
 ## 現況
 
-目前是**唯讀檢視器**：可以把一張 block diagram 畫在 160×160 的畫布上、
-點選元件、看場景結構。還不能編輯、不能執行、不能讀舊存檔。
+目前是**唯讀檢視器**：可以讀 Palm 的 `.pdb` 存檔、把 block diagram 畫在
+160×160 的畫布上、點選元件、看場景結構。還不能編輯、不能執行。
 
-畫面上的測試場景對應 `Src/testdata.c` 裡的 `set_test_data()`
-（那個函式在原始碼裡整段被註解掉，這裡把它重建起來當第一個渲染目標，
-所以還不需要先解 `.pdb` 存檔格式）。
+載入方式是選檔或把檔案拖到畫面上 —— `file://` 底下瀏覽器不准 fetch 本機檔案，
+所以沒辦法自動載入。預設顯示的是內建測試場景，對應 `Src/testdata.c` 裡
+（整段被註解掉的）`set_test_data()`。
 
 ## 跟 C 原始碼的對應
 
@@ -32,6 +35,8 @@ JS 這邊的欄位名稱沿用 C 的寫法，函式上面標了對應的原始�
 | `absOrigin()` | `Src/block.c:166-189`，沿 `SelfBlockLLHead` 累加出絕對座標 |
 | `icon()` | `Src/misc.c:84` `DrawIcon()` |
 | `hitTest()` | `Src/misc.c:477` `IsInArea()`（簡化版） |
+| `parseSave()` | `Src/load.c:359` `parse_loop()` |
+| `pdbToText()` | `Src/load.c:733` `LOAD()` 的 `FileOpen`／`FileRead` |
 
 C 版本裡 `Src/linklist.c` 那 836 行在手動維護 `PREV`/`NEXT` 雙向鏈結串列，
 JS 直接用陣列和物件參照，所以那一整層不需要重寫。
@@ -66,9 +71,62 @@ Palm 的 bitmap 是**不透明**的（白底黑點），所以畫布底色必須
 另外 `WinDrawLine` 畫的是 1 像素無反鋸齒的線，canvas 要畫出一樣的效果
 得把座標對到像素中心（`+0.5`），否則線會糊成兩像素的灰。
 
+## 存檔格式
+
+`.pdb` 裡面是**純 ASCII**，不是二進位 struct dump —— `Src/save.c` 的
+`DataStruct2ASCII()` 一行關鍵字、一行值地印出來，位置固定：
+
+```
+STARTBLOCK
+  NEWNODE
+    ID / <n>          TYPE / <n>
+    NEWBAP
+      BITMAPID / <n>  XY / <x> / <y>   SIZE / <x> / <y>
+      [NEWIONODEP   (ADDIONODE   ID TYPE BYTES VALUE TL SIZE)* ]
+      [NEWCTRLNODEP (ADDCTRLNODE ID TL SIZE)* ]
+    ENDBAP
+    [NEWPAP  … ENDPAP]
+    [NEWLOOPHOOK NEWHOOK <遞迴>]        ← LOOPBLOCK，只有一個 hook
+    [NEWCASEHOOK (NEWHOOK <遞迴>)*]     ← CASEBLOCK，一串 hook
+    [FILENAME / <name>]
+  ENDNODE
+  …
+ENDBLOCK
+STARTWIRE
+  (STARTBID / <n>  STARTNID / <n>  ENDBID / <n>  ENDNID / <n>)*
+ENDWIRE
+```
+
+外層是 Palm FileStream 的 PDB 容器（type `save`、creator `wjfx`）。
+FileStream 在記錄裡還有自己的表頭，格式沒有公開文件，所以讀檔器是直接
+掃描 `STARTBLOCK` 取出內文 —— 不管中間夾了什麼表頭都讀得到。
+
+### 三個要注意的地方
+
+1. **線段的 block ID `1` 是特例。** `Src/load.c:676` 把它解讀成最外層的
+   `HOOKBLOCK`，也就是這個存檔被當成自訂元件時的外框。畫面上不顯示它，
+   接到它身上的線段也不畫（`Src/block.c:132` 的「跳過暗線段」）。
+
+2. **switch case 的分頁名稱在存檔裡是遺失的。** `DataStruct2ASCII()` 寫
+   case hook 的時候沒有寫 `hook->name`，所以原本的 `"true"` / `"false"`
+   救不回來，只能用 `case 0` / `case 1` 代替。
+
+3. **原版的 loader 根本沒有實作 `NEWCASEHOOK`。** `Src/load.c:569` 那裡
+   留了一句「5-26 未完成」，讀到就直接跳過 —— 也就是說當年 switch case
+   裡面的東西，存檔存得進去、載入卻會整個不見。寫檔那邊的格式是完整的，
+   所以這個讀檔器把它補上了。
+
+### 驗證程度
+
+`web/samples/demo.pdb` 是用 `tools/make_sample_pdb.py` 照 `save.c` 的格式
+產生的，內容跟內建測試場景一樣，載進去會畫出同一張圖（round-trip 測試）。
+
+**但是還沒有拿真正由 Palm 寫出來的檔案驗證過** —— repo 裡沒有留下任何當年
+存的 `.pdb`。如果你手上找得到，值得拿來試，特別是 FileStream 容器那一層。
+
 ## 下一步
 
-- [ ] 讀 Palm `.pdb` 存檔（`Src/load.c` / `Src/save.c`），才能開舊作品
+- [ ] 拿真正的 Palm `.pdb` 驗證讀檔器
 - [ ] 編輯：拖曳元件、拉線（`Src/block.c` 的 `BlockpenDownProcess` / `BlockpenMoveProcess`）
 - [ ] 執行引擎（`Src/run.c`：dirty bit 傳播、`NotReady`、巢狀 forloop）
 - [ ] 元件面板與工具列（`Src/panel.c`、`Src/functions.c`）
