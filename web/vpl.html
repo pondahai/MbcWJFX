@@ -207,6 +207,9 @@ const SPRITES = {
 };
 const B = Object.fromEntries(Object.entries(SPRITES).map(([k, v]) => [v.n, +k]));
 /* <</SPRITES>> */
+/* <<PALETTE>> 由 tools/extract_palette.py 產生，請勿手改 */
+const PALETTE = [{"bmp":6100,"w":32,"h":32,"name":"FUNCARITH","items":[{"bmp":1000,"w":16,"h":16,"name":"ADD"},{"bmp":1100,"w":16,"h":16,"name":"SUB"},{"bmp":1200,"w":16,"h":16,"name":"MUL"},{"bmp":1300,"w":16,"h":16,"name":"DIV"},{"bmp":3100,"w":32,"h":16,"name":"INDICATOR8BLOCK","pap":{"bmp":1400,"w":32,"h":16}},{"bmp":3200,"w":32,"h":16,"name":"CTRLU8BLOCK","pap":{"bmp":1500,"w":32,"h":16}}]},{"bmp":6200,"w":32,"h":32,"name":"FUNCLOGIC","items":[{"bmp":3900,"w":16,"h":16,"name":"AND"},{"bmp":4000,"w":16,"h":16,"name":"OR"},{"bmp":4100,"w":16,"h":16,"name":"NOT"},{"bmp":4800,"w":32,"h":16,"name":"LOGICINDICATOR","pap":{"bmp":4400,"w":16,"h":32}},{"bmp":4700,"w":32,"h":16,"name":"LOGICCTRL","pap":{"bmp":4600,"w":16,"h":32}}]},{"bmp":6300,"w":32,"h":32,"name":"FUNCSTRUCT","items":[{"bmp":4900,"w":32,"h":32,"name":"FORLOOP","ctrl":[{"ID":1,"x":25,"y":25,"w":7,"h":7}],"loop":true},{"bmp":5000,"w":32,"h":32,"name":"WHILELOOP","ctrl":[{"ID":1,"x":25,"y":25,"w":7,"h":7}],"loop":true},{"bmp":5100,"w":32,"h":32,"name":"SWITCHCASE"}]},{"bmp":6400,"w":32,"h":32,"name":"FUNCSTR","items":[]},{"bmp":6500,"w":32,"h":32,"name":"FUNCCUST","items":[]},{"bmp":6600,"w":32,"h":32,"name":"FUNCARRAY","items":[]},{"bmp":6700,"w":32,"h":32,"name":"FUNCTIME","items":[]},{"bmp":6800,"w":32,"h":32,"name":"FUNCCOMP","items":[{"bmp":7000,"w":16,"h":16,"name":"ABOVE"},{"bmp":7100,"w":16,"h":16,"name":"LESS"},{"bmp":7200,"w":16,"h":16,"name":"EQU"},{"bmp":7300,"w":16,"h":16,"name":"ABOVEEQU"},{"bmp":7400,"w":16,"h":16,"name":"LESSEQU"}]},{"bmp":6900,"w":32,"h":32,"name":"FUNCFILE","items":[]}];
+/* <</PALETTE>> */
 </script>
 
 <script>
@@ -400,9 +403,15 @@ function buildRunScene() {
   return { blocks, wires };
 }
 
+function buildEmptyScene() {
+  nextId = 1;
+  return { blocks: [], wires: [] };
+}
+
 const SCENES = {
   layout: { name: '版面示範', build: buildScene },
   run: { name: '資料流（可執行）', build: buildRunScene },
+  empty: { name: '空白（自己畫）', build: buildEmptyScene },
 };
 
 /* ==========================================================================
@@ -555,6 +564,246 @@ function drawDiagram(blocks, wires, wx, wy) {
       }
     }
   }
+}
+
+/* ==========================================================================
+   元件面板與工具選單 — 對應 Src/functions.c
+
+   兩個彈出視窗的幾何寫在 Src/StarterRsc.h 的表單定義裡：
+   FunctionsForm 是 (50,1) 100x157，BlockToolsForm 是 (118,1) 40x109。
+   格線排法取自 functions.c:333 DrawToolIcon()：x 依序 1/34/67，
+   每滿三個換行、y 加 35，起點 (1,16) —— 這些都是相對於視窗左上角。
+   ========================================================================== */
+
+const FORM_FUNCTIONS = { x: 50, y: 1, w: 100, h: 157 };
+const FORM_TOOLS = { x: 118, y: 1, w: 40, h: 109 };
+
+// 工具選單的內容（block.c:3044 的 PageUp 循環順序）
+const BLOCK_TOOLS = ['HANDBitmap', 'DRAGBitmap', 'THREADBitmap', 'SCISSORBitmap', 'KILLBitmap'];
+const PANEL_TOOLS = ['HANDBitmap', 'FINGERBitmap', 'PENCILBitmap'];
+
+let popup = null;        // null | {kind:'functions', cat:number|null} | {kind:'tools'}
+
+// functions.c:333 DrawToolIcon 的格線
+function paletteSlot(i) {
+  return { x: 1 + (i % 3) * 33, y: 16 + Math.floor(i / 3) * 35 };
+}
+
+function drawFormFrame(f, title) {
+  eraseRect(f.x, f.y, f.w, f.h);
+  rect(f.x, f.y, f.w, f.h);
+  ctx.fillRect(f.x, f.y, f.w, 13);
+  ctx.font = 'bold 10px ui-sans-serif,system-ui,sans-serif';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = '#fff';
+  ctx.fillText(title, f.x + f.w / 2 - ctx.measureText(title).width / 2, f.y + 1);
+  ctx.fillStyle = '#111';
+}
+
+function popupItems() {
+  if (!popup) return [];
+  if (popup.kind === 'tools') return (view === 'panel' ? PANEL_TOOLS : BLOCK_TOOLS).map(n => ({ bmp: B[n] }));
+  return popup.cat === null ? PALETTE : PALETTE[popup.cat].items;
+}
+
+function drawPopup() {
+  if (!popup) return;
+  if (popup.kind === 'tools') {
+    const f = FORM_TOOLS;
+    drawFormFrame(f, 'Tools');
+    popupItems().forEach((it, i) => {
+      const x = f.x + 11, y = f.y + 16 + i * 18;
+      icon(it.bmp, x, y);
+      if (it.bmp === pointerState) rect(x - 2, y - 2, 22, 22);   // 目前選的工具
+    });
+    return;
+  }
+  const f = FORM_FUNCTIONS;
+  drawFormFrame(f, popup.cat === null ? 'Functions' : PALETTE[popup.cat].name.replace('FUNC', ''));
+  popupItems().forEach((it, i) => {
+    const s = paletteSlot(i);
+    icon(it.bmp, f.x + s.x, f.y + s.y);
+  });
+}
+
+function popupHit(px, py) {
+  if (!popup) return -2;
+  const f = popup.kind === 'tools' ? FORM_TOOLS : FORM_FUNCTIONS;
+  if (px < f.x || px >= f.x + f.w || py < f.y || py >= f.y + f.h) return -2;   // 點在視窗外
+  const items = popupItems();
+  if (popup.kind === 'tools') {
+    for (let i = 0; i < items.length; i++) {
+      const y = f.y + 16 + i * 18;
+      if (px >= f.x + 11 && px < f.x + 29 && py >= y && py < y + 18) return i;
+    }
+    return -1;
+  }
+  for (let i = 0; i < items.length; i++) {
+    const s = paletteSlot(i);
+    const x = f.x + s.x, y = f.y + s.y;
+    if (px >= x && px < x + (items[i].w || 32) && py >= y && py < y + (items[i].h || 32)) return i;
+  }
+  return -1;
+}
+
+/* functions.c:545 AddToSYSHOOK —— 從面板挑一個元件，實例化成真的方塊。
+   IO 節點的配置全部照原始碼，位置一律先放在 (10,20)。 */
+function addToSysHook(spec) {
+  const io = (TYPE, TL, EXT, ID, BYTES = 2) =>
+    ({ ID, TYPE, NotReady: false, BYTES, value: 0, TL, EXT });
+  const P = (x, y) => ({ x, y });
+  const XY = P(10, 20), SIZE = P(spec.w, spec.h);
+  const ctrl = (spec.ctrl || []).map(c => ({ ID: c.ID, TL: P(c.x, c.y), EXT: P(c.w, c.h) }));
+  const bmp = spec.bmp;
+  let b;
+
+  if (bmp === B.FORLOOPBitmap || bmp === B.WHILELOOPBitmap) {
+    b = block(LOOPBLOCK, bmp, XY, SIZE, {
+      ctrl: ctrl.length ? ctrl : [{ ID: 1, TL: P(25, 25), EXT: P(7, 7) }],
+      hooks: [{ name: null, blocks: [], wires: [] }],
+    });
+    if (bmp === B.FORLOOPBitmap) {
+      // functions.c:830 迴圈的兩個預設元件 N 和 I，值是 4 bytes 的 long
+      const N = block(CTRLBLOCK, B.FORLOOPNBitmap, P(0, 5), P(10, 10),
+        { io: [io(1, P(0, 0), P(10, 10), 0, 4)] });
+      const I = block(CTRLBLOCK, B.FORLOOPIBitmap, P(0, 17), P(10, 10),
+        { io: [io(0, P(0, 0), P(10, 10), 0, 4)] });
+      b.hooks[0].blocks.push(N, I);
+    } else {
+      // functions.c:881 while 迴圈的條件元件
+      const C = block(CTRLBLOCK, B.WHILELOOPLOOPBitmap, P(SIZE.x - 10, SIZE.y - 18), P(10, 10),
+        { io: [io(1, P(0, 0), P(10, 10), 0)] });
+      b.hooks[0].blocks.push(C);
+    }
+  } else if (bmp === B.SWITCHCASEBitmap) {
+    b = block(CASEBLOCK, bmp, XY, SIZE, {
+      ctrl: [
+        { ID: 1 /*DRAGNODE*/, TL: P(25, 25), EXT: P(7, 7) },
+        { ID: 2 /*SCPAGEUP*/, TL: P(25, 1), EXT: P(6, 13) },
+        { ID: 3 /*SCPAGEDOWN*/, TL: P(1, 1), EXT: P(6, 13) },
+      ],
+      hooks: [{ name: 'true', blocks: [], wires: [] }, { name: 'false', blocks: [], wires: [] }],
+    });
+  } else {
+    let nodes = [];
+    switch (bmp) {
+      case B.ADDBitmap: case B.SUBBitmap: case B.MULBitmap: case B.DIVBitmap:
+      case B.ANDBitmap: case B.ORBitmap:
+      case B.ABOVEBitmap: case B.LESSBitmap: case B.EQUBitmap:
+      case B.ABOVEEQUBitmap: case B.LESSEQUBitmap:
+        // functions.c:737 兩個輸入疊在左半邊，一個輸出佔右半邊
+        nodes = [io(1, P(0, 0), P(8, 8), 0), io(1, P(0, 8), P(8, 8), 1), io(0, P(8, 0), P(8, 16), 2)];
+        break;
+      case B.NOTBitmap:
+        nodes = [io(1, P(0, 0), P(8, 16), 0), io(0, P(8, 0), P(8, 16), 1)];
+        break;
+      case B.INDICATOR8BLOCKBitmap: case B.LOGICINDICATORBitmap:
+        nodes = [io(1, P(0, 0), P(32, 16), 0)];
+        break;
+      case B.CTRLU8BLOCKBitmap: case B.LOGICCTRLBitmap:
+        nodes = [io(0, P(0, 0), P(32, 16), 0)];
+        break;
+    }
+    const opt = { io: nodes };
+    if (spec.pap) {
+      opt.pap = spec.pap.bmp === B.CTRLU8Bitmap ? panelCtrl(P(10, 20))
+        : { BITMAPID: spec.pap.bmp, XY: P(10, 20), SIZE: P(spec.pap.w, spec.pap.h), CTRLNodeLLHead: [] };
+    }
+    b = block(FUNCBLOCK, bmp, XY, SIZE, opt);
+  }
+
+  b.parent = null;
+  scene.blocks.push(b);
+  linkParents(scene.blocks);
+  resetRun();
+  return b;
+}
+
+/* ==========================================================================
+   編輯工具 —— 接線（THREAD）、剪線（SCISSOR）、刪除（KILL）
+   對應 Src/block.c 的 BlockpenDownProcess 那一大段。
+   ========================================================================== */
+
+let wireStart = null;   // block.c 的公共變數 WireStart
+
+// 找出點到哪個 IO 節點。節點的位置是元件位置加上節點的相對位移。
+function nodeHit(blocks, px, py) {
+  for (let i = blocks.length - 1; i >= 0; i--) {
+    const b = blocks[i];
+    for (const h of b.hooks || []) {
+      if (b.TYPE === CASEBLOCK && h !== b.hooks[b.CurrentHOOK]) continue;
+      const inner = nodeHit(h.blocks, px, py);
+      if (inner) return inner;
+    }
+    const o = absOrigin(b);
+    for (const n of b.bap.IONodeLLHead) {
+      const x = o.x + b.bap.XY.x + n.TL.x, y = o.y + b.bap.XY.y + n.TL.y;
+      if (px >= x && px < x + n.EXT.x && py >= y && py < y + n.EXT.y) return { block: b, node: n };
+    }
+  }
+  return null;
+}
+
+/* 線段要放進哪個 hook？原版靠 SelfBlockLLHead 判斷所屬範圍
+   （block.c:1206 CrossWire 處理跨層的情況）。這裡取兩端共同的父層。 */
+function scopeFor(a, b) {
+  const chain = x => { const c = []; for (let p = x; p; p = p.parent) c.unshift(p); return c; };
+  const ca = chain(a.parent), cb = chain(b.parent);
+  let common = null;
+  for (let i = 0; i < Math.min(ca.length, cb.length); i++) {
+    if (ca[i] === cb[i]) common = ca[i]; else break;
+  }
+  return common ? common.hooks[common.TYPE === CASEBLOCK ? common.CurrentHOOK : 0] : scene;
+}
+
+function addWire(a, b) {
+  const scope = scopeFor(a.block, b.block);
+  scope.wires.push({
+    StartBlockP: a.block, StartNodeP: a.node,
+    EndBlockP: b.block, EndNodeP: b.node,
+    DIRTY: false, STARTRUN: false, RUNSEG: 0, RUNPOINT: { x: 0, y: 0 },
+  });
+  resetRun();
+}
+
+// 剪刀：找出點在哪條線段上（用三段折線逐段算距離）
+function wireHit(scope, px, py) {
+  for (const w of scope.wires) {
+    const s = nodeCenter(w.StartBlockP, w.StartNodeP);
+    const e = nodeCenter(w.EndBlockP, w.EndNodeP);
+    const [t1, t2] = turnLine(s, e);
+    const segs = [[s, t1], [t1, t2], [t2, e]];
+    for (const [p, q] of segs) {
+      const near = px >= Math.min(p.x, q.x) - 2 && px <= Math.max(p.x, q.x) + 2 &&
+                   py >= Math.min(p.y, q.y) - 2 && py <= Math.max(p.y, q.y) + 2;
+      if (near) return { scope, wire: w };
+    }
+  }
+  for (const b of scope.blocks) {
+    for (const h of b.hooks || []) {
+      if (b.TYPE === CASEBLOCK && h !== b.hooks[b.CurrentHOOK]) continue;
+      const hit = wireHit(h, px, py);
+      if (hit) return hit;
+    }
+  }
+  return null;
+}
+
+// block.c:1693 BreakWireConnection —— 刪元件之前要先拆掉接在它身上的線
+function removeBlock(scope, target) {
+  const strip = sc => {
+    sc.wires = sc.wires.filter(w => w.StartBlockP !== target && w.EndBlockP !== target);
+    for (const b of sc.blocks) for (const h of b.hooks || []) strip(h);
+  };
+  strip(scene);
+  const drop = sc => {
+    const i = sc.blocks.indexOf(target);
+    if (i >= 0) { sc.blocks.splice(i, 1); return true; }
+    for (const b of sc.blocks) for (const h of b.hooks || []) if (drop(h)) return true;
+    return false;
+  };
+  drop(scene);
+  resetRun();
 }
 
 /* ==========================================================================
@@ -715,6 +964,7 @@ function render() {
     if (LAMP) drawRunPoints(scene.blocks, scene.wires);
   }
   drawToolbar();     // block.c:1166 工具列是最後畫的，蓋在圖上面
+  drawPopup();       // 彈出視窗又蓋在工具列上面
   renderTree();
 }
 
@@ -1246,10 +1496,42 @@ function hitTest(blocks, px, py, wx = 0, wy = 0) {
   return null;
 }
 
-cv.addEventListener('pointerdown', ev => {
+function canvasPos(ev) {
   const r = cv.getBoundingClientRect();
-  const px = Math.floor((ev.clientX - r.left) / (r.width / cv.width));
-  const py = Math.floor((ev.clientY - r.top) / (r.height / cv.height));
+  return {
+    x: Math.floor((ev.clientX - r.left) / (r.width / cv.width)),
+    y: Math.floor((ev.clientY - r.top) / (r.height / cv.height)),
+  };
+}
+
+let drag = null;   // {block, dx, dy}
+
+cv.addEventListener('pointerdown', ev => {
+  const { x: px, y: py } = canvasPos(ev);
+
+  // 彈出視窗在最上層，先攔
+  if (popup) {
+    const hit = popupHit(px, py);
+    if (hit === -2) { popup = null; render(); return; }       // 點視窗外就關掉
+    if (hit === -1) { render(); return; }
+    if (popup.kind === 'tools') {
+      pointerState = popupItems()[hit].bmp;
+      wireStart = null;
+      popup = null;
+      runStatus('工具：' + (SPRITES[pointerState] || {}).n);
+    } else if (popup.cat === null) {
+      if (PALETTE[hit].items.length) popup = { kind: 'functions', cat: hit };
+      else runStatus(PALETTE[hit].name.replace('FUNC', '') + ' 這個分類當年沒做完，是空的');
+    } else {
+      const b = addToSysHook(PALETTE[popup.cat].items[hit]);
+      popup = null;
+      selected = b;
+      b.bap.DrawBorder = true;
+      runStatus(`加入 #${b.ID} ${(SPRITES[b.bap.BITMAPID] || {}).n}，用手工具拖到想要的位置`);
+    }
+    render();
+    return;
+  }
 
   // 工具列在畫面裡面，所以要先攔（block.c:1934）
   const tool = toolbarHit(px, py);
@@ -1258,7 +1540,8 @@ cv.addEventListener('pointerdown', ev => {
     else if (tool === 'stop') stopButton();
     else if (tool === 'lamp') lampButton();
     else if (tool === 'forever') foreverButton();
-    else runStatus(tool === 'functions' ? '元件面板尚未實作（2.png 那個選單）' : '工具尚未實作');
+    else if (tool === 'functions') { popup = { kind: 'functions', cat: null }; render(); }
+    else { popup = { kind: 'tools' }; render(); }
     return;
   }
 
@@ -1274,11 +1557,76 @@ cv.addEventListener('pointerdown', ev => {
     return;
   }
 
+  // 接線工具：點第一個 IO 節點記起來，點第二個就連起來
+  if (pointerState === B.THREADBitmap) {
+    const n = nodeHit(scene.blocks, px, py);
+    if (!n) { wireStart = null; runStatus('接線：要點在 IO 節點上'); render(); return; }
+    if (!wireStart) {
+      wireStart = n;
+      runStatus(`接線：從 #${n.block.ID} 的 ${n.node.TYPE ? 'in' : 'out'}[${n.node.ID}] 出發，再點另一端`);
+    } else if (wireStart.node === n.node) {
+      wireStart = null;
+      runStatus('接線取消');
+    } else {
+      addWire(wireStart, n);
+      runStatus(`接好 #${wireStart.block.ID} → #${n.block.ID}`);
+      wireStart = null;
+    }
+    render();
+    return;
+  }
+
+  // 剪刀：剪掉一條線段
+  if (pointerState === B.SCISSORBitmap) {
+    const hit = wireHit(scene, px, py);
+    if (hit) {
+      hit.scope.wires.splice(hit.scope.wires.indexOf(hit.wire), 1);
+      resetRun();
+      runStatus('剪掉一條線段');
+    } else runStatus('剪刀：要點在線段上');
+    render();
+    return;
+  }
+
+  // 刪除工具
+  if (pointerState === B.KILLBitmap) {
+    const b = hitTest(scene.blocks, px, py);
+    if (b) {
+      removeBlock(scene, b);
+      if (selected === b) selected = null;
+      runStatus(`刪掉 #${b.ID}`);
+    } else runStatus('刪除：要點在元件上');
+    render();
+    return;
+  }
+
   if (selected) selected.bap.DrawBorder = false;
   selected = hitTest(scene.blocks, px, py);
-  if (selected) selected.bap.DrawBorder = true;
+  if (selected) {
+    selected.bap.DrawBorder = true;
+    // 手工具才能拖。座標是相對於元件所屬的層，所以要扣掉父層的位移
+    if (pointerState === B.HANDBitmap) {
+      const o = absOrigin(selected);
+      drag = { block: selected, dx: px - o.x - selected.bap.XY.x, dy: py - o.y - selected.bap.XY.y };
+      cv.setPointerCapture(ev.pointerId);
+    }
+  }
   render();
 });
+
+cv.addEventListener('pointermove', ev => {
+  if (!drag) return;
+  const { x: px, y: py } = canvasPos(ev);
+  const o = absOrigin(drag.block);
+  // misc.c:800 PointIconYExt：筆點被夾在 18 以下，拖不到工具列上面去
+  drag.block.bap.XY.x = Math.max(0, px - o.x - drag.dx);
+  drag.block.bap.XY.y = Math.max(TOOLBAR_H - o.y, py - o.y - drag.dy);
+  render();
+});
+
+for (const e of ['pointerup', 'pointercancel']) {
+  cv.addEventListener(e, () => { drag = null; });
+}
 
 document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
@@ -1394,6 +1742,7 @@ document.getElementById('speed').addEventListener('input', e => {
 
 /* ========================= 場景切換 ========================= */
 function setScene(builder, label) {
+  popup = null; wireStart = null; drag = null;
   killTimer(); RUN = 0; STOP = 0;
   ticks = 0;
   scene = builder();

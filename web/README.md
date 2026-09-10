@@ -17,8 +17,10 @@ web/
 
 目前可以讀 Palm 的 `.pdb` 存檔、把 block diagram 畫在 160×160 的畫布上、
 點選元件、看場景結構，**能執行**（執行／單步／停止，附即時的節點狀態表和
-線段動畫），也有**前面板**（Block / Panel 兩個分頁，面板上的控制鈕按得動）。
-還不能編輯。
+線段動畫），有**前面板**（Block / Panel 兩個分頁，面板上的控制鈕按得動），
+也**能編輯** —— 從元件面板拿元件、拖曳、接線、剪線、刪除。
+
+選「空白（自己畫）」場景就可以從零做一支程式。
 
 排版和行為對照的是 repo 根目錄那幾張當年的截圖：`1.png` 是方塊圖、
 `mbcwjfx.jpg` 是前面板、`2.png` 是元件面板（還沒做）。
@@ -87,6 +89,59 @@ Palm 的 bitmap 是**不透明**的（白底黑點），所以畫布底色必須
 
 另外 `WinDrawLine` 畫的是 1 像素無反鋸齒的線，canvas 要畫出一樣的效果
 得把座標對到像素中心（`+0.5`），否則線會糊成兩像素的灰。
+
+## 元件面板
+
+工具列 x=120 那個按鈕打開的就是 `2.png` 那個 3×3 選單。
+
+原版的面板內容是執行時從一個叫 `func` 的 pdb 資料庫讀進來的
+（`Src/functions.c:274`），**那個檔案沒有留下來**。但同一個檔案裡有一段被
+註解掉的 `functxt` 字串常數，內容就是那個資料庫的原文 —— 9 個分類、每個分類
+底下的元件、連 pap 和控制點都在裡面。`tools/extract_palette.py` 直接從註解裡
+把它挖出來，不用手抄。
+
+抽出來是 9 個分類、19 個元件：
+
+| 分類 | 內容 |
+| --- | --- |
+| FUNCARITH 算術 | ADD, SUB, MUL, DIV, INDICATOR8BLOCK, CTRLU8BLOCK |
+| FUNCLOGIC 邏輯 | AND, OR, NOT, LOGICINDICATOR, LOGICCTRL |
+| FUNCSTRUCT 結構 | FORLOOP, WHILELOOP, SWITCHCASE |
+| FUNCCOMP 比較 | ABOVE, LESS, EQU, ABOVEEQU, LESSEQU |
+| FUNCSTR 字串 | *(空)* |
+| FUNCCUST 自訂 | *(空)* |
+| FUNCARRAY 陣列 | *(空)* |
+| FUNCTIME 時間 | *(空)* |
+| FUNCFILE 檔案 | *(空)* |
+
+**9 個分類裡有 5 個是空的** —— 字串、自訂、陣列、時間、檔案這些圖示都畫好了、
+分類也建好了，但底下一個元件都沒有。當年做到一半。
+
+彈出視窗的幾何來自表單定義（`Src/StarterRsc.h:34`）：`FunctionsForm` 是
+(50,1) 100×157、`BlockToolsForm` 是 (118,1) 40×109。格線排法照
+`functions.c:333` `DrawToolIcon()`：x 依序 1/34/67，每滿三個換行、y 加 35。
+
+挑一個元件之後由 `addToSysHook()` 實例化（`Src/functions.c:545`），
+IO 節點的配置全部照原始碼，例如運算元件是兩個 8×8 的輸入疊在左半邊、
+一個 8×16 的輸出佔右半邊；for 迴圈會自動長出 N 和 I 兩個預設元件，
+而且它們的值是 **4 bytes 的 long**（`functions.c:843`），跟其他節點的 2 bytes 不同。
+
+## 編輯工具
+
+工具列最右邊那格打開工具選單，順序照 `Src/block.c:3044` 的 PageUp 循環：
+
+| 工具 | 行為 |
+| --- | --- |
+| HAND 手 | 拖曳元件。y 被夾在 18 以下，拖不到工具列上面（`Src/misc.c:800`） |
+| THREAD 線 | 點兩個 IO 節點接線 |
+| SCISSOR 剪刀 | 點線段剪掉 |
+| KILL 刪除 | 刪元件，接在它身上的線一併拆掉（`Src/block.c:1693` `BreakWireConnection`） |
+| DRAG 拖拉 | 尚未實作（改變結構元件大小用的） |
+
+線段要放進哪個 hook 是靠 `scopeFor()` 取兩端**共同的父層**決定的：迴圈裡的
+兩個元件接線會落在迴圈自己的 `wires`，不是頂層。原版是靠 `SelfBlockLLHead`
+判斷所屬範圍，跨層的情況另外由 `Src/block.c:1206` `CrossWire()` 處理 ——
+那個還沒移植。
 
 ## 工具列
 
@@ -273,6 +328,8 @@ FileStream 在記錄裡還有自己的表頭，格式沒有公開文件，所以
 
 - [ ] 拿真正的 Palm `.pdb` 驗證讀檔器
 - [ ] 編輯：拖曳元件、拉線（`Src/block.c` 的 `BlockpenDownProcess` / `BlockpenMoveProcess`）
+- [ ] 跨層接線（`Src/block.c:1206` `CrossWire()`）
+- [ ] DRAG 工具：改變結構元件的大小
+- [ ] 存檔（寫出 `.pdb`，格式已經知道了）
 - [ ] 自訂元件的執行（`DoRun_HOOKBLOCK`）
-- [ ] 面板上的數字鍵盤（`DrawDecimalIntKeyboard`）
-- [ ] 元件面板與工具列（`Src/panel.c`、`Src/functions.c`）
+- [ ] 面板上的數字鍵盤（`DrawDecimalIntKeyboard`）（`Src/panel.c`、`Src/functions.c`）
