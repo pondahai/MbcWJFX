@@ -73,6 +73,7 @@
 | `GetNodeData` | ✅ | |
 | `IsInArea` | ✅ | `hitTest()` |
 | `CheckOnCTRLNode` | ✅ | `ctrlHit()`，面板與方塊圖都有 |
+| `CheckOnNode` | ✅ | `nodeHit()` + `drawNodeHighlight()` |
 | `DrawDecimalIntKeyboard` | ✅ | `drawKeyboard()` |
 | `EraseDecimalIntKeyboard` | ➖ | 網頁版整張重畫 |
 | `KeyboardPendownProcess` | ✅ | `keyboardHit()` |
@@ -127,8 +128,14 @@
 ## 已知缺陷（行為跟原版不一樣）
 
 1. ~~接線可以連到同一個元件的兩個節點~~ — 已修（`block.c:1593`）
-2. ~~接線的手勢不同~~ — 已改成拖曳。原版 `BlockpenMoveProcess` 裡沒有
-   THREAD 的處理，所以拖的過程**本來就沒有預覽線**，這點也一致
+2. ~~接線的手勢不同~~ — 已改成拖曳，並補上節點反白。
+
+   **這裡我原本判斷錯了。** 我先前寫「原版 `BlockpenMoveProcess` 裡沒有
+   THREAD 的處理，拖的過程本來就沒有預覽線」—— 錯的，是我搜尋時只掃了函式
+   的前半段。`block.c:2597` 有處理：拖的時候會呼叫
+   `CheckOnNode(..., Draw=true)`，把筆下的 IO 節點畫成**實心方塊**反白
+   （`misc.c:368`，Palm 的 `WinDrawRectangle` 是實心的）。所以原版是有
+   接線提示的，只是提示方式是節點反白而不是橡皮筋線。現在已經補上。
 3. ~~switch case 不能翻頁~~ — 已修。翻頁在 **DRAG 工具**底下，不是 HAND
    （`block.c:2151` 那個 case 才是，我原本分類錯了）
 4. ~~執行中還可以編輯~~ — 已修（`stopForEdit()`，`block.c:2049`）

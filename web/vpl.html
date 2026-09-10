@@ -726,6 +726,7 @@ function addToSysHook(spec) {
    ========================================================================== */
 
 let wireStart = null;   // block.c 的公共變數 WireStart
+let hoverNode = null;   // 拉線時筆下的節點，misc.c:368 會把它反白
 
 // block.c:2049 執行中不可編輯：一動編輯工具就強制停止
 function stopForEdit() {
@@ -1034,6 +1035,17 @@ function panelHit(blocks, px, py) {
   return null;
 }
 
+/* misc.c:368 CheckOnNode(Draw=true) —— 拉線時把筆下的節點反白成實心方塊。
+   起點也一起標出來，這樣才看得出線是從哪拉到哪。 */
+function drawNodeHighlight() {
+  for (const h of [wireStart, hoverNode]) {
+    if (!h) continue;
+    const o = absOrigin(h.block);
+    ctx.fillRect(o.x + h.block.bap.XY.x + h.node.TL.x, o.y + h.block.bap.XY.y + h.node.TL.y,
+                 h.node.EXT.x, h.node.EXT.y);
+  }
+}
+
 /* block.c:529 執行點畫成 5x5 的方塊（Palm 的 WinDrawRectangle 是實心的）。
    座標已經是絕對值，所以不跟著 drawDiagram 的 window 位移。 */
 function drawRunPoints(blocks, wires) {
@@ -1064,6 +1076,7 @@ function render() {
   } else {
     drawDiagram(scene.blocks, scene.wires, 0, 0);
     if (LAMP) drawRunPoints(scene.blocks, scene.wires);
+    drawNodeHighlight();
   }
   drawToolbar();     // block.c:1166 工具列是最後畫的，蓋在圖上面
   drawPopup();       // 彈出視窗又蓋在工具列上面
@@ -1937,6 +1950,14 @@ cv.addEventListener('pointerdown', ev => {
 });
 
 cv.addEventListener('pointermove', ev => {
+  // 拉線中：把筆下的節點反白（block.c:2615 CheckOnNode）
+  if (wireStart) {
+    const { x: px, y: py } = canvasPos(ev);
+    const n = nodeHit(scene.blocks, px, py);
+    const next = n && n.node !== wireStart.node && n.block !== wireStart.block ? n : null;
+    if (next !== hoverNode) { hoverNode = next; render(); }
+    return;
+  }
   if (resize) {
     const { x: px, y: py } = canvasPos(ev);
     // 結構元件不能小到裝不下裡面的東西，給一個下限
@@ -1972,12 +1993,13 @@ cv.addEventListener('pointerup', ev => {
       runStatus(`接好 #${wireStart.block.ID} → #${n.block.ID}`);
     }
     wireStart = null;
+    hoverNode = null;
     render();
   }
   drag = null;
 });
 
-cv.addEventListener('pointercancel', () => { drag = null; resize = null; wireStart = null; });
+cv.addEventListener('pointercancel', () => { drag = null; resize = null; wireStart = null; hoverNode = null; });
 
 document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
@@ -2093,7 +2115,7 @@ document.getElementById('speed').addEventListener('input', e => {
 
 /* ========================= 場景切換 ========================= */
 function setScene(builder, label) {
-  popup = null; wireStart = null; drag = null; resize = null; keyboardObject = null;
+  popup = null; wireStart = null; hoverNode = null; drag = null; resize = null; keyboardObject = null;
   killTimer(); RUN = 0; STOP = 0;
   ticks = 0;
   scene = builder();
