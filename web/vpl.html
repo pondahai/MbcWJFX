@@ -62,6 +62,16 @@
   .tab{border-radius:8px 8px 0 0;padding:5px 16px;font-size:12.5px}
   .tab.on{background:var(--accent);color:#fff;border-color:var(--accent)}
   code{font:12px ui-monospace,Consolas,monospace;background:var(--bd);padding:1px 5px;border-radius:4px}
+  /* 手機：讓 160x160 的畫面撐滿寬度，最接近當年握著 PDA 的比例 */
+  @media (max-width:640px){
+    body{padding:12px 10px}
+    h1{font-size:17px}
+    header{margin-bottom:14px}
+    .wrap{gap:14px}
+    .stage{padding:10px;width:100%;display:flex;justify-content:center}
+    .side{min-width:0;width:100%}
+    .panel{padding:12px 13px}
+  }
 </style>
 </head>
 <body>
@@ -74,10 +84,6 @@
 
 <div class="wrap">
   <div class="stage">
-    <div class="tabs">
-      <button class="tab on" data-view="block" type="button">Block</button>
-      <button class="tab" data-view="panel" type="button">Panel</button>
-    </div>
     <div class="lcd"><canvas id="screen" width="160" height="160"></canvas></div>
   </div>
 
@@ -112,7 +118,7 @@
 
     <div class="panel">
       <h2>顯示</h2>
-      <div class="ctl"><span>縮放</span><input type="range" id="zoom" min="1" max="6" step="1" value="3"><span id="zoomv">3×</span></div>
+      <div class="ctl"><span>縮放</span><input type="range" id="zoom" min="1" max="6" step="1" value="3"><span id="zoomv">3×</span><button id="zoomauto" type="button" title="自動配合視窗寬度">自動</button></div>
       <label class="row"><input type="checkbox" id="showId">顯示元件 ID（SHOW_ID）</label>
       <label class="row"><input type="checkbox" id="showNodes">標出 IO 節點中心</label>
       <label class="row"><input type="checkbox" id="showValues">在圖上疊節點數值</label>
@@ -727,6 +733,7 @@ function addToSysHook(spec) {
 
 let wireStart = null;   // block.c 的公共變數 WireStart
 let hoverNode = null;   // 拉線時筆下的節點，misc.c:368 會把它反白
+let penPos = null;      // 拉線時筆的位置，畫預覽線用
 
 // block.c:2049 執行中不可編輯：一動編輯工具就強制停止
 function stopForEdit() {
@@ -858,15 +865,17 @@ function removeBlock(scope, target) {
 
 const TOOLBAR_H = 18;   // misc.c:800 PointIconYExt，筆點座標被夾在這條線以下
 
+// block.c:2008 標題頁籤，點了就切換 form。判定區就是這個大小。
+const TITLE_TAB = { x: 0, y: 0, w: 33, h: 15 };
+
 function drawToolbar() {
   // Palm 的表單標題：黑底白字的頁籤
   const label = view === 'panel' ? 'Panel' : 'Block';
-  ctx.font = 'bold 10px ui-sans-serif,system-ui,sans-serif';
+  ctx.fillRect(TITLE_TAB.x, TITLE_TAB.y, TITLE_TAB.w, TITLE_TAB.h - 1);
+  ctx.font = 'bold 9px ui-sans-serif,system-ui,sans-serif';
   ctx.textBaseline = 'top';
-  const w = Math.ceil(ctx.measureText(label).width) + 10;
-  ctx.fillRect(0, 0, w, 14);
   ctx.fillStyle = '#fff';
-  ctx.fillText(label, 5, 2);
+  ctx.fillText(label, 3, 2);
   ctx.fillStyle = '#111';
 
   icon(RUNFOREVER ? B.RUNRUNBitmap : B.RUNRUNWAITBitmap, 40, 0);
@@ -880,6 +889,7 @@ function drawToolbar() {
 // block.c:1934 PenDownInBlockToolArea / panel.c:408 PenDownInPanelToolArea
 function toolbarHit(px, py) {
   const at = (x, w, h) => px >= x && px < x + w && py >= 0 && py < h;
+  if (at(TITLE_TAB.x, TITLE_TAB.w, TITLE_TAB.h)) return 'title';   // block.c:2008
   if (at(140, 18, 18)) return 'tools';
   if (at(120, 16, 16)) return 'functions';
   if (at(100, 16, 16)) return 'lamp';
@@ -1038,6 +1048,18 @@ function panelHit(blocks, px, py) {
 /* misc.c:368 CheckOnNode(Draw=true) —— 拉線時把筆下的節點反白成實心方塊。
    起點也一起標出來，這樣才看得出線是從哪拉到哪。 */
 function drawNodeHighlight() {
+  /* 拉線的預覽線。原版 mbcwjfx.c.BAK:1617-1638 寫過這段（從 WireStart 的
+     節點畫到 WireStop 的節點），但整段被註解掉了；現在這版的 block.c 裡
+     已經沒有這段程式。這裡把它接回來 —— 筆下有合法節點就吸附到那個節點，
+     否則跟著筆走。 */
+  if (wireStart && penPos) {
+    const a = nodeCenter(wireStart.block, wireStart.node);
+    const b = hoverNode ? nodeCenter(hoverNode.block, hoverNode.node) : penPos;
+    ctx.save();
+    ctx.setLineDash([2, 2]);
+    line(a.x, a.y, b.x, b.y);
+    ctx.restore();
+  }
   for (const h of [wireStart, hoverNode]) {
     if (!h) continue;
     const o = absOrigin(h.block);
@@ -1846,6 +1868,11 @@ cv.addEventListener('pointerdown', ev => {
     else if (tool === 'stop') stopButton();
     else if (tool === 'lamp') lampButton();
     else if (tool === 'forever') foreverButton();
+    else if (tool === 'title') {
+      view = view === 'panel' ? 'block' : 'panel';   // 點標題就換 form
+      keyboardObject = null;
+      render();
+    }
     else if (tool === 'functions') { popup = { kind: 'functions', cat: null }; render(); }
     else { popup = { kind: 'tools' }; render(); }
     return;
@@ -1879,6 +1906,7 @@ cv.addEventListener('pointerdown', ev => {
     stopForEdit();
     const n = nodeHit(scene.blocks, px, py);
     wireStart = n;
+    penPos = { x: px, y: py };
     if (n) {
       cv.setPointerCapture(ev.pointerId);
       runStatus(`接線：從 #${n.block.ID} 的 ${n.node.TYPE ? 'in' : 'out'}[${n.node.ID}] 拉到另一個節點`);
@@ -1953,9 +1981,10 @@ cv.addEventListener('pointermove', ev => {
   // 拉線中：把筆下的節點反白（block.c:2615 CheckOnNode）
   if (wireStart) {
     const { x: px, y: py } = canvasPos(ev);
+    penPos = { x: px, y: py };
     const n = nodeHit(scene.blocks, px, py);
-    const next = n && n.node !== wireStart.node && n.block !== wireStart.block ? n : null;
-    if (next !== hoverNode) { hoverNode = next; render(); }
+    hoverNode = n && n.node !== wireStart.node && n.block !== wireStart.block ? n : null;
+    render();
     return;
   }
   if (resize) {
@@ -1994,18 +2023,15 @@ cv.addEventListener('pointerup', ev => {
     }
     wireStart = null;
     hoverNode = null;
+    penPos = null;
     render();
   }
   drag = null;
 });
 
-cv.addEventListener('pointercancel', () => { drag = null; resize = null; wireStart = null; hoverNode = null; });
+cv.addEventListener('pointercancel', () => { drag = null; resize = null; wireStart = null; hoverNode = null; penPos = null; });
 
-document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
-  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
-  view = t.dataset.view;
-  render();
-}));
+
 
 /* ========================= 執行的驅動 =========================
    block.c:3096 的 nilEvent 迴圈：RUN==1 的時候每個 event 跑一次 DoRun，
@@ -2115,7 +2141,7 @@ document.getElementById('speed').addEventListener('input', e => {
 
 /* ========================= 場景切換 ========================= */
 function setScene(builder, label) {
-  popup = null; wireStart = null; hoverNode = null; drag = null; resize = null; keyboardObject = null;
+  popup = null; wireStart = null; hoverNode = null; penPos = null; drag = null; resize = null; keyboardObject = null;
   killTimer(); RUN = 0; STOP = 0;
   ticks = 0;
   scene = builder();
@@ -2154,13 +2180,49 @@ lcd.addEventListener('drop', e => {
   if (f) loadFile(f);
 });
 
+let autoZoom = true;
+
 function setZoom(z) {
   cv.style.width = cv.width * z + 'px';
   cv.style.height = cv.height * z + 'px';
   cv.parentElement.style.width = cv.width * z + 'px';
-  document.getElementById('zoomv').textContent = z + '×';
+  document.getElementById('zoomv').textContent =
+    (Math.round(z * 10) / 10) + '×' + (autoZoom ? '（自動）' : '');
 }
-document.getElementById('zoom').addEventListener('input', e => setZoom(+e.target.value));
+
+/* 依可用寬度自動決定倍率。整數倍的像素最乾淨，所以夠接近整數時就吸附過去，
+   否則就照比例填滿 —— 手機上填滿寬度比像素工整更重要。 */
+/* 依可用寬度自動決定倍率。
+
+   注意不能量 .stage 自己的寬度：它是 shrink-to-fit，寬度由裡面的畫布決定，
+   而畫布寬度又是這個函式算出來的 —— 會循環相依，量到的永遠是上一次的結果。
+   所以改成量外層 .wrap，同一列時再扣掉右邊那欄。 */
+const SIDE_MIN = 260;    // 跟 CSS 的 .side{min-width:260px} 同一個數字
+
+function fitZoom() {
+  if (!autoZoom) return;
+  const stage = cv.closest('.stage');
+  const wrap = document.querySelector('.wrap');
+  const pad = parseFloat(getComputedStyle(stage).paddingLeft) || 0;
+  const gap = parseFloat(getComputedStyle(wrap).columnGap) || 0;
+  /* 側欄是 flex:1，量它的實際寬度又會繞回來，所以用它的最小寬度（常數）
+     推算會不會並排 —— 這樣整條計算鏈都不依賴任何被算出來的尺寸。 */
+  const twoCol = wrap.clientWidth >= cv.width + SIDE_MIN + gap + pad * 2;
+  const avail = wrap.clientWidth - (twoCol ? SIDE_MIN + gap : 0) - pad * 2 - 2;
+  if (avail < cv.width) return;        // 版面還沒成形，等 ResizeObserver 再叫一次
+
+  let z = Math.min(6, avail / cv.width);
+  // 2 倍以上取整數，像素才會工整；手機上不足 2 倍時允許小數，優先填滿寬度
+  z = z >= 2 ? Math.floor(z) : Math.max(1, z);
+  document.getElementById('zoom').value = Math.round(z);
+  setZoom(z);
+}
+
+/* 用 ResizeObserver 而不是只聽 resize：載入當下版面可能還沒成形，
+   量到的寬度會是 0，倍率就會塌成 1×。 */
+new ResizeObserver(fitZoom).observe(document.querySelector('.wrap'));
+document.getElementById('zoom').addEventListener('input', e => { autoZoom = false; setZoom(+e.target.value); });
+document.getElementById('zoomauto').addEventListener('click', () => { autoZoom = true; fitZoom(); });
 for (const k of ['showId', 'showNodes', 'showGrid', 'showValues', 'showNotReady']) {
   document.getElementById(k).addEventListener('change', e => { opts[k] = e.target.checked; render(); });
 }
@@ -2176,7 +2238,7 @@ matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => rende
   document.getElementById('scene').value = 'run';
   scene = buildRunScene();
   resetRun();
-  setZoom(3);
+  fitZoom();
   syncUI();
 })();
 </script>

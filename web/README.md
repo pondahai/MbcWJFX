@@ -82,6 +82,21 @@ python web/tools/extract_bitmaps.py
 python web/tools/extract_bitmaps.py --png /tmp/out   # 另外輸出 PNG 檔來看
 ```
 
+## 手機
+
+畫面倍率會自動配合視窗寬度：2× 以上取整數倍讓像素工整，不足 2× 時允許小數
+優先填滿。375px 寬的手機會得到 2×（320px），撐滿整個寬度，比例最接近當年
+握著 PDA 的樣子。倍率滑桿可以手動覆蓋，按「自動」回到自動。
+
+本機要跑起來看的話：
+
+```
+python -m http.server 8777 --directory web
+```
+
+然後用同一個網路的手機開 `http://<電腦IP>:8777/vpl.html`。
+（`.claude/launch.json` 裡有同一份設定。）
+
 ## 一個渲染上的細節
 
 Palm 的 bitmap 是**不透明**的（白底黑點），所以畫布底色必須是白的，
@@ -181,8 +196,9 @@ IO 節點的配置全部照原始碼，例如運算元件是兩個 8×8 的輸�
 ## 前面板
 
 這是 LabVIEW 的 front panel 概念：同一個元件有兩種外觀 —— `bap` 畫在方塊圖上
-（「程式」那一面），`pap` 畫在前面板上（「使用者介面」那一面）。介面上的
-Block / Panel 兩個分頁就是原版的兩個 form。
+（「程式」那一面），`pap` 畫在前面板上（「使用者介面」那一面）。**點畫面左上角的標題頁籤就會在兩者之間切換** —— 判定區是 `(0,0)` 到
+`33x15`，見 `Src/block.c:2008`（面板那邊是 `Src/panel.c:493`）。原版還可以
+用 PageDown 鍵切換（`block.c:3067`）。
 
 面板元件的樣子直接取自資源檔：`CTRLU8Bitmap`（32×16）是點陣邊框的方框加上
 右側的上下箭頭，`INDICATOR8Bitmap` 是同樣的方框但沒有箭頭。值畫在

@@ -20,7 +20,7 @@
 | `CheckWireLink` | ⚠️ | 擋掉了自我連線；其餘合法性檢查沒做 |
 | `BreakWireConnection` | ✅ | 併在 `removeBlock()` 裡 |
 | `ChangeLinkList` | ❌ | 把元件拖進／拖出結構元件 |
-| `PenDownInBlockToolArea` | ✅ | `toolbarHit()` |
+| `PenDownInBlockToolArea` | ✅ | `toolbarHit()`，含點標題切換 form（`block.c:2008`） |
 | `BlockpenDownProcess` | ⚠️ | HAND／THREAD／SCISSOR／KILL／DRAG 做了；PENCIL 沒做 |
 | `BlockpenMoveProcess` | ✅ | 拖曳元件、拉大小、拉線 |
 | `BlockDiagramFormDoCommand` | ❌ | 下拉選單 |
@@ -128,14 +128,21 @@
 ## 已知缺陷（行為跟原版不一樣）
 
 1. ~~接線可以連到同一個元件的兩個節點~~ — 已修（`block.c:1593`）
-2. ~~接線的手勢不同~~ — 已改成拖曳，並補上節點反白。
+2. ~~接線的手勢不同~~ — 已改成拖曳，補上節點反白**和預覽線**。
 
    **這裡我原本判斷錯了。** 我先前寫「原版 `BlockpenMoveProcess` 裡沒有
    THREAD 的處理，拖的過程本來就沒有預覽線」—— 錯的，是我搜尋時只掃了函式
    的前半段。`block.c:2597` 有處理：拖的時候會呼叫
    `CheckOnNode(..., Draw=true)`，把筆下的 IO 節點畫成**實心方塊**反白
    （`misc.c:368`，Palm 的 `WinDrawRectangle` 是實心的）。所以原版是有
-   接線提示的，只是提示方式是節點反白而不是橡皮筋線。現在已經補上。
+   接線提示的。
+
+   至於橡皮筋線：現在這版的 `block.c` 裡確實沒有，但舊版的
+   `Src/mbcwjfx.c.BAK`（拆檔前的整合檔）裡有寫 —— `DrawDiagram()` 開頭
+   有一段從 `WireStart` 的節點畫到 `WireStop` 的節點的 `WinDrawLine`
+   （1617-1638 行），而 `CheckOnNode` 會在筆移動時把 `WireStop` 設成筆下的
+   節點（1347 行）。也就是說那是一條**會吸附到節點**的預覽線 —— 但整段被
+   註解掉了。現在這版接回來了，筆下沒有節點時就跟著筆走。
 3. ~~switch case 不能翻頁~~ — 已修。翻頁在 **DRAG 工具**底下，不是 HAND
    （`block.c:2151` 那個 case 才是，我原本分類錯了）
 4. ~~執行中還可以編輯~~ — 已修（`stopForEdit()`，`block.c:2049`）
@@ -156,3 +163,11 @@
 7. `CrossWire` 跨層接線
 8. 選單、關於畫面
 9. `ItemMoveToLastPosition` — 點選時把元件移到最上層
+
+## 跟原版的介面差異（刻意的）
+
+- **畫面倍率會自動配合視窗寬度**，手機上撐滿寬度（2× 以上取整數倍讓像素工整，
+  不足 2× 時允許小數優先填滿）。原版固定 1×，因為 Palm 螢幕就是 160×160。
+- 右邊那一欄（執行控制、場景、節點狀態表）是原版沒有的除錯用介面。
+  工具列上的圖示和它們共用同一份狀態，兩邊按都一樣。
+- 數字鍵盤旁邊會顯示正在輸入的數字，原版沒有。
