@@ -15,3 +15,12 @@
 *.PDF	 diff=astextplain
 *.rtf	 diff=astextplain
 *.RTF	 diff=astextplain
+
+# Palm OS build artifacts and CodeWarrior project files - never normalize
+*.prc  binary
+*.rsrc binary
+*.tmp  binary
+*.psym binary
+*.mcp  binary
+*.stg  binary
+*.tdt  binary
