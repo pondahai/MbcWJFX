@@ -558,6 +558,48 @@ function drawDiagram(blocks, wires, wx, wy) {
 }
 
 /* ==========================================================================
+   工具列 — 對應 Src/block.c:1166 與 Src/panel.c:340
+
+   這排圖示是畫在 160x160 螢幕裡面的，不是外掛的介面。位置寫死在原始碼裡：
+   x = 40 / 60 / 80 / 100 / 120 各 16x16，140 是 18x18 的工具指標。
+   狀態變數的定義在 mbcwjfx.c:63 —— STOP 是「0=無用 1=可用 2=停止」，
+   RUN 是「0=靜止 1=執行 2=暫停」。
+   ========================================================================== */
+
+const TOOLBAR_H = 18;   // misc.c:800 PointIconYExt，筆點座標被夾在這條線以下
+
+function drawToolbar() {
+  // Palm 的表單標題：黑底白字的頁籤
+  const label = view === 'panel' ? 'Panel' : 'Block';
+  ctx.font = 'bold 10px ui-sans-serif,system-ui,sans-serif';
+  ctx.textBaseline = 'top';
+  const w = Math.ceil(ctx.measureText(label).width) + 10;
+  ctx.fillRect(0, 0, w, 14);
+  ctx.fillStyle = '#fff';
+  ctx.fillText(label, 5, 2);
+  ctx.fillStyle = '#111';
+
+  icon(RUNFOREVER ? B.RUNRUNBitmap : B.RUNRUNWAITBitmap, 40, 0);
+  icon(RUN === 2 ? B.PAUSEBitmap : RUN === 1 ? B.RUNBitmap : B.RUNWAITBitmap, 60, 0);
+  icon(STOP === 2 ? B.STOPBitmap : STOP === 0 ? B.STOPUNUSEBitmap : B.STOPWAITBitmap, 80, 0);
+  icon(LAMP ? B.LAMPLIGHTBitmap : B.LAMPBitmap, 100, 0);
+  icon(B.ADDBitmap, 120, 0);                        // 元件面板（尚未實作）
+  icon(pointerState, view === 'panel' ? 142 : 140, 0);
+}
+
+// block.c:1934 PenDownInBlockToolArea / panel.c:408 PenDownInPanelToolArea
+function toolbarHit(px, py) {
+  const at = (x, w, h) => px >= x && px < x + w && py >= 0 && py < h;
+  if (at(140, 18, 18)) return 'tools';
+  if (at(120, 16, 16)) return 'functions';
+  if (at(100, 16, 16)) return 'lamp';
+  if (at(80, 16, 16)) return 'stop';
+  if (at(60, 16, 16)) return 'run';
+  if (at(40, 16, 16)) return 'forever';
+  return null;
+}
+
+/* ==========================================================================
    前面板 — 對應 Src/panel.c
 
    同一個元件有兩種外觀：bap 畫在方塊圖上（「程式」那一面），pap 畫在前面板
@@ -672,6 +714,7 @@ function render() {
     drawDiagram(scene.blocks, scene.wires, 0, 0);
     if (LAMP) drawRunPoints(scene.blocks, scene.wires);
   }
+  drawToolbar();     // block.c:1166 工具列是最後畫的，蓋在圖上面
   renderTree();
 }
 
@@ -1171,12 +1214,12 @@ async function loadFile(file) {
   const status = document.getElementById('status');
   try {
     const parsed = parseSave(pdbToText(await file.arrayBuffer()));
-    stopRun('');
+    killTimer(); RUN = 0; STOP = 0;
     ticks = 0;
     scene = parsed;
     selected = null;
     resetRun();
-    render();
+    syncUI();
     const n = (bs) => bs.reduce((s, b) => s + 1 + (b.hooks || []).reduce((t, h) => t + n(h.blocks), 0), 0);
     status.textContent = `${file.name}：${n(scene.blocks)} 個元件、${scene.wires.length} 條線段`
       + (parsed.hookBlock ? `（外框 HOOKBLOCK "${parsed.hookBlock.filename || '?'}" 未顯示）` : '');
@@ -1208,6 +1251,17 @@ cv.addEventListener('pointerdown', ev => {
   const px = Math.floor((ev.clientX - r.left) / (r.width / cv.width));
   const py = Math.floor((ev.clientY - r.top) / (r.height / cv.height));
 
+  // 工具列在畫面裡面，所以要先攔（block.c:1934）
+  const tool = toolbarHit(px, py);
+  if (tool) {
+    if (tool === 'run') runButton();
+    else if (tool === 'stop') stopButton();
+    else if (tool === 'lamp') lampButton();
+    else if (tool === 'forever') foreverButton();
+    else runStatus(tool === 'functions' ? '元件面板尚未實作（2.png 那個選單）' : '工具尚未實作');
+    return;
+  }
+
   if (view === 'panel') {
     if (selected) { selected.bap.DrawBorder = false; if (selected.pap) selected.pap.DrawBorder = false; }
     const hit = panelHit(scene.blocks, px, py);
@@ -1236,83 +1290,116 @@ document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () =>
    block.c:3096 的 nilEvent 迴圈：RUN==1 的時候每個 event 跑一次 DoRun，
    回傳 false 就代表跑完了 —— RUNFOREVER 開著就重置狀態再來一輪，
    否則把 RUN 歸零。這裡用 setInterval 代替 Palm 的 nilEvent。 */
-let RUN = 0, RUNFOREVER = false, ticks = 0, timer = null;
+// mbcwjfx.c:63  STOP: 0=無用 1=可用 2=停止（2 從來沒被指派過，是個死狀態）
+// mbcwjfx.c:98  RUN:  0=靜止 1=執行 2=暫停
+let RUN = 0, STOP = 0, RUNFOREVER = false, ticks = 0, timer = null;
+let pointerState = B.HANDBitmap;   // mbcwjfx.c:69 BlockPointerState / PanelPointerState
 const MAX_TICKS = 50000;   // 保險絲：接錯線的圖有可能永遠跑不完
 
 function runStatus(msg) {
   document.getElementById('runstat').textContent = msg;
 }
 
-function stopRun(msg) {
-  RUN = 0;
+function startTimer() {
   clearInterval(timer);
-  timer = null;
-  document.getElementById('run').textContent = '執行';
-  if (msg) runStatus(msg);
+  timer = setInterval(tick, 1000 / +document.getElementById('speed').value);
 }
+function killTimer() { clearInterval(timer); timer = null; }
 
 function resetRun() {
   checkConnection(scene.blocks, false);
   resetWireStatus(scene.blocks, scene.wires);
 }
 
+// 工具列圖示、HTML 按鈕、畫面三者都吃同一份狀態
+function syncUI() {
+  document.getElementById('run').textContent = RUN === 1 ? '暫停' : RUN === 2 ? '繼續' : '執行';
+  document.getElementById('stop').disabled = STOP !== 1;
+  document.getElementById('lamp').checked = LAMP;
+  document.getElementById('forever').checked = RUNFOREVER;
+  render();
+}
+
 function tick() {
   const busy = doRun(scene.blocks, scene.wires);
   ticks++;
-  render();
   if (busy) {
-    if (ticks >= MAX_TICKS) stopRun(`第 ${ticks} 個 tick 仍未結束，已中止`);
+    if (ticks >= MAX_TICKS) { killTimer(); RUN = 0; STOP = 0; runStatus(`第 ${ticks} 個 tick 仍未結束，已中止`); }
     else runStatus(`執行中… ${ticks} ticks`);
+    syncUI();
     return;
   }
+  // block.c:3102 跑完了：RUNFOREVER 開著就重置再來一輪，否則停下來
   if (RUNFOREVER) { resetRun(); runStatus(`跑完一輪，重來（${ticks} ticks）`); }
-  else stopRun(`結束，共 ${ticks} ticks`);
+  else { killTimer(); RUN = 0; STOP = 0; runStatus(`結束，共 ${ticks} ticks`); }
+  syncUI();
 }
 
-function startRun() {
-  if (RUN === 1) { stopRun(`暫停於 ${ticks} ticks`); return; }
-  if (ticks === 0) resetRun();
-  RUN = 1;
-  document.getElementById('run').textContent = '暫停';
-  clearInterval(timer);
-  timer = setInterval(tick, 1000 / +document.getElementById('speed').value);
+// block.c:1970 執行鈕：靜止→執行、執行→暫停、暫停→執行
+function runButton() {
+  if (RUN === 0) { STOP = 1; RUN = 1; ticks = 0; resetRun(); startTimer(); runStatus('執行中…'); }
+  else if (RUN === 1) { RUN = 2; killTimer(); runStatus(`暫停於 ${ticks} ticks`); }
+  else { RUN = 1; startTimer(); }
+  syncUI();
 }
 
-document.getElementById('run').addEventListener('click', startRun);
-document.getElementById('step').addEventListener('click', () => {
-  stopRun();
-  if (ticks === 0) resetRun();
-  tick();
-  if (RUN === 0 && ticks > 0) runStatus(`單步：${ticks} ticks`);
-});
-document.getElementById('stop').addEventListener('click', () => {
-  stopRun('已停止');
-  ticks = 0;
-  resetRun();
-  render();
-});
-document.getElementById('speed').addEventListener('input', e => {
-  document.getElementById('speedv').textContent = e.target.value + '/s';
-  if (RUN === 1) { clearInterval(timer); timer = setInterval(tick, 1000 / +e.target.value); }
-});
-document.getElementById('forever').addEventListener('change', e => { RUNFOREVER = e.target.checked; });
-document.getElementById('lamp').addEventListener('change', e => {
-  LAMP = e.target.checked;
-  // 執行點一個 tick 只走一像素，所以開動畫時要把 tick 率拉高才看得順
+// block.c:1958 停止鈕：只有 STOP==1（可用）時才有作用
+function stopButton() {
+  if (STOP !== 1) return;
+  STOP = 0; RUN = 0; RUNFOREVER = false;
+  killTimer(); ticks = 0; resetRun();
+  runStatus('已停止');
+  syncUI();
+}
+
+// block.c:1991 一直跑：打開的同時就會開始執行
+function foreverButton() {
+  RUNFOREVER = !RUNFOREVER;
+  if (RUNFOREVER) {
+    STOP = 1;
+    if (RUN === 0) { RUN = 1; ticks = 0; resetRun(); }
+    else RUN = 1;
+    startTimer();
+  }
+  syncUI();
+}
+
+function lampButton() {
+  LAMP = !LAMP;
+  // 執行點一個 tick 只走一像素，開動畫時要把 tick 率拉高才看得順
   const sp = document.getElementById('speed');
   sp.value = LAMP ? 120 : 8;
-  sp.dispatchEvent(new Event('input'));
-  render();
+  document.getElementById('speedv').textContent = sp.value + '/s';
+  if (RUN === 1) startTimer();
+  syncUI();
+}
+
+function stepButton() {
+  if (RUN === 1) { RUN = 2; killTimer(); }
+  if (ticks === 0) resetRun();
+  STOP = 1;
+  tick();
+  if (RUN !== 1) runStatus(`單步：${ticks} ticks`);
+}
+
+document.getElementById('run').addEventListener('click', runButton);
+document.getElementById('step').addEventListener('click', stepButton);
+document.getElementById('stop').addEventListener('click', stopButton);
+document.getElementById('lamp').addEventListener('change', lampButton);
+document.getElementById('forever').addEventListener('change', foreverButton);
+document.getElementById('speed').addEventListener('input', e => {
+  document.getElementById('speedv').textContent = e.target.value + '/s';
+  if (RUN === 1) startTimer();
 });
 
 /* ========================= 場景切換 ========================= */
 function setScene(builder, label) {
-  stopRun('');
+  killTimer(); RUN = 0; STOP = 0;
   ticks = 0;
   scene = builder();
   selected = null;
   resetRun();
-  render();
+  syncUI();
   const st = document.getElementById('status');
   st.textContent = label || '';
   st.className = '';
@@ -1367,7 +1454,7 @@ matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => rende
   scene = buildRunScene();
   resetRun();
   setZoom(3);
-  render();
+  syncUI();
 })();
 </script>
 </body>

@@ -88,6 +88,40 @@ Palm 的 bitmap 是**不透明**的（白底黑點），所以畫布底色必須
 另外 `WinDrawLine` 畫的是 1 像素無反鋸齒的線，canvas 要畫出一樣的效果
 得把座標對到像素中心（`+0.5`），否則線會糊成兩像素的灰。
 
+## 工具列
+
+那排圖示是**畫在 160×160 螢幕裡面**的，不是外掛的介面。位置寫死在
+`Src/block.c:1166`（面板版在 `Src/panel.c:340`）：
+
+| x | 大小 | 內容 |
+| --- | --- | --- |
+| 40 | 16×16 | 一直跑 `RUNRUN` / `RUNRUNWAIT` |
+| 60 | 16×16 | 執行 `RUN` / `PAUSE` / `RUNWAIT` |
+| 80 | 16×16 | 停止 `STOP` / `STOPUNUSE` / `STOPWAIT` |
+| 100 | 16×16 | 動畫開關 `LAMPLIGHT` / `LAMP` |
+| 120 | 16×16 | 元件面板（用 `ADDBitmap` 當圖示） |
+| 140 | 18×18 | 目前工具 `BlockPointerState`（面板版在 142） |
+
+狀態變數的定義 `Src/mbcwjfx.c:63` 連註解都寫好了：
+
+- `STOP`：`0=無用 1=可用 2=停止`
+- `RUN`：`0=靜止 1=執行 2=暫停`
+
+按鈕行為照 `Src/block.c:1958`：執行鈕是 靜止→執行→暫停→執行 的循環；
+停止鈕**只有 `STOP==1` 時才有作用**；一直跑打開的同時就會開始執行。
+
+兩個發現：
+
+1. **`STOP==2` 是死狀態。** `STOPBitmap` 畫得出來，但整份原始碼裡沒有
+   任何地方把 `STOP` 設成 2。
+2. **`#define offset_y -16`（`Src/vpl.h:10`）就是為了這排工具列。**
+   `CaculateNowXNowY()`（`Src/misc.c:798`）把筆點的 y 夾在 18 以下
+   （`PointIconYExt`），所以元件不能被拖到工具列上面去。
+
+原版還有兩個鍵盤快捷鍵：PageUp 循環工具（HAND → DRAG → THREAD → SCISSOR
+→ KILL），PageDown 切換 Block / Panel 兩個 form（`Src/block.c:3044`）。
+工具那些要等編輯功能做了才有意義。
+
 ## 前面板
 
 這是 LabVIEW 的 front panel 概念：同一個元件有兩種外觀 —— `bap` 畫在方塊圖上
