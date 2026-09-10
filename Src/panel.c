@@ -19,7 +19,7 @@ extern struct hand HandPointer;
 extern int prev_x,prev_y;
 extern struct Point WireStart,WireStop;
 //extern BNP LLP;
-extern HOOKP SYSHOOK;	// µ{¦¡¥D¦ê¦CªºÀY
+extern HOOKP SYSHOOK;	// ç¨‹å¼ä¸»ä¸²åˆ—çš„é ­
 extern  int penMoveAverage;
 extern  Boolean CanvasState;//=true;
 extern WNP WLLP;
@@ -27,7 +27,7 @@ extern  int RUN;//=false;
 extern  int STOP;
 extern Boolean RUNFOREVER;
 extern  Boolean LAMP;
-//extern  Boolean RunWho; //¶}Ãö 0=°õ¦æ½u¬q 1=°õ¦æ¤¸¥ó
+//extern  Boolean RunWho; //é–‹é—œ 0=åŸ·è¡Œç·šæ®µ 1=åŸ·è¡Œå…ƒä»¶
 //extern Boolean WaitFileLoad;
 //extern Boolean WhoLoad; 
 
@@ -71,7 +71,7 @@ int IncreseCtrlSpeed=0;
 *	
 ************************************************************************/
 
-// 6-2 ¶ÈÀ¿¥h¼Æ­È
+// 6-2 åƒ…æ“¦åŽ»æ•¸å€¼
 void ValueErase(BNP BL)
 {
 	//int i;
@@ -104,7 +104,7 @@ void ValueErase(BNP BL)
 	}
 
 }
-// 6-2 ¶ÈÅã¥Ü¼Æ­È
+// 6-2 åƒ…é¡¯ç¤ºæ•¸å€¼
 void ValueDisplay(BNP BL)
 {
 	//int i;
@@ -135,7 +135,7 @@ void ValueDisplay(BNP BL)
 	}
 
 }
-// 6-2 °õ¦æRUN®Éªºpanel draw
+// 6-2 åŸ·è¡ŒRUNæ™‚çš„panel draw
 static void DrawRUNPanel(BNP llp,Boolean show)
 {
 	//int i;
@@ -235,7 +235,7 @@ static void DrawRUNPanel(BNP llp,Boolean show)
 	*/	
 }
 
-// 5-17 panel ¤]­n±_ª¬¸ÑªR ¤£µM°j°é¤ºªº ¥X¤J¤¸¥ó ¥X¤£¨Ó
+// 5-17 panel ä¹Ÿè¦å·¢ç‹€è§£æž ä¸ç„¶è¿´åœˆå…§çš„ å‡ºå…¥å…ƒä»¶ å‡ºä¸ä¾†
 static void DrawPanel(BNP llp,Boolean show)
 {
 	//int i;
@@ -415,7 +415,7 @@ Boolean PenDownInPanelToolArea(EventPtr eventP)
 		FrmPopupForm(PanelToolsForm);
 	}else if(CheckBoundary(120,0,16,16,eventP->screenX,eventP->screenY)){
 			In=true;
-	// ¬O§_¸¨¦b
+	// æ˜¯å¦è½åœ¨
 		//FrmPopupForm(FunctionsForm);
 	}else if(CheckBoundary(100,0,16,16,eventP->screenX,eventP->screenY)){
 			In=true;
@@ -441,18 +441,18 @@ Boolean PenDownInPanelToolArea(EventPtr eventP)
 		if(RUN==0)
 		{
 			In=true;
-		// §@¤@¦¸½u²M°£ªº°Ê§@
+		// ä½œä¸€æ¬¡ç·šæ¸…é™¤çš„å‹•ä½œ
 	//DrawDiagram(SYSHOOK->BlockLLHeadP->NEXTNODE,((HOOKP)SYSHOOK->BlockLLHeadP->hookP)->WireLLHeadP,0,0,0,true);
 			STOP=1;
 			RUN=1;
-			// ²M°£¤¸¥óºX¼Ð
+			// æ¸…é™¤å…ƒä»¶æ——æ¨™
 			CheckConnection(SYSHOOK->BlockLLHeadP->NEXTNODE,false);
-			// ½u¬q ª¬ºA­«¸m
+			// ç·šæ®µ ç‹€æ…‹é‡ç½®
 			ResetWireStatus(SYSHOOK->BlockLLHeadP->NEXTNODE,
 			SYSHOOK->WireLLHeadP);
 
 			//RunWho=false;
-			if(LAMP)	// ¦pªG¿O¥´¶}
+			if(LAMP)	// å¦‚æžœç‡ˆæ‰“é–‹
 			{
 				FrmGotoForm(BlockDiagramForm);
 			}else
@@ -477,12 +477,12 @@ Boolean PenDownInPanelToolArea(EventPtr eventP)
 			RUNFOREVER=true;
 			STOP=1;
 			RUN=1;
-			// ²M°£¤¸¥óºX¼Ð
+			// æ¸…é™¤å…ƒä»¶æ——æ¨™
 			CheckConnection(SYSHOOK->BlockLLHeadP->NEXTNODE,false);
-			// ½u¬q ª¬ºA­«¸m
+			// ç·šæ®µ ç‹€æ…‹é‡ç½®
 			ResetWireStatus(SYSHOOK->BlockLLHeadP->NEXTNODE,
 			SYSHOOK->WireLLHeadP);
-			if(LAMP)	// ¦pªG¿O¥´¶}
+			if(LAMP)	// å¦‚æžœç‡ˆæ‰“é–‹
 			{
 				FrmGotoForm(BlockDiagramForm);
 			}else
@@ -492,10 +492,10 @@ Boolean PenDownInPanelToolArea(EventPtr eventP)
 		}
 	}else if(CheckBoundary(0,0,33,15,eventP->screenX,eventP->screenY)){
 		In =true;
-	// ¬O§_¸¨¦b¼ÐÃD¡A­Y¬O«hÂà´« form
+	// æ˜¯å¦è½åœ¨æ¨™é¡Œï¼Œè‹¥æ˜¯å‰‡è½‰æ› form
 		FrmGotoForm(BlockDiagramForm);
 	}
-	// 6-2 ¦pªGµ§¦b«D§@¥Î°Ï «h¤£­n°õ¦æ°Ê§@
+	// 6-2 å¦‚æžœç­†åœ¨éžä½œç”¨å€ å‰‡ä¸è¦åŸ·è¡Œå‹•ä½œ
 	if(CheckBoundary(0,0,160,16,eventP->screenX,eventP->screenY))
 	{
 		In=true;
@@ -532,7 +532,7 @@ Boolean PenDownInPanelToolArea(EventPtr eventP)
 	}else{
 	switch(PanelPointerState){
 		case HANDBitmap:
-			// 6-2 °õ¦æ¤¤¤£¥i½s¿è
+			// 6-2 åŸ·è¡Œä¸­ä¸å¯ç·¨è¼¯
 			if(RUN!=0)
 			{
 				RUN=0;
@@ -561,11 +561,11 @@ Boolean PenDownInPanelToolArea(EventPtr eventP)
 		case FINGERBitmap:
 			if(InAreaInf.InArea)
 			{
-				// 6-2 ¦b¿é¤J®É ¤£¥Î¥­·Æ³B²z ¥[§Ö³t«×
+				// 6-2 åœ¨è¼¸å…¥æ™‚ ä¸ç”¨å¹³æ»‘è™•ç† åŠ å¿«é€Ÿåº¦
 				penMoveAverage = 0;
 				IncreseCtrlSpeed=5;
 				// check on node?
-				// LLP Áô§t¶Ç»¼
+				// LLP éš±å«å‚³éž
 				DrawIcon(PRESSFINGERBitmap,now_x+offset_x,now_y+offset_y);
 				//if((i=CheckOnNode(InAreaInf,now_x,now_y,true)) != -1)
 				//{
@@ -770,7 +770,7 @@ Boolean PenDownInPanelToolArea(EventPtr eventP)
 				
 				// clear prev. icon image
 				
-				// 6-2 ¦b¿é¤J®É ¤£¥Î¥­·Æ³B²z ¥[§Ö³t«×
+				// 6-2 åœ¨è¼¸å…¥æ™‚ ä¸ç”¨å¹³æ»‘è™•ç† åŠ å¿«é€Ÿåº¦
 				penMoveAverage =_PenMovAver;
 
 				DrawIcon(BLANKBitmap,prev_x+offset_x,prev_y+offset_y);
@@ -1008,9 +1008,9 @@ Boolean PenDownInPanelToolArea(EventPtr eventP)
 				if(RUNFOREVER)
 				{
 					DrawRUNPanel(SYSHOOK->BlockLLHeadP,true);
-					// ²M°£¤¸¥óºX¼Ð
+					// æ¸…é™¤å…ƒä»¶æ——æ¨™
 					CheckConnection(SYSHOOK->BlockLLHeadP->NEXTNODE,false);
-					// ½u¬q ª¬ºA­«¸m
+					// ç·šæ®µ ç‹€æ…‹é‡ç½®
 					ResetWireStatus(SYSHOOK->BlockLLHeadP->NEXTNODE,
 					SYSHOOK->WireLLHeadP);
 	

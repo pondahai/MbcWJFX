@@ -30,7 +30,7 @@ void set_test_data()
 	pap->SIZE.y = 16;
 	newp->pap = pap;
 	
-	// ´¡¤JIO ¸`ÂI
+	// æ’å…¥IO ç¯€é»ž
 	ionode = allocate_a_new_IOnode();
 	ionode->ID = 0;
 	ionode->TYPE = 1;
@@ -70,7 +70,7 @@ void set_test_data()
 	pap->SIZE.y = 16;
 	newp->pap = pap;
 	
-	// ´¡¤JIO ¸`ÂI
+	// æ’å…¥IO ç¯€é»ž
 	ionode = allocate_a_new_IOnode();
 	ionode->ID = 0;
 	ionode->TYPE = 0;
@@ -131,7 +131,7 @@ void set_test_data()
 	bap->SIZE.x = 32;
 	bap->SIZE.y = 32; 
 	newp->bap = bap;
-	// ©ì©ÔÂI
+	// æ‹–æ‹‰é»ž
 	ctrlnode = allocate_a_new_CTRLnode();
 	ctrlnode->ID=DRAGNODE;
 	ctrlnode->TL.x=25;
@@ -139,7 +139,7 @@ void set_test_data()
 	ctrlnode->EXT.x=7;
 	ctrlnode->EXT.y=7;
 	newp->bap->CTRLNodeLLHead=ctrlnode;
-	// ¤W¿ïÂI 
+	// ä¸Šé¸é»ž 
 	ctrlnode = allocate_a_new_CTRLnode();
 	ctrlnode->ID=SCPAGEUP;
 	ctrlnode->TL.x=25;
@@ -147,7 +147,7 @@ void set_test_data()
 	ctrlnode->EXT.x=6;
 	ctrlnode->EXT.y=13;
 	newp->bap->CTRLNodeLLHead->NEXT=ctrlnode;
-	// ¤U¿ïÂI
+	// ä¸‹é¸é»ž
 	ctrlnode = allocate_a_new_CTRLnode();
 	ctrlnode->ID=SCPAGEDOWN;
 	ctrlnode->TL.x=1;
@@ -155,7 +155,7 @@ void set_test_data()
 	ctrlnode->EXT.x=6;
 	ctrlnode->EXT.y=13;
 	newp->bap->CTRLNodeLLHead->NEXT->NEXT=ctrlnode;
-	// ²Ä¤@­¶
+	// ç¬¬ä¸€é 
 	hook = allocate_a_new_hook();
 	hook->name = MemHandleLock(MemHandleNew(StrLen(str_true)+1));
 	MemMove(hook->name,str_true,StrLen(str_true)+1);
@@ -163,7 +163,7 @@ void set_test_data()
 	hook->BlockLLHeadP = NULL;
 	hook->WireLLHeadP = NULL;
 	(HOOKP)newp->CaseBlockHOOKLLHeadP = hook;
-	// ²Ä¤G­¶
+	// ç¬¬äºŒé 
 	hook = allocate_a_new_hook();
 	hook->name = MemHandleLock(MemHandleNew(StrLen(str_false)+1));
 	MemMove(hook->name,str_false,StrLen(str_false)+1);
@@ -172,10 +172,10 @@ void set_test_data()
 	hook->WireLLHeadP = NULL;
 	(HOOKP)((HOOKP)newp->CaseBlockHOOKLLHeadP)->NEXT = hook;
 	hook->PREV = ((HOOKP)newp->CaseBlockHOOKLLHeadP);
-	// §Î¦¨°j°é
+	// å½¢æˆè¿´åœˆ
 	(HOOKP)hook->NEXT = ((HOOKP)newp->CaseBlockHOOKLLHeadP);
 	(HOOKP)((HOOKP)newp->CaseBlockHOOKLLHeadP)->PREV = hook;
-	// «ü¦V¥Ø«e­¶
+	// æŒ‡å‘ç›®å‰é 
 	(HOOKP)newp->CurrentHOOKP=(HOOKP)newp->CaseBlockHOOKLLHeadP;
 	
 	newp->TYPE=CASEBLOCK;
@@ -240,7 +240,7 @@ FUNCTIONSLLDATAtype SetFunctionsLL(FUNCTIONSLLDATAtype  Fdata)
 	pap->SIZE.y = 16;
 	newp->pap = pap;
 	
-	// ´¡¤JIO ¸`ÂI
+	// æ’å…¥IO ç¯€é»ž
 	ionode = allocate_a_new_IOnode();
 	ionode->ID = 0;
 	ionode->TYPE = 1;

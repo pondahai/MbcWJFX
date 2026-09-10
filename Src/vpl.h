@@ -18,17 +18,17 @@
 #define CTRLBLOCK 5
 
 // 5-3 
-// Âk¯Ç¥X5ºØ»İ­n§@Link Listªº¸ê®Æ
-// 1. °ò¥»¤¸¥ó
-// 2. µ²ºc¤¸¥ó
-// 3. ªê§J¤¸¥ó
-// 4. ½u¬q
-// 5. I/O¸`ÂI
-// 6. ±±¨îÂI
+// æ­¸ç´å‡º5ç¨®éœ€è¦ä½œLink Listçš„è³‡æ–™
+// 1. åŸºæœ¬å…ƒä»¶
+// 2. çµæ§‹å…ƒä»¶
+// 3. è™å…‹å…ƒä»¶
+// 4. ç·šæ®µ
+// 5. I/Oç¯€é»
+// 6. æ§åˆ¶é»
 // 
-// ³o¨Ç¸ê®Æµ²ºc¦³¨Ç¬O¨ä¥L¸ê®Æµ²ºcªº¤º³¡¸ê®Æ
-// ¨Ò¦pI/O¸`ÂI³£·|³Q¥]§t¦b °ò¥»¤¸¥ó µ²ºc¤¸¥ó ¥H¤Î ªê§J¤¸¥ó¤¤
-//Aspect ¥~Æ[
+// é€™äº›è³‡æ–™çµæ§‹æœ‰äº›æ˜¯å…¶ä»–è³‡æ–™çµæ§‹çš„å…§éƒ¨è³‡æ–™
+// ä¾‹å¦‚I/Oç¯€é»éƒ½æœƒè¢«åŒ…å«åœ¨ åŸºæœ¬å…ƒä»¶ çµæ§‹å…ƒä»¶ ä»¥åŠ è™å…‹å…ƒä»¶ä¸­
+//Aspect å¤–è§€
 struct Point{
 	UInt16 x;
 	UInt16 y;
@@ -39,18 +39,18 @@ struct IONODE{
 	UInt16 ID;
 	UInt16 TYPE; 					//1 = input , 0 = output ,2 = drag point
 	Boolean NotReady;
-	void *P;						// »İ­n³Q½Õ¾ã¤j¤p
+	void *P;						// éœ€è¦è¢«èª¿æ•´å¤§å°
 	UInt16 BYTES;
 	UInt16 NUMS;
-	struct Point TL; // ±µÂI¥~Æ[
+	struct Point TL; // æ¥é»å¤–è§€
 	struct Point EXT;			//
 	struct IONODE *PREV;
 	struct IONODE *NEXT;
 };
 typedef struct IONODE *IONODEP;
 
-struct CTRLNODE{						// Panel ¤¸¥ó±±¨îÂI
-	UInt16 ID;						// ©Î¬O Block ¤¸¥ó¥~Æ[§ïÅÜÂI
+struct CTRLNODE{						// Panel å…ƒä»¶æ§åˆ¶é»
+	UInt16 ID;						// æˆ–æ˜¯ Block å…ƒä»¶å¤–è§€æ”¹è®Šé»
 	struct Point TL;
 	struct Point EXT;
 	struct CTRLNODE *PREV;
@@ -62,14 +62,14 @@ typedef struct {
 	UInt16 BITMAPID;
 	struct Point XY;
 	struct Point SIZE;
-	IONODEP IONodeLLHead;		// ¤¸¥óªºIOÂIÃìµ²¦ê¦C
+	IONODEP IONodeLLHead;		// å…ƒä»¶çš„IOé»éˆçµä¸²åˆ—
 	//UInt16 IONodeNUM;
 	int INodeNUM;
 	int ONodeNUM;
-	CTRLNODEP CTRLNodeLLHead;	// µ¹µ²ºc¤¸¥óªº¥~Æ[±±¨îÂI¥Î
+	CTRLNODEP CTRLNodeLLHead;	// çµ¦çµæ§‹å…ƒä»¶çš„å¤–è§€æ§åˆ¶é»ç”¨
 	Boolean DrawBorder;// 
 	Boolean ReDraw;
-	Boolean Clean; // 5-13 ·s¼W²M°£«ü¼Ğ Åı µe »P ²M°£©R¥O¤À¶}
+	Boolean Clean; // 5-13 æ–°å¢æ¸…é™¤æŒ‡æ¨™ è®“ ç•« èˆ‡ æ¸…é™¤å‘½ä»¤åˆ†é–‹
 }BA;
 typedef BA *BAP;
 typedef struct {
@@ -86,21 +86,21 @@ typedef PA *PAP;
 // LOOPBLOCK 3
 // CASEBLOCK 4
 
-// 5-5 ³Ì«áÁÙ¬O¨M©wµ²ºc¦X¨Ö¡A³o¼Ëµ{¦¡¤ñ¸û¦n¼g¤]¤ñ¸û¦n¬İ
+// 5-5 æœ€å¾Œé‚„æ˜¯æ±ºå®šçµæ§‹åˆä½µï¼Œé€™æ¨£ç¨‹å¼æ¯”è¼ƒå¥½å¯«ä¹Ÿæ¯”è¼ƒå¥½çœ‹
 struct BlockNode{
 	UInt16 ID;
 	UInt16 TYPE;
-	BAP bap;	// ¤è¶ô¥~Æ[
-	PAP pap;	// ­±ªO¥~Æ[
-	Ptr LoopBlockHOOKP;		//°j°é¥Îªº
-	Ptr CaseBlockHOOKLLHeadP; //Switch case ¥Î
-	Ptr CurrentHOOKP;			//Switch case ¥Î
-	Ptr hookP;		// ªê§J¤¸¥ó
-	char *filename;	// ªê§J¤¸¥ó
-	struct BlockNode *SelfBlockLLHead;		// ¥»¨­©ÒÄİ¦ê¦CÀY
-	struct BlockNode *BackgroundBlockLLHead;// ¥Ø«e­I´º©Ò³B
-	struct BlockNode *PREVNODE;				// «e¦ê¦C¤¸¥ó
-	struct BlockNode *NEXTNODE;				// «á¦ê¦C¤¸¥ó
+	BAP bap;	// æ–¹å¡Šå¤–è§€
+	PAP pap;	// é¢æ¿å¤–è§€
+	Ptr LoopBlockHOOKP;		//è¿´åœˆç”¨çš„
+	Ptr CaseBlockHOOKLLHeadP; //Switch case ç”¨
+	Ptr CurrentHOOKP;			//Switch case ç”¨
+	Ptr hookP;		// è™å…‹å…ƒä»¶
+	char *filename;	// è™å…‹å…ƒä»¶
+	struct BlockNode *SelfBlockLLHead;		// æœ¬èº«æ‰€å±¬ä¸²åˆ—é ­
+	struct BlockNode *BackgroundBlockLLHead;// ç›®å‰èƒŒæ™¯æ‰€è™•
+	struct BlockNode *PREVNODE;				// å‰ä¸²åˆ—å…ƒä»¶
+	struct BlockNode *NEXTNODE;				// å¾Œä¸²åˆ—å…ƒä»¶
 };
 
 typedef struct BlockNode BN;
@@ -173,7 +173,7 @@ typedef struct SysStruct SysHead;
 #define menuLoad true
 #define functionLoad false
 
-// ¨º­Ó¤¸¥óªº¨º­Ó¸`ÂI
+// é‚£å€‹å…ƒä»¶çš„é‚£å€‹ç¯€é»
 typedef struct{
 	BNP BlockP;
 	IONODEP NodeP;
@@ -192,15 +192,15 @@ typedef struct {
 }InAreaInfType;
 
 struct HOOK{
-	char *name; 				// switch case¥Î
+	char *name; 				// switch caseç”¨
 	BNP BlockLLHeadP;
 	WNP WireLLHeadP;
-	struct HOOK *PREV;	// switch case¥Î
-	struct HOOK *NEXT;	// switch case¥Î
+	struct HOOK *PREV;	// switch caseç”¨
+	struct HOOK *NEXT;	// switch caseç”¨
 };
 typedef struct HOOK *HOOKP;
 
-// ±±¨îÂIªº©w¸q­È
+// æ§åˆ¶é»çš„å®šç¾©å€¼
 #define DRAGNODE 1
 #define SCPAGEUP 2
 #define SCPAGEDOWN 3

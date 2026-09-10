@@ -14,7 +14,7 @@
  ***********************************************************************/
 extern DmOpenRef   db;
 extern UInt32      numRecords;
-//extern SysHead SYSHOOK;	// µ{¦¡¥D¦ê¦CªºÀY
+//extern SysHead SYSHOOK;	// ç¨‹å¼ä¸»ä¸²åˆ—çš„é ­
 
 
 /***********************************************************************
@@ -34,7 +34,7 @@ extern UInt32      numRecords;
     error=DmCreateDatabase(0,"test0520",appCreatorID,appDBType,false);
 
 	if(error==dmErrAlreadyExists)
-	{//¤w¦s¦b¡A±ş±¼
+	{//å·²å­˜åœ¨ï¼Œæ®ºæ‰
 		dbID=DmFindDatabase(0,"test0520");
 		DmDeleteDatabase(0,dbID);
 	    error=DmCreateDatabase(0,"test0520",appCreatorID,appDBType,false);

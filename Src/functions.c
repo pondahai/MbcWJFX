@@ -12,11 +12,11 @@
  *   Global variables
  *
  ***********************************************************************/
-extern HOOKP SYSHOOK;	// µ{¦¡¥D¦ê¦CªºÀY
+extern HOOKP SYSHOOK;	// ç¨‹å¼ä¸»ä¸²åˆ—çš„é ­
 extern EndPoint WireStart,WireStop;
 //extern Boolean WhoLoad; 
 //extern Boolean WaitFileLoad;
-//extern HOOKP	SecondHead; // for ¦Û­q¤è¶ô¸ü¤J®É¥Î
+//extern HOOKP	SecondHead; // for è‡ªè¨‚æ–¹å¡Šè¼‰å…¥æ™‚ç”¨
 //extern  int penMove Average;
 //extern FUNCTIONSLLDATAtype FUNCTIONSLLDATA;
 extern struct hand HandPointer;
@@ -51,7 +51,7 @@ struct HOOK CUSTUMHOOK;
  *   Internal Functions
  *
  ***********************************************************************/
-// 5-11 ³o¸Ì¬O±q¤å¦r¸ê®Æ¤¤«Ø¥ß¹Ï¥Ü
+// 5-11 é€™è£¡æ˜¯å¾žæ–‡å­—è³‡æ–™ä¸­å»ºç«‹åœ–ç¤º
 BNP new_node(char **k,BNP LLHead,int *i)
 {
 	BNP newnode;
@@ -238,11 +238,11 @@ BNP new_node(char **k,BNP LLHead,int *i)
 	return LLHead;	
 }
 /*
-	5-25 §ï¦¨ fopen ¤è¦¡ ¥~³¡²£¥Ífunction ª©­±¤º®e
+	5-25 æ”¹æˆ fopen æ–¹å¼ å¤–éƒ¨ç”¢ç”Ÿfunction ç‰ˆé¢å…§å®¹
 */
 BNP set_function_palette(void )
 {
-	// 9ºØ¥\¯à¤ÀÃþ
+	// 9ç¨®åŠŸèƒ½åˆ†é¡ž
 	// 
 	//BNP newnode;
 	BNP LLHead=NULL;
@@ -258,8 +258,8 @@ BNP set_function_palette(void )
     void        *precord;
     UInt32      size;
     //FileHand func;
-	// 5-20 ¨Ï¥Îpdb ¤è¦¡Åª¤J
-	// ¶} db
+	// 5-20 ä½¿ç”¨pdb æ–¹å¼è®€å…¥
+	// é–‹ db
     //error=DmCreateDatabase(0,"func",appCreatorID,'func',false);
 
     //if((error!=dmErrAlreadyExists)&&(error!=0)) {
@@ -267,9 +267,9 @@ BNP set_function_palette(void )
     //}
 	//
 	// 5-25
-	// ¦]¬°µLªk±oª¾ file stream ªºÀÉ®×®æ¦¡
-	// ©Ò¥HµLªk¥~³¡²£¥Í¸ê®ÆÀÉ µM«á¥Îfile stream ¤è¦¡Åª¨ú
-	// ¦]¦¹¨Ï¥Îdatabase¤è¦¡Åª¨ú ¥¿±`
+	// å› ç‚ºç„¡æ³•å¾—çŸ¥ file stream çš„æª”æ¡ˆæ ¼å¼
+	// æ‰€ä»¥ç„¡æ³•å¤–éƒ¨ç”¢ç”Ÿè³‡æ–™æª” ç„¶å¾Œç”¨file stream æ–¹å¼è®€å–
+	// å› æ­¤ä½¿ç”¨databaseæ–¹å¼è®€å– æ­£å¸¸
 	//
 	if(DmFindDatabase(0,"func")!=0)
 	{
@@ -277,12 +277,12 @@ BNP set_function_palette(void )
     db=DmOpenDatabaseByTypeCreator('func',appCreatorID,
         dmModeReadOnly);
 
-	// ÀË¬d³o­Ó db ¦³´X­Ó rec
+	// æª¢æŸ¥é€™å€‹ db æœ‰å¹¾å€‹ rec
 	numRecords=DmNumRecords(db);
 
-	// Åª rec
+	// è®€ rec
     //size=sizeof(int);
-    hrecord=DmQueryRecord(db,0); //Query ¤£¥Îrelease
+    hrecord=DmQueryRecord(db,0); //Query ä¸ç”¨release
     precord=MemHandleLock(hrecord);
 	
 	size=StrLen(precord);
@@ -354,7 +354,7 @@ void DrawToolIcon(BNP bnp)
 }
 void DrawToolCatagory(void )
 {
-	//FunctionCatagoryLLHead ¤½¦@ÅÜ¼Æ
+	//FunctionCatagoryLLHead å…¬å…±è®Šæ•¸
 	BNP bnp;
 	
 	bnp = FunctionCatagoryLLHead;
@@ -377,9 +377,9 @@ void FunctionspenMoveProcess(EventPtr eventP)
 {
 }
 // 5-31 
-// ¿é¤J
-// bnpLLHead ¬O¤º³¡¦ê¦ChookPªºblock¦ê¦CªºÀY¤@­Ó
-// IOID IOÂIªº­p¼Æ¾¹
+// è¼¸å…¥
+// bnpLLHead æ˜¯å…§éƒ¨ä¸²åˆ—hookPçš„blockä¸²åˆ—çš„é ­ä¸€å€‹
+// IOID IOé»žçš„è¨ˆæ•¸å™¨
 /*
 void  FindInputNode(BNP bnpLLHead, int *IOID)
 {
@@ -427,7 +427,7 @@ void  FindInputNode(BNP bnpLLHead, int *IOID)
 			ionode->EXT.y=lattice_y;
 			CUSTUMHOOK.BlockLLHeadP->bap->IONodeLLHead = 
 				InsertIntoIONodesLL(CUSTUMHOOK.BlockLLHeadP->bap->IONodeLLHead,	ionode);
-			// ¥[¤J½u¬q ¨Ï¥Î StartStopAddIntoWLL()
+			// åŠ å…¥ç·šæ®µ ä½¿ç”¨ StartStopAddIntoWLL()
 			WireStart.BlockP = CUSTUMHOOK.BlockLLHeadP;
 			WireStart.NodeP = ionode;
 			WireStop.BlockP = bnp;
@@ -492,7 +492,7 @@ void  FindOutputNode(BNP bnpLLHead, int *IOID)
 			ionode->EXT.y=lattice_y;
 			CUSTUMHOOK.BlockLLHeadP->bap->IONodeLLHead = 
 				InsertIntoIONodesLL(CUSTUMHOOK.BlockLLHeadP->bap->IONodeLLHead,	ionode);
-			// ¥[¤J½u¬q ¨Ï¥Î StartStopAddIntoWLL()
+			// åŠ å…¥ç·šæ®µ ä½¿ç”¨ StartStopAddIntoWLL()
 			WireStart.BlockP = bnp;
 			WireStart.NodeP = bnp->bap->IONodeLLHead;
 			WireStop.BlockP = CUSTUMHOOK.BlockLLHeadP;
@@ -525,14 +525,14 @@ void AddCUSTtoSYSHOOK(void )
 	CUSTUMHOOK.BlockLLHeadP->SelfBlockLLHead=SYSHOOK->BlockLLHeadP;
 	CUSTUMHOOK.BlockLLHeadP->BackgroundBlockLLHead=SYSHOOK->BlockLLHeadP;
 
-	// »s³yIOÂI
-	// 5-31 ³o¼Ë²£¥Í¬OªÅªºIO¸`ÂI
-	//      ±µµÛ­n¦b¸Ì­± ¥[¤J½u¬q ¸Ó½u¬q«Y ³s±µ ¦¹IO»P¤º³¡IO¤è¶ô¤§¥Î
-	//      ±N·|§Q¥Î¨ì ¸óµ²ºc²£¥Í½u¬q °Æµ{¦¡
-	// 5-31 »s³yIOÂI »P ²£¥Í ·t½u½u¬q §ï¦¨ ¦sÀÉ®É²£¥Í
-	// ¥ý§ä input
+	// è£½é€ IOé»ž
+	// 5-31 é€™æ¨£ç”¢ç”Ÿæ˜¯ç©ºçš„IOç¯€é»ž
+	//      æŽ¥è‘—è¦åœ¨è£¡é¢ åŠ å…¥ç·šæ®µ è©²ç·šæ®µä¿‚ é€£æŽ¥ æ­¤IOèˆ‡å…§éƒ¨IOæ–¹å¡Šä¹‹ç”¨
+	//      å°‡æœƒåˆ©ç”¨åˆ° è·¨çµæ§‹ç”¢ç”Ÿç·šæ®µ å‰¯ç¨‹å¼
+	// 5-31 è£½é€ IOé»ž èˆ‡ ç”¢ç”Ÿ æš—ç·šç·šæ®µ æ”¹æˆ å­˜æª”æ™‚ç”¢ç”Ÿ
+	// å…ˆæ‰¾ input
 	//FindInputNode(((HOOKP)CUSTUMHOOK.BlockLLHeadP->hookP)->BlockLLHeadP,&IOID);
-	// ¦A§ä output
+	// å†æ‰¾ output
 	//FindOutputNode(((HOOKP)CUSTUMHOOK.BlockLLHeadP->hookP)->BlockLLHeadP,&IOID);
 	
 	CUSTUMHOOK.BlockLLHeadP->NEXTNODE=NULL;
@@ -541,11 +541,11 @@ void AddCUSTtoSYSHOOK(void )
 	CUSTUMHOOK.BlockLLHeadP->bap->Clean=true;
 	SYSHOOK->BlockLLHeadP = InsertIntoBlockLLwithUID(SYSHOOK->BlockLLHeadP,CUSTUMHOOK.BlockLLHeadP);
 }
-// 5-11 ³o¸Ì¬O­t³d«Ø¥ß¤¸¥ó
+// 5-11 é€™è£¡æ˜¯è² è²¬å»ºç«‹å…ƒä»¶
 void AddToSYSHOOK(BNP bnp)
 {
 	BNP newnode;
-	BNP ctrlblock1,ctrlblock2;// ¹w³]¤¸¥ó1¸¹ ¹w³]¤¸¥ó2¸¹
+	BNP ctrlblock1,ctrlblock2;// é è¨­å…ƒä»¶1è™Ÿ é è¨­å…ƒä»¶2è™Ÿ
 	IONODEP ionode;
 	char str_true[5]={"true"};
 	char str_false[6]={"false"};
@@ -677,7 +677,7 @@ void AddToSYSHOOK(BNP bnp)
 	break;
    }// switch
 
-// ´¡¤JIO ¸`ÂI
+// æ’å…¥IO ç¯€é»ž
 
    switch(bnp->bap->BITMAPID)
    {
@@ -824,7 +824,7 @@ void AddToSYSHOOK(BNP bnp)
 	
 	break;
    }
-   //´¡¤J¹w³]¤¸¥ó
+   //æ’å…¥é è¨­å…ƒä»¶
    switch(bnp->bap->BITMAPID)
    {
    	case FORLOOPBitmap:
@@ -908,7 +908,7 @@ InsertIntoBlockLLwithUID(((HOOKP)newnode->LoopBlockHOOKP)->BlockLLHeadP,ctrlbloc
    	break;
    	case SWITCHCASEBitmap:
    	
-   	// ¥¼§¹¦¨
+   	// æœªå®Œæˆ
    	
    	break;
    }
@@ -952,7 +952,7 @@ Boolean FunctionsFormHandleEvent(EventPtr eventP)
 			Rtest.extent.y=16;
 			WinDrawRectangle(&Rtest,0);
 			*/
-			// µe¥X function palette
+			// ç•«å‡º function palette
 			DrawToolCatagory();
 			CatagoryIn = false;
 			CatagoryBNP = NULL;
@@ -966,7 +966,7 @@ Boolean FunctionsFormHandleEvent(EventPtr eventP)
 			if(InAreaInf.InArea)
 			{
 				if(CatagoryIn) 
-				{// ¶i¤JÃþ§O¤¤
+				{// é€²å…¥é¡žåˆ¥ä¸­
 				 if(InAreaInf.llp->TYPE == 8000)
 				 {
 					AddToSYSHOOK(InAreaInf.llp);
@@ -982,7 +982,7 @@ Boolean FunctionsFormHandleEvent(EventPtr eventP)
 				}
 				else if(((HOOKP)InAreaInf.llp->hookP) != NULL)
 				{
-					// §ïÅÜcatagory ICONªº¤j¤p
+					// æ”¹è®Šcatagory ICONçš„å¤§å°
 					Catx	= InAreaInf.llp->bap->XY.x;
 					Caty	= InAreaInf.llp->bap->XY.y;
 					Catextx= InAreaInf.llp->bap->SIZE.x;
@@ -1000,7 +1000,7 @@ Boolean FunctionsFormHandleEvent(EventPtr eventP)
 				}
 				/////////////////////////////////////////
 				//
-				// 5-31 ³B²z ¦Û­q¤¸¥ó
+				// 5-31 è™•ç† è‡ªè¨‚å…ƒä»¶
 				//
 				if(InAreaInf.llp->bap->BITMAPID == FUNCCUSTBitmap)
 				{
@@ -1036,7 +1036,7 @@ Boolean FunctionsFormHandleEvent(EventPtr eventP)
 			if(CUSTOMLOAD)
 			{
 				CUSTOMLOAD=false;
-				// ¥[¤J¦ê¦C
+				// åŠ å…¥ä¸²åˆ—
 				// CUSTUMHOOK
 				if(CUSTUMHOOK.BlockLLHeadP!=NULL)
 					AddCUSTtoSYSHOOK();

@@ -13,7 +13,7 @@
  *
  ***********************************************************************/
 extern WNP WLLP;
-extern HOOKP SYSHOOK;	// µ{¦¡¥D¦ê¦CªºÀY
+extern HOOKP SYSHOOK;	// ç¨‹å¼ä¸»ä¸²åˆ—çš„é ­
 extern EndPoint WireStart,WireStop;
 extern UID;
 extern BNP BlockToolsLLHeadP;
@@ -108,9 +108,9 @@ HOOKP allocate_a_new_hook()
 	return (HOOKP)p;
 }
 // ********************************************************************************
-// * ´¡¤J·sBlock
+// * æ’å…¥æ–°Block
 // *
-// * 4-25 µe­±¤W¥X²{ªº¤¸¥ó³£»Ý­n°ß¤@½X
+// * 4-25 ç•«é¢ä¸Šå‡ºç¾çš„å…ƒä»¶éƒ½éœ€è¦å”¯ä¸€ç¢¼
 // *
 // *
 // ********************************************************************************
@@ -123,14 +123,14 @@ HOOKP allocate_a_new_hook()
 	//bLLP = sysHead.BlockLLHead;
 
 	if(bLLP != SYSHOOK->BlockLLHeadP)
-	{// ¤£¬O¨t²ÎÀY¡A§ä¥X³Ì¤jUID­È
+	{// ä¸æ˜¯ç³»çµ±é ­ï¼Œæ‰¾å‡ºæœ€å¤§UIDå€¼
 		tempLLP = SYSHOOK->BlockLLHeadP;
 		while(tempLLP != )
 		{
 		}
 	}
 	if(bLLP == NULL)
-	{// ¦pªG¬O²Ä¤@µ§¸ê®Æ
+	{// å¦‚æžœæ˜¯ç¬¬ä¸€ç­†è³‡æ–™
 		bLLP = node ;
 		bLLP->PREVNODE = NULL;
 		if(generate_new_ID)
@@ -143,7 +143,7 @@ HOOKP allocate_a_new_hook()
 	 while(true)
 	 {
 		if((bLLP->bap->UID > IDn) && generate_new_ID)
-		{// »Ý­n²£¥ÍID
+		{// éœ€è¦ç”¢ç”ŸID
 			IDn = bLLP->bap->UID; // generate the uID
 		}
 		if(bLLP->NEXTNODE == NULL)
@@ -167,9 +167,9 @@ HOOKP allocate_a_new_hook()
 }
 */
 // ********************************************************************************
-// * ´¡¤J·sBlock
+// * æ’å…¥æ–°Block
 // *
-// * 4-25 µe­±¤W¥X²{ªº¤¸¥ó³£»Ý­n°ß¤@½X¡A¤À¦¨¨â­Ófunction
+// * 4-25 ç•«é¢ä¸Šå‡ºç¾çš„å…ƒä»¶éƒ½éœ€è¦å”¯ä¸€ç¢¼ï¼Œåˆ†æˆå…©å€‹function
 // *
 // *
 // ********************************************************************************
@@ -180,7 +180,7 @@ HOOKP allocate_a_new_hook()
 	UID ++;
 		
 	if(bLLP == NULL)
-	{// ¦pªG¬O²Ä¤@µ§¸ê®Æ
+	{// å¦‚æžœæ˜¯ç¬¬ä¸€ç­†è³‡æ–™
 		bLLP = node ;
 		bLLP->PREVNODE = NULL;
 
@@ -190,7 +190,7 @@ HOOKP allocate_a_new_hook()
 	}
 	
 	 while(bLLP->NEXTNODE != NULL)
-	 {// ¨«¨ì³Ì«á¤@µ§ 
+	 {// èµ°åˆ°æœ€å¾Œä¸€ç­† 
 	 	bLLP = bLLP->NEXTNODE;
 	 }
 	
@@ -198,7 +198,7 @@ HOOKP allocate_a_new_hook()
 	bLLP->NEXTNODE = node;
 	node->PREVNODE = bLLP;
 	
-	// ¨«¨ìÀYµ§
+	// èµ°åˆ°é ­ç­†
 	while(bLLP->PREVNODE != NULL)
 		bLLP = bLLP->PREVNODE;
 		
@@ -206,35 +206,35 @@ HOOKP allocate_a_new_hook()
 }
 
 // ********************************************************************************
-// * ´¡¤J·sBlock
+// * æ’å…¥æ–°Block
 // *
-// * 4-25 µe­±¤W¥X²{ªº¤¸¥ó³£»Ý­n°ß¤@½X¡A¤À¦¨¨â­Ófunction
+// * 4-25 ç•«é¢ä¸Šå‡ºç¾çš„å…ƒä»¶éƒ½éœ€è¦å”¯ä¸€ç¢¼ï¼Œåˆ†æˆå…©å€‹function
 // *
 // *
 // ********************************************************************************
 BNP InsertIntoBlockLLNoUID(BNP bLLP,BNP node)
 {
 	//bLLP = sysHead.BlockLLHead;
-	// 6-1 ½T«O³£¦³°ß¤@½X 
+	// 6-1 ç¢ºä¿éƒ½æœ‰å”¯ä¸€ç¢¼ 
 	if((node->ID)>UID)
 		UID=node->ID;
 		
 	if(bLLP == NULL)
-	{// ¦pªG¬O²Ä¤@µ§¸ê®Æ
+	{// å¦‚æžœæ˜¯ç¬¬ä¸€ç­†è³‡æ–™
 		bLLP = node ;
 		bLLP->PREVNODE = NULL;
 		return bLLP;
 	}
 	
 	 while(bLLP->NEXTNODE != NULL)
-	 {// ¨«¨ì³Ì«á¤@µ§ 
+	 {// èµ°åˆ°æœ€å¾Œä¸€ç­† 
 	 	bLLP = bLLP->NEXTNODE;
 	 }
 	 
 	bLLP->NEXTNODE = node;
 	node->PREVNODE = bLLP;
 	
-	// ¦^¨ìÀY¦ì§}
+	// å›žåˆ°é ­ä½å€
 	while(bLLP->PREVNODE != NULL)
 		bLLP = bLLP->PREVNODE;
 		
@@ -245,8 +245,8 @@ WNP InsertIntoWireLL(WNP Head,WNP node)
 	//WNP wLLP;
 	//wLLP = sysHead.WireLLHead;
 	
-	node->DIRTY=false; // 5-15 °Êµe¥Î
-	node->STARTRUN=false; // 5-15 °Êµe¥Î
+	node->DIRTY=false; // 5-15 å‹•ç•«ç”¨
+	node->STARTRUN=false; // 5-15 å‹•ç•«ç”¨
 	node->RUNSEG=0;
 	// condition 1
 	if(Head == NULL)
@@ -269,7 +269,7 @@ WNP InsertIntoWireLL(WNP Head,WNP node)
 	Head->NEXTNODE = node;
 	node->PREVNODE = Head;
 	
-	//4-25 ¦^¨ì¶}ÀY
+	//4-25 å›žåˆ°é–‹é ­
 	while(Head->PREVNODE != NULL)
 	{
 		Head = Head->PREVNODE;
@@ -375,7 +375,7 @@ HOOKP AddWireLinkListNode(HOOKP hookp,EndPoint Start,EndPoint Stop)
 }
 
 //
-// ¥i»¼°j
+// å¯éžè¿´
 //
  BNP RemoveBlockLinkList(BNP bllpH,BNP  WhichBlockPtr)
 {
@@ -397,7 +397,7 @@ HOOKP AddWireLinkListNode(HOOKP hookp,EndPoint Start,EndPoint Stop)
 	return bllpH;
 }
 //
-// ¥i»¼°j
+// å¯éžè¿´
 //
 WNP RemoveWireLinkList(WNP WireLLHead,WNP  wireptr)
 {
@@ -562,9 +562,9 @@ void ReleaseLLMemPtr(BNP llhead)
 }
 
 //
-// 4/13 ¥[¤J¥i»¼°j ­×
+// 4/13 åŠ å…¥å¯éžè¿´ ä¿®
 //
-// 6-1 §ïª©
+// 6-1 æ”¹ç‰ˆ
 
 void NEW(void )
 {
@@ -648,34 +648,34 @@ UInt16 CountIONODEs(IONODEP IO)
 	return i;
 }
 /*
-	5-6 ¥[¤J ±Nbnp²¾¨ì¦ê¦C³Ì«á¤@­Ó
+	5-6 åŠ å…¥ å°‡bnpç§»åˆ°ä¸²åˆ—æœ€å¾Œä¸€å€‹
 */
 BNP ItemMoveToLastPosition(BNP BLLHead,BNP bnp)
 {
 	BNP bLLlast;
 	
 	bLLlast = BLLHead;
-	// §ä¥X¦ê¦Cªº³Ì«á¤@­Ó
+	// æ‰¾å‡ºä¸²åˆ—çš„æœ€å¾Œä¸€å€‹
 	while(bLLlast->NEXTNODE != NULL)
 	{
 		bLLlast = bLLlast->NEXTNODE;
 	}
-	// ¦pªG bnp ¤w¸g¬O³Ì«á¤@­Ó ¤£°Ê§@
+	// å¦‚æžœ bnp å·²ç¶“æ˜¯æœ€å¾Œä¸€å€‹ ä¸å‹•ä½œ
 	if(bnp != bLLlast)
 	{
-		// ±N bnp ªº¤W¤U node ±µ°_¨Ó
-		if(bnp->PREVNODE != NULL) // ¦pªG bnp ¦ì¦b²Ä¤@¦ì
+		// å°‡ bnp çš„ä¸Šä¸‹ node æŽ¥èµ·ä¾†
+		if(bnp->PREVNODE != NULL) // å¦‚æžœ bnp ä½åœ¨ç¬¬ä¸€ä½
 			bnp->PREVNODE->NEXTNODE = bnp->NEXTNODE;
 		
 		if(bnp->NEXTNODE != NULL)	
 			bnp->NEXTNODE->PREVNODE = bnp->PREVNODE;
 		
-		// ±N bnp ±µ¨ì³Ì«á¤@­Ó¦ì¸m
+		// å°‡ bnp æŽ¥åˆ°æœ€å¾Œä¸€å€‹ä½ç½®
 		bLLlast->NEXTNODE = bnp;
 		bnp->PREVNODE = bLLlast;
 		bnp->NEXTNODE = NULL;
 	}
-	// ¦^¨ìÀY
+	// å›žåˆ°é ­
 	while(bLLlast->PREVNODE != NULL)
 	{
 		bLLlast = bLLlast->PREVNODE;

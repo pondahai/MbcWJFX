@@ -67,7 +67,7 @@ extern BNP FindItemByID(BNP BLHead, UInt16 ID)
 
 /***********************************************************************
  * 2003-4-12
- * ¶i¨Óªº¤@©w¬OCustom block
+ * é€²ä¾†çš„ä¸€å®šæ˜¯Custom block
  * 
  ***********************************************************************/
 void AutoFindIOnodesSetIntoICONnode(BNP LLHead)
@@ -117,12 +117,12 @@ extern Boolean CheckBoundary(int x,int y,int XX,int YY,int X,int Y)
 		return false;
 }
 /*
-	¬O§_Äİ¦P¤@­Ó½u¬q¦ê¦C
+	æ˜¯å¦å±¬åŒä¸€å€‹ç·šæ®µä¸²åˆ—
 */
 Boolean IsTheSameWireLLHead(HOOKP hookp,BNP bnp)
 {
 	HOOKP thookp;
-	// §ä¥X bnp ½u¬qÀY
+	// æ‰¾å‡º bnp ç·šæ®µé ­
 	switch(bnp->SelfBlockLLHead->TYPE)
 	{
 		case HOOKBLOCK :
@@ -151,13 +151,13 @@ CTRLNODEP CheckOnCTRLNode(InAreaInfType InAreaInf,int now_x,int now_y)
 	switch(FrmGetActiveFormID())
 	{
 		case BlockDiagramForm:
-			// ­pºâµ´¹ï®y¼Ğ
+			// è¨ˆç®—çµ•å°åº§æ¨™
 			if(InAreaInf.llp->SelfBlockLLHead != SYSHOOK->BlockLLHeadP)
 			{
 				window_x=0;window_y=0;
 				bllp = InAreaInf.llp->SelfBlockLLHead;
 				while(bllp != SYSHOOK->BlockLLHeadP)
-				{//4-26 ¨«¤@¹M¦ê¦C¡A¥[¥Xµ´¹ï®y¼Ğ
+				{//4-26 èµ°ä¸€éä¸²åˆ—ï¼ŒåŠ å‡ºçµ•å°åº§æ¨™
 					window_x += bllp->bap->XY.x;
 					window_y += bllp->bap->XY.y;
 					bllp = bllp->SelfBlockLLHead;
@@ -166,7 +166,7 @@ CTRLNODEP CheckOnCTRLNode(InAreaInfType InAreaInf,int now_x,int now_y)
 				//window_x = InAreaInf.llp->SelfBlockLLHead->bap->XY.x;
 				//window_y = InAreaInf.llp->SelfBlockLLHead->bap->XY.y;
 			}
-			// ¬O§_¦b±±¨î¸`ÂI¤W
+			// æ˜¯å¦åœ¨æ§åˆ¶ç¯€é»ä¸Š
 			ctrlnode = InAreaInf.llp->bap->CTRLNodeLLHead;
 			while((ctrlnode != NULL ) )
 			{
@@ -182,7 +182,7 @@ CTRLNODEP CheckOnCTRLNode(InAreaInfType InAreaInf,int now_x,int now_y)
 						
 				ctrlnode = ctrlnode->NEXT;
 			}
-			// ¦pªG¬Oµe¥X¶Â¤è¶ô
+			// å¦‚æœæ˜¯ç•«å‡ºé»‘æ–¹å¡Š
 			if(OnNode)
 			{
 				Rtest.topLeft.x=ctrlnode->TL.x + 
@@ -196,7 +196,7 @@ CTRLNODEP CheckOnCTRLNode(InAreaInfType InAreaInf,int now_x,int now_y)
 			}
 		break;
 		case FrontPanelForm:
-			// ¬O§_¦b±±¨î¸`ÂI¤W
+			// æ˜¯å¦åœ¨æ§åˆ¶ç¯€é»ä¸Š
 			ctrlnode = InAreaInf.llp->pap->CTRLNodeLLHead;
 			while((ctrlnode != NULL ) )
 			{
@@ -210,7 +210,7 @@ CTRLNODEP CheckOnCTRLNode(InAreaInfType InAreaInf,int now_x,int now_y)
 						
 				ctrlnode = ctrlnode->NEXT;
 			}
-			// ¦pªG¬Oµe¥X¶Â¤è¶ô
+			// å¦‚æœæ˜¯ç•«å‡ºé»‘æ–¹å¡Š
 			if(OnNode)
 			{
 				Rtest.topLeft.x=ctrlnode->TL.x + InAreaInf.llp->pap->XY.x ;
@@ -230,13 +230,13 @@ CTRLNODEP CheckOnCTRLNode(InAreaInfType InAreaInf,int now_x,int now_y)
 // LLP
 //
 /***********************************************************************
- * ÀË¬d¦³¨S¦³¦bIO¸`ÂI¤W
- * ¶Ç¦^¡G²Ä´X­ÓIO¸`ÂI¡H
- * 2003-4-12 ¥Ø«eÁÙ¬O¨Ï¥Î¤½¦@ÅÜ¼Æ(LLP)¶Ç»¼
- *           ¤º§t¦³½u¬q³s±µªº¥\¯à
- * 2003-4-13 §ï¬°¥i»¼°j§Î¦¡
- * 4-22      ²¾°£¤º³¡ÀË¬d±µ½u¡A¿W¥ß¬°¥~³¡°Æµ{¦¡CheckWireLink
- * 4-24      ¥[¤J¥i§PÂ_µ²ºc¤º¤¸¥ó¤§±µ½u
+ * æª¢æŸ¥æœ‰æ²’æœ‰åœ¨IOç¯€é»ä¸Š
+ * å‚³å›ï¼šç¬¬å¹¾å€‹IOç¯€é»ï¼Ÿ
+ * 2003-4-12 ç›®å‰é‚„æ˜¯ä½¿ç”¨å…¬å…±è®Šæ•¸(LLP)å‚³é
+ *           å…§å«æœ‰ç·šæ®µé€£æ¥çš„åŠŸèƒ½
+ * 2003-4-13 æ”¹ç‚ºå¯éè¿´å½¢å¼
+ * 4-22      ç§»é™¤å…§éƒ¨æª¢æŸ¥æ¥ç·šï¼Œç¨ç«‹ç‚ºå¤–éƒ¨å‰¯ç¨‹å¼CheckWireLink
+ * 4-24      åŠ å…¥å¯åˆ¤æ–·çµæ§‹å…§å…ƒä»¶ä¹‹æ¥ç·š
  *
  ***********************************************************************/
  IONODEP CheckOnNode(InAreaInfType InAreaInf,int now_x,int now_y,Boolean Draw)
@@ -252,13 +252,13 @@ CTRLNODEP CheckOnCTRLNode(InAreaInfType InAreaInf,int now_x,int now_y)
 	switch(FrmGetActiveFormID())
 	{
 		case BlockDiagramForm:
-			// 4-24 ¬°µ²ºc¦Ó¥[
+			// 4-24 ç‚ºçµæ§‹è€ŒåŠ 
 			if(InAreaInf.llp->SelfBlockLLHead != SYSHOOK->BlockLLHeadP)
 			{
 				window_x=0;window_y=0;
 				bllp = InAreaInf.llp->SelfBlockLLHead;
 				while(bllp != SYSHOOK->BlockLLHeadP)
-				{//4-26 ¨«¤@¹M¦ê¦C¡A¥[¥Xµ´¹ï®y¼Ğ
+				{//4-26 èµ°ä¸€éä¸²åˆ—ï¼ŒåŠ å‡ºçµ•å°åº§æ¨™
 					window_x += bllp->bap->XY.x;
 					window_y += bllp->bap->XY.y;
 					bllp = bllp->SelfBlockLLHead;
@@ -330,7 +330,7 @@ CTRLNODEP CheckOnCTRLNode(InAreaInfType InAreaInf,int now_x,int now_y)
 				window_x=0;window_y=0;
 				bllp = InAreaInf.llp->SelfBlockLLHead;
 				while(bllp != SYSHOOK->BlockLLHeadP)
-				{//4-26 ¨«¤@¹M¦ê¦C¡A¥[¥Xµ´¹ï®y¼Ğ
+				{//4-26 èµ°ä¸€éä¸²åˆ—ï¼ŒåŠ å‡ºçµ•å°åº§æ¨™
 					window_x += bllp->bap->XY.x;
 					window_y += bllp->bap->XY.y;
 					bllp = bllp->SelfBlockLLHead;
@@ -436,8 +436,8 @@ void NestItemMoveToLastPosition(BNP llp)
 }
 void NestReDraw(BNP llp)
 {
-	// 5-12 ±_ª¬­«Ã¸
-	// ¦V¤U±´´M
+	// 5-12 å·¢ç‹€é‡ç¹ª
+	// å‘ä¸‹æ¢å°‹
 	//bnp=((HOOKP)llp->LoopBlockHOOKP)->BlockLLHeadP;
 	while(llp != NULL)
 	{
@@ -466,13 +466,13 @@ void NestReDraw(BNP llp)
 	}
 }
 /***********************************************************************
- * ¥\¯à¡G§ä¥X«ü¼Ğ²{¦b¦b­ş¤@­Ó¤¸¥ó¤W
+ * åŠŸèƒ½ï¼šæ‰¾å‡ºæŒ‡æ¨™ç¾åœ¨åœ¨å“ªä¸€å€‹å…ƒä»¶ä¸Š
  *
- * 2003-4-12 ¥Î¤½¦@ÅÜ¼Æ(LLP)¶Ç»¼
- * 2003-4-13 §ï¬°¥i»¼°j§Î¦¡
- * 2003-4-22 ¥[¤J¡yµ²ºc¡zªº§PÂ_
- * 2003-4-26 ¥[¤J±Æ°£¡y¤â¤¤©Ò§ì¡zªº¥\¯à
- * 2003-5-09 ¥[¤J§PÂ_tools formªº¨Æ¥ó
+ * 2003-4-12 ç”¨å…¬å…±è®Šæ•¸(LLP)å‚³é
+ * 2003-4-13 æ”¹ç‚ºå¯éè¿´å½¢å¼
+ * 2003-4-22 åŠ å…¥ã€çµæ§‹ã€çš„åˆ¤æ–·
+ * 2003-4-26 åŠ å…¥æ’é™¤ã€æ‰‹ä¸­æ‰€æŠ“ã€çš„åŠŸèƒ½
+ * 2003-5-09 åŠ å…¥åˆ¤æ–·tools formçš„äº‹ä»¶
  ***********************************************************************/
 extern InAreaInfType IsInArea(InAreaInfType InAreaInf,BNP llp,UInt16 now_x,UInt16 now_y,UInt16 window_x,UInt16 window_y)
 {
@@ -483,14 +483,14 @@ extern InAreaInfType IsInArea(InAreaInfType InAreaInf,BNP llp,UInt16 now_x,UInt1
 	//InAreaInf.llp = syshead.BlockLLHead->NEXTNODE; //jump over the ICON node;
 	//InAreaInf.llp = llp;
 	Boolean InArea = false;
-	// llp ³o®É«ü¦VLLªºÀY
+	// llp é€™æ™‚æŒ‡å‘LLçš„é ­
 	//BNP bnp;
 	// scan whole link-list,
 	//if  hit then stop,
 	//if touch link-list end then stop,too.
-	// 5-13 ¸ÕÅç
-	// ¥ı¨«¨ì§À
-	// ¦A­Ë¦^¨Ó
+	// 5-13 è©¦é©—
+	// å…ˆèµ°åˆ°å°¾
+	// å†å€’å›ä¾†
 	if(llp != NULL)
 	while(llp->NEXTNODE != NULL)
 	{
@@ -500,7 +500,7 @@ extern InAreaInfType IsInArea(InAreaInfType InAreaInf,BNP llp,UInt16 now_x,UInt1
 	while((llp !=NULL) && (llp != SYSHOOK->BlockLLHeadP))
 	{
 	  if(llp != HandPointer.CatchWhat)
-	  {// ±Æ°£¤â¤¤©Ò§ì
+	  {// æ’é™¤æ‰‹ä¸­æ‰€æŠ“
   		switch(FrmGetActiveFormID())
 		{
 			case BlockDiagramForm:
@@ -510,9 +510,9 @@ extern InAreaInfType IsInArea(InAreaInfType InAreaInf,BNP llp,UInt16 now_x,UInt1
 				llp->bap->XY.y + window_y,
 				llp->bap->SIZE.x,
 				llp->bap->SIZE.y,now_x,now_y);
-				// §PÂ_¬O§_¶i¤J¡yµ²ºc¡z
+				// åˆ¤æ–·æ˜¯å¦é€²å…¥ã€çµæ§‹ã€
 				if(InArea == true )
-				{// ¦pªG¬O¦bµ²ºc¤¤ ¦Ó¥B µ²ºc¤¤ªº¦ê¦C¤£¬°ªÅ
+				{// å¦‚æœæ˜¯åœ¨çµæ§‹ä¸­ è€Œä¸” çµæ§‹ä¸­çš„ä¸²åˆ—ä¸ç‚ºç©º
 	        		llp->bap->ReDraw=true;
 	        		llp->bap->Clean=true;
 					switch(llp->TYPE)
@@ -556,7 +556,7 @@ extern InAreaInfType IsInArea(InAreaInfType InAreaInf,BNP llp,UInt16 now_x,UInt1
 				llp->pap->SIZE.y,now_x,now_y);
 */
 //				if(InArea == true )
-//				{// ¦pªG¬O¦bµ²ºc¤¤ ¦Ó¥B µ²ºc¤¤ªº¦ê¦C¤£¬°ªÅ
+//				{// å¦‚æœæ˜¯åœ¨çµæ§‹ä¸­ è€Œä¸” çµæ§‹ä¸­çš„ä¸²åˆ—ä¸ç‚ºç©º
 //	        		llp->bap->ReDraw=true;
 //	        		llp->bap->Clean=true;
 					switch(llp->TYPE)
@@ -644,7 +644,7 @@ extern InAreaInfType IsInArea(InAreaInfType InAreaInf,BNP llp,UInt16 now_x,UInt1
 			if(InArea == true)// jump out when In the area.l
 				break;
 	  }
-	  // 5-13 ¸ÕÅç
+	  // 5-13 è©¦é©—
 	  llp = llp->PREVNODE;
 	  //llp = llp->NEXTNODE;
 	}
@@ -667,12 +667,12 @@ extern InAreaInfType IsInArea(InAreaInfType InAreaInf,BNP llp,UInt16 now_x,UInt1
 	{
 		case BlockDiagramForm:
 		  switch(HandPointer.CatchWhat->SelfBlockLLHead->TYPE)
-		  { //¦b¨M©w·s®y¼Ğ¤§«e¡A§PÂ_¬O§_¬°¡yµ²ºc¡z¤º¤¸¥ó¡A¦p¬O¡A­n´î¥h¡yµ²ºc¡z©Ò¦b®y¼Ğ
-		  // ²£¥Í¬Û¹ï¦ì¸m
+		  { //åœ¨æ±ºå®šæ–°åº§æ¨™ä¹‹å‰ï¼Œåˆ¤æ–·æ˜¯å¦ç‚ºã€çµæ§‹ã€å…§å…ƒä»¶ï¼Œå¦‚æ˜¯ï¼Œè¦æ¸›å»ã€çµæ§‹ã€æ‰€åœ¨åº§æ¨™
+		  // ç”¢ç”Ÿç›¸å°ä½ç½®
 				case LOOPBLOCK :
 	        	case CASEBLOCK :
 
-				// ±_ª¬µ²ºc­åªR
+				// å·¢ç‹€çµæ§‹å‰–æ
 				x=0;y=0;
 				bllp = HandPointer.CatchWhat->SelfBlockLLHead;
 				while(bllp != SYSHOOK->BlockLLHeadP)
@@ -793,7 +793,7 @@ static void MainFormInit(FormPtr frmP)
  ***********************************************************************/
 
 /*
- 5-9 ­×§ïÃä¬É§PÂ_ now_x »P now_y ªº³]©w
+ 5-9 ä¿®æ”¹é‚Šç•Œåˆ¤æ–· now_x èˆ‡ now_y çš„è¨­å®š
 */
 void CaculateNowXNowY(UInt16 *now_x,UInt16 *now_y,UInt16 screenX,UInt16 screenY)
 {
@@ -802,7 +802,7 @@ void CaculateNowXNowY(UInt16 *now_x,UInt16 *now_y,UInt16 screenX,UInt16 screenY)
 	if(BlockPointerState == HANDBitmap)
 	{// 
 		if(HandPointer.HandState == CLENCHBitmap)
-		{// ¦³§ìªF¦è x,y ­«ºâ
+		{// æœ‰æŠ“æ±è¥¿ x,y é‡ç®—
 			if(screenX <(
 				HandPointer.RelativePoint.x))
 			{
@@ -820,7 +820,7 @@ void CaculateNowXNowY(UInt16 *now_x,UInt16 *now_y,UInt16 screenX,UInt16 screenY)
 			else
 				*now_y = screenY;
 			
-		}else{// ¨S§ìªF¦è y = hand ªºªø«×
+		}else{// æ²’æŠ“æ±è¥¿ y = hand çš„é•·åº¦
 			*now_x = screenX;
 			if(screenY <(PointIconYExt))
 				*now_y = (PointIconYExt);
@@ -932,14 +932,14 @@ Boolean KeyboardPendownProcess(int keyboard_x,int keyboard_y,BNP objectB,int x,i
 	char datavaluetxt2[8];
 	//int datavalue;
 	
-	// Åª¥X¸ê®Æ­È
+	// è®€å‡ºè³‡æ–™å€¼
 	switch(objectB->pap->BITMAPID)
 	{
 		case CTRLU8Bitmap:
 			StrIToA(datavaluetxt,*(int *)objectB->bap->IONodeLLHead->P);
 		break;
 	}
-	// «ö¤U­ş¤@­Ó«ö¶s¡H
+	// æŒ‰ä¸‹å“ªä¸€å€‹æŒ‰éˆ•ï¼Ÿ
 	if(CheckBoundary(keyboard_x+0,keyboard_y+0,10,12,x,y))
 	{
 		StrCat(datavaluetxt,"1");
@@ -987,7 +987,7 @@ Boolean KeyboardPendownProcess(int keyboard_x,int keyboard_y,BNP objectB,int x,i
 	}
 	else if(CheckBoundary(keyboard_x+20,keyboard_y+36,10,12,x,y))
 	{
-		// ¼g¦^¸ê®Æ­È
+		// å¯«å›è³‡æ–™å€¼
 		switch(objectB->pap->BITMAPID)
 		{
 			case CTRLU8Bitmap:
@@ -1013,7 +1013,7 @@ Boolean KeyboardPendownProcess(int keyboard_x,int keyboard_y,BNP objectB,int x,i
 	{
 		return false;
 	}
-	// ¼g¦^¸ê®Æ­È
+	// å¯«å›è³‡æ–™å€¼
 	switch(objectB->pap->BITMAPID)
 	{
 		case CTRLU8Bitmap:

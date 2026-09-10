@@ -27,7 +27,7 @@ Boolean PanelToolsFormHandleEvent(EventPtr eventP)
 			frmP = FrmGetActiveForm();
 			FrmDrawForm ( frmP);
 			
-			// µe¥X¤u¨ã­Ì
+			// ç•«å‡ºå·¥å…·å€‘
 			bnp = PanelToolsLLHeadP;
 			x=1;y=13;
 			while(bnp != NULL)
@@ -37,7 +37,7 @@ Boolean PanelToolsFormHandleEvent(EventPtr eventP)
 				bnp->bap->XY.x = x;
 				bnp->bap->XY.y = y;
 				
-				// ­pºâ¤U¤@­Ó¦ì¸m
+				// è¨ˆç®—ä¸‹ä¸€å€‹ä½ç½®
 				if(x == 1)
 					x = 19;
 				else if(x == 19)

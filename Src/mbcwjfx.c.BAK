@@ -2101,7 +2101,7 @@ static void BlockpenUpProcess(EventPtr eventP)
 			  if(InArea)
 			  {
 				// check on node?
-				// LLP ¡Ùßt∂«ªº
+				// LLP Èö±Âê´ÂÇ≥ÈÅû
 				CheckOnNode(now_x,now_y,true,true);
 			  }
 				
@@ -2130,7 +2130,7 @@ static void BlockpenUpProcess(EventPtr eventP)
 			  if(InArea)
 			  {
 				// check on node?
-				// LLP ¡Ùßt∂«ªº
+				// LLP Èö±Âê´ÂÇ≥ÈÅû
 				CheckOnNode(now_x,now_y,true,true);
 			  }
 				// clear prev. icon image
@@ -2203,7 +2203,7 @@ static void BlockpenDownProcess(EventPtr eventP)
 			if(InArea)
 			{
 				// check on node?
-				// LLP ¡Ùßt∂«ªº
+				// LLP Èö±Âê´ÂÇ≥ÈÅû
 				CheckOnNode(now_x,now_y,true,true);
 			}
 			else
@@ -2217,7 +2217,7 @@ static void BlockpenDownProcess(EventPtr eventP)
 			if(InArea)
 			{
 				// check on node?
-				// LLP ¡Ùßt∂«ªº
+				// LLP Èö±Âê´ÂÇ≥ÈÅû
 				CheckOnNode(now_x,now_y,true,true);
 			}
 			else
@@ -2233,7 +2233,7 @@ static void BlockpenDownProcess(EventPtr eventP)
 			{
 				
 				// check on node?
-				// LLP ¡Ùßt∂«ªº
+				// LLP Èö±Âê´ÂÇ≥ÈÅû
 				// clear Block bitmap image
 				DrawIcon(BLANKBitmap,LLP->item.BlockXY.x,LLP->item.BlockXY.y);
 				// remove wire connection
@@ -2468,7 +2468,7 @@ static void PanelpenDownProcess(EventPtr eventP)
 			if(InArea)
 			{
 				// check on node?
-				// LLP ¡Ùßt∂«ªº
+				// LLP Èö±Âê´ÂÇ≥ÈÅû
 				DrawIcon(PRESSFINGERBitmap,now_x+offset_x,now_y+offset_y);
 				if((i=CheckOnNode(now_x,now_y,true,false)) != -1)
 				{

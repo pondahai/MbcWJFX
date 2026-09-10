@@ -22,16 +22,16 @@ void AddString(VoidHand strH,char *str)
 {
 	char *strP;
 
-	MemHandleResize(strH,MemHandleSize(strH)+StrLen(str));			//½Õ¾ã¤j¤p
-	strP=MemHandleLock(strH);								// Âê
-	StrNCat(strP,str,MemHandleSize(strH));					//¦ê±µ
-	MemHandleUnlock(strH);									// ¸ÑÂê
+	MemHandleResize(strH,MemHandleSize(strH)+StrLen(str));			//èª¿æ•´å¤§å°
+	strP=MemHandleLock(strH);								// é–
+	StrNCat(strP,str,MemHandleSize(strH));					//ä¸²æ¥
+	MemHandleUnlock(strH);									// è§£é–
 }
 /***********************************************************************
  * 2003-5-20
- * 2003-5-31 ¦pªG¬O HOOKBLOCK ªº¸Ü¨Ã¤£·|¥h³B²z ¨ä¤º³¡¦ê¦C
- *           ¦Ó¬O¶È¶È°O¸ü ³o­Ó HOOKBLOCK ¦Ó¤w µ¥¨ì LOAD ªº®É­Ô
- *           ¤~·|¥h³B²z
+ * 2003-5-31 å¦‚æœæ˜¯ HOOKBLOCK çš„è©±ä¸¦ä¸æœƒå»è™•ç† å…¶å…§éƒ¨ä¸²åˆ—
+ *           è€Œæ˜¯åƒ…åƒ…è¨˜è¼‰ é€™å€‹ HOOKBLOCK è€Œå·² ç­‰åˆ° LOAD çš„æ™‚å€™
+ *           æ‰æœƒå»è™•ç†
  ***********************************************************************/
 void DataStruct2ASCII(VoidHand strH,BNP bnp,WNP wnp)
 {
@@ -198,12 +198,12 @@ void DataStruct2ASCII(VoidHand strH,BNP bnp,WNP wnp)
 			AddString(strH,"ENDPAP\n");
 			}
 			
-			//LoopBlockHOOKP ¥u·|¦³¤@­Ó ¤£¥Îend
+			//LoopBlockHOOKP åªæœƒæœ‰ä¸€å€‹ ä¸ç”¨end
 			if(bnp->TYPE==LOOPBLOCK)
 			{
 				AddString(strH,"NEWLOOPHOOK\n");
 				AddString(strH,"NEWHOOK\n");
-				//»¼°j©I¥s
+				//éè¿´å‘¼å«
 				DataStruct2ASCII(strH,((HOOKP)bnp->LoopBlockHOOKP)->BlockLLHeadP,((HOOKP)bnp->LoopBlockHOOKP)->WireLLHeadP);
 			}
 			if(bnp->TYPE==CASEBLOCK)
@@ -214,10 +214,10 @@ void DataStruct2ASCII(VoidHand strH,BNP bnp,WNP wnp)
 			while(hookp!=NULL)
 			{
 				AddString(strH,"NEWHOOK\n");
-				//»¼°j©I¥s
+				//éè¿´å‘¼å«
 				DataStruct2ASCII(strH,hookp->BlockLLHeadP,hookp->WireLLHeadP);
 				hookp=hookp->NEXT;
-				if(hookp == (HOOKP)bnp->CaseBlockHOOKLLHeadP)//¦]¬° caseªºloop¬O´`Àôªº
+				if(hookp == (HOOKP)bnp->CaseBlockHOOKLLHeadP)//å› ç‚º caseçš„loopæ˜¯å¾ªç’°çš„
 					break;
 			}
 
@@ -239,7 +239,7 @@ void DataStruct2ASCII(VoidHand strH,BNP bnp,WNP wnp)
 	AddString(strH,"STARTWIRE\n");
 	while(wnp!=NULL)
 	{
-		// 5-31 ¨M©w HOOKBLOCK ªºID¬°0
+		// 5-31 æ±ºå®š HOOKBLOCK çš„IDç‚º0
 		//if(wnp->StartBlockP->TYPE==HOOKBLOCK)
 		//{
 		//wnp->StartBlockP->ID;
@@ -343,7 +343,7 @@ HOOKP  FindInputNode(HOOKP hookp,BNP hook_block,BNP bnpLLHead, int *IOID)
 			ionode->EXT.y=lattice_y;
 			hook_block->bap->IONodeLLHead = 
 				InsertIntoIONodesLL(hook_block->bap->IONodeLLHead,	ionode);
-			// ¥[¤J½u¬q ¨Ï¥Î StartStopAddIntoWLL()
+			// åŠ å…¥ç·šæ®µ ä½¿ç”¨ StartStopAddIntoWLL()
 			WireStart.BlockP = hook_block;
 			WireStart.NodeP = ionode;
 			WireStop.BlockP = bnp;
@@ -399,7 +399,7 @@ HOOKP  FindOutputNode(HOOKP hookp,BNP hook_block,BNP bnpLLHead, int *IOID)
 			ionode->EXT.y=lattice_y;
 			hook_block->bap->IONodeLLHead = 
 				InsertIntoIONodesLL(hook_block->bap->IONodeLLHead,	ionode);
-			// ¥[¤J½u¬q ¨Ï¥Î StartStopAddIntoWLL()
+			// åŠ å…¥ç·šæ®µ ä½¿ç”¨ StartStopAddIntoWLL()
 			WireStart.BlockP = hook_block;
 			WireStart.NodeP = ionode;
 			WireStop.BlockP = bnp;
@@ -422,7 +422,7 @@ HOOKP  FindOutputNode(HOOKP hookp,BNP hook_block,BNP bnpLLHead, int *IOID)
 
 /***********************************************************************
  * 2003-4-12
- * 2003-05-24 §ï¥Îfile stream ªº¤è¦¡
+ * 2003-05-24 æ”¹ç”¨file stream çš„æ–¹å¼
  ***********************************************************************/
 void SAVE(char *filename )
 {
@@ -431,60 +431,60 @@ void SAVE(char *filename )
 	int i;
 	FileHand savefile;
 	
-// ¤è¶ô¸ê®Æµ²ºc
+// æ–¹å¡Šè³‡æ–™çµæ§‹
 /*
 	UInt16 ID;
 	UInt16 TYPE;
-	BAP bap;					// «ü¼Ğ
-	PAP pap;					// «ü¼Ğ
-	Ptr LoopBlockHOOKP;			// «ü¼Ğ
-	Ptr CurrentHOOKP;			// «ü¼Ğ
-	Ptr CaseBlockHOOKLLHeadP; 	// «ü¼Ğ
-	Ptr hookP;					// «ü¼Ğ
-	char *filename;				// «ü¼Ğ
-	struct BlockNode *SelfBlockLLHead;		// «ü¼Ğ ¤£¦s
-	struct BlockNode *BackgroundBlockLLHead;// «ü¼Ğ ¤£¦s
-	struct BlockNode *PREVNODE;				// «ü¼Ğ ¤£¦s
-	struct BlockNode *NEXTNODE;				// «ü¼Ğ ¤£¦s
+	BAP bap;					// æŒ‡æ¨™
+	PAP pap;					// æŒ‡æ¨™
+	Ptr LoopBlockHOOKP;			// æŒ‡æ¨™
+	Ptr CurrentHOOKP;			// æŒ‡æ¨™
+	Ptr CaseBlockHOOKLLHeadP; 	// æŒ‡æ¨™
+	Ptr hookP;					// æŒ‡æ¨™
+	char *filename;				// æŒ‡æ¨™
+	struct BlockNode *SelfBlockLLHead;		// æŒ‡æ¨™ ä¸å­˜
+	struct BlockNode *BackgroundBlockLLHead;// æŒ‡æ¨™ ä¸å­˜
+	struct BlockNode *PREVNODE;				// æŒ‡æ¨™ ä¸å­˜
+	struct BlockNode *NEXTNODE;				// æŒ‡æ¨™ ä¸å­˜
 */
-// bap ¸ê®Æµ²ºc
+// bap è³‡æ–™çµæ§‹
 /*
 	UInt16 BITMAPID;			//
 	struct Point XY;			//
 	struct Point SIZE;			//
-	IONODEP 	IONodeLLHead;	// «ü¼Ğ
-	UInt16 		IONodeNUM;		// ¤£¦s
-	CTRLNODEP 	CTRLNodeLLHead;	// «ü¼Ğ
-	Boolean DrawBorder;			// ¤£¦s
-	Boolean ReDraw;				// ¤£¦s
-	Boolean Clean; 				// ¤£¦s
+	IONODEP 	IONodeLLHead;	// æŒ‡æ¨™
+	UInt16 		IONodeNUM;		// ä¸å­˜
+	CTRLNODEP 	CTRLNodeLLHead;	// æŒ‡æ¨™
+	Boolean DrawBorder;			// ä¸å­˜
+	Boolean ReDraw;				// ä¸å­˜
+	Boolean Clean; 				// ä¸å­˜
  
 */
-// pap ¸ê®Æµ²ºc
+// pap è³‡æ–™çµæ§‹
 /*
 	UInt16 BITMAPID;
 	struct Point XY;
 	struct Point SIZE;	
-	CTRLNODEP CTRLNodeLLHead;	// «ü¼Ğ
+	CTRLNODEP CTRLNodeLLHead;	// æŒ‡æ¨™
 */
 // IONODEP
 /*
 	UInt16 ID;					
-	UInt16 TYPE; 				// ¦s
+	UInt16 TYPE; 				// å­˜
 	Boolean NotReady;
-	Ptr P;						// ¤º®e­È 
+	Ptr P;						// å…§å®¹å€¼ 
 	UInt16 BYTES;
 	UInt16 NUMS;
-	struct Point TL; 			// ¦s
-	struct Point EXT;			// ¦s
+	struct Point TL; 			// å­˜
+	struct Point EXT;			// å­˜
 	struct IONODE *PREV;
 	struct IONODE *NEXT;
 */
 // CTRLNODEP
 /*
 	UInt16 ID;
-	struct Point TL;			// ¦s
-	struct Point EXT;			// ¦s
+	struct Point TL;			// å­˜
+	struct Point EXT;			// å­˜
 	struct CTRLNODE *PREV;
 	struct CTRLNODE *NEXT;
 */
@@ -502,10 +502,10 @@ void SAVE(char *filename )
 	struct wList* PREVNODE;
 	struct wList* NEXTNODE;
 */
-	//¶} db
+	//é–‹ db
 	//OpenDB(filename);
 	//
-	// 5-25 ¨Ï¥Îfile stream ¤è¦¡¦sÀÉ
+	// 5-25 ä½¿ç”¨file stream æ–¹å¼å­˜æª”
 	//
 	savefile = FileOpen (0,filename,appDBType,appCreatorID,fileModeReadWrite,NULL);
 	
@@ -591,16 +591,16 @@ Boolean SAVEFormHandleEvent(EventPtr eventP)
 	   				StrCopy(filename,FldGetTextPtr(fldP));
 	  		 		for(i=FldGetTextLength(fldP)+1;i<32;i++)
 	  		 			filename[i]='\0';
-					//5-31 ¦bhook block¤W²£¥ÍIOÂI »P¥[¤J ·t½u¬q
-					// ­ì¥» hook block ¤WªºIOÂI ±j¨î©ñ±¼
+					//5-31 åœ¨hook blockä¸Šç”¢ç”ŸIOé» èˆ‡åŠ å…¥ æš—ç·šæ®µ
+					// åŸæœ¬ hook block ä¸Šçš„IOé» å¼·åˆ¶æ”¾æ‰
 					SYSHOOK->BlockLLHeadP->bap->IONodeLLHead=NULL;
-					// ÁÙ¦³³s±µªºwire¤]­n²¾¥h ¤£µM·|¦b²Ä¤G¦¸¦sÀÉ®É µo¥Í½u¬q­«½Æ µM«á¦b custom ¸ü¤J®Éµo¥Í¥d¦º
+					// é‚„æœ‰é€£æ¥çš„wireä¹Ÿè¦ç§»å» ä¸ç„¶æœƒåœ¨ç¬¬äºŒæ¬¡å­˜æª”æ™‚ ç™¼ç”Ÿç·šæ®µé‡è¤‡ ç„¶å¾Œåœ¨ custom è¼‰å…¥æ™‚ç™¼ç”Ÿå¡æ­»
 					SYSHOOK->WireLLHeadP=RemoveDarkWire(SYSHOOK->WireLLHeadP,SYSHOOK->BlockLLHeadP);
-					// «Ø¥ß·sªº IOÂI »P ·sªº½u¬q
+					// å»ºç«‹æ–°çš„ IOé» èˆ‡ æ–°çš„ç·šæ®µ
 					SYSHOOK=FindInputNode(SYSHOOK,SYSHOOK->BlockLLHeadP,SYSHOOK->BlockLLHeadP->NEXTNODE,&IOID);
 					SYSHOOK=FindOutputNode(SYSHOOK,SYSHOOK->BlockLLHeadP,SYSHOOK->BlockLLHeadP->NEXTNODE,&IOID);
 					
-					// ¤½¦@ÅÜ¼Æ¥Î§¹«á­n°O±oÀ¿§¾ªÑ
+					// å…¬å…±è®Šæ•¸ç”¨å®Œå¾Œè¦è¨˜å¾—æ“¦å±è‚¡
 					WireStart.BlockP = NULL;
 					WireStart.NodeP = NULL;
 					WireStop.BlockP = NULL;

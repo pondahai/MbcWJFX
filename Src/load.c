@@ -72,7 +72,7 @@ int ConvertFileName2RecordIndex(char *filename)
 
 /***********************************************************************
  * 2003-4-12
- * 2003-5-25 ¨Ï¥Î database ¤è¦¡ «Ø¥ßªí®æ ¨C¤@­Ódatabase¥Nªí¤@­Ó¦sÀÉ
+ * 2003-5-25 ä½¿ç”¨ database æ–¹å¼ å»ºç«‹è¡¨æ ¼ æ¯ä¸€å€‹databaseä»£è¡¨ä¸€å€‹å­˜æª”
  *
  ***********************************************************************/
 
@@ -297,7 +297,7 @@ IONODEP FindIONodeByID(IONODEP ionodellhead,UInt16 ID)
 	}
 	return ionodellhead;
 }
-// 5-30 ¥[¤J±_ª¬±´´M
+// 5-30 åŠ å…¥å·¢ç‹€æ¢å°‹
 BNP FindNodeByID(BNP HeadP,UInt16 ID)
 {
 	BNP FindOutBNP;
@@ -318,7 +318,7 @@ BNP FindNodeByID(BNP HeadP,UInt16 ID)
 		}
 		else if(HeadP->TYPE==CASEBLOCK)
 		{
-				// ¥¼§¹¦¨
+				// æœªå®Œæˆ
 		}
 		else
 		{
@@ -332,13 +332,13 @@ BNP FindNodeByID(BNP HeadP,UInt16 ID)
 }
 
 /***********************************************************************
- * 2003-5-26 ·sª©
+ * 2003-5-26 æ–°ç‰ˆ
  ***********************************************************************/
  
 int read_a_str(char *str,FileHand file)
 {
 	int i;
-	// Åª¤J¤@¦ê¦r '\n' µ²§À
+	// è®€å…¥ä¸€ä¸²å­— '\n' çµå°¾
 	for(i=0;;i++)
 	{
 		FileRead(file,&str[i],1,1,NULL);
@@ -346,15 +346,15 @@ int read_a_str(char *str,FileHand file)
 		 break;
 	}
 	str[i]='\0';
-	// §¹¦¨¤@¦ê¦r
+	// å®Œæˆä¸€ä¸²å­—
 	
 	return StrLen(str);
 }
 /***********************************************************************
- * hook ¥Ø«e©Ò¥Îªê§J selfBlockLLHead ©ÒÄİ­I´º¦ê¦C file ÀÉ®×handle
- * 2003-5-26 ·sª©
- * 2003-5-31 ­n¼W¥[ ¦Û­q¤¸¥ó ªº¥\¯à ¹J¨ì HOOKBLOCK °£¤F¥»¨­BLOCKªº«Ø¥ß¥~
- *           ÁÙ­n§@ªº¨Æ´N¬O »¼°j LOAD 
+ * hook ç›®å‰æ‰€ç”¨è™å…‹ selfBlockLLHead æ‰€å±¬èƒŒæ™¯ä¸²åˆ— file æª”æ¡ˆhandle
+ * 2003-5-26 æ–°ç‰ˆ
+ * 2003-5-31 è¦å¢åŠ  è‡ªè¨‚å…ƒä»¶ çš„åŠŸèƒ½ é‡åˆ° HOOKBLOCK é™¤äº†æœ¬èº«BLOCKçš„å»ºç«‹å¤–
+ *           é‚„è¦ä½œçš„äº‹å°±æ˜¯ éè¿´ LOAD 
  ***********************************************************************/
 HOOKP parse_loop(HOOKP hook,BNP SelfBlockLLHead,FileHand file)
 {
@@ -364,11 +364,11 @@ HOOKP parse_loop(HOOKP hook,BNP SelfBlockLLHead,FileHand file)
 	CTRLNODEP ctrlnode;
 	WNP newwire;
 	BNP hook_block;
-	BNP Rbnp;//5-31 ¦]¬°»¼°jLOAD¤§«á ¦Ó»İ­n­«³] ¦ê¦C­I´º ¦Ó³]ªº
+	BNP Rbnp;//5-31 å› ç‚ºéè¿´LOADä¹‹å¾Œ è€Œéœ€è¦é‡è¨­ ä¸²åˆ—èƒŒæ™¯ è€Œè¨­çš„
 	
 	str[0]='\0';
 	
-	// Åª¤J°O¾ĞÅé
+	// è®€å…¥è¨˜æ†¶é«”
 	//read_a_str(str,file);
 	while(1)
 	{
@@ -385,17 +385,17 @@ HOOKP parse_loop(HOOKP hook,BNP SelfBlockLLHead,FileHand file)
 		{
 			break;
 		}
-		// ³B²z STARTBLOCK ¤º³¡
+		// è™•ç† STARTBLOCK å…§éƒ¨
 		newnode=allocate_a_new_node();
 
-		// 5-30 ³]©w³Ì°ªnode
-		// ¤£¥Î³]¤F ¦]¬° ³o®Éªºhook´N¬OSYSHOOK 
-		// 5-31 ­n±Nnewnode ´£¦­´¡¤J ¬°¤FÅı ¤¤³~ªºªê§J ¨Ò¦p while loop ¤Î for loop µ¥
+		// 5-30 è¨­å®šæœ€é«˜node
+		// ä¸ç”¨è¨­äº† å› ç‚º é€™æ™‚çš„hookå°±æ˜¯SYSHOOK 
+		// 5-31 è¦å°‡newnode ææ—©æ’å…¥ ç‚ºäº†è®“ ä¸­é€”çš„è™å…‹ ä¾‹å¦‚ while loop åŠ for loop ç­‰
 		/*
 		if((SelfBlockLLHead==NULL) && (hook->BlockLLHeadP==NULL))
 		{
-			// ¨Ò¥~§@ªk ¦]¬°¤U­±wire¸ü¤J®É »İ­n§@¾ã­Ónode¦êªº±´´M
-			// ¤]·|¦³¾÷·| °õ¦æ±_ª¬±´´M ¦]¦¹»İ­n§ä¥X³Ì°ªnode
+			// ä¾‹å¤–ä½œæ³• å› ç‚ºä¸‹é¢wireè¼‰å…¥æ™‚ éœ€è¦ä½œæ•´å€‹nodeä¸²çš„æ¢å°‹
+			// ä¹Ÿæœƒæœ‰æ©Ÿæœƒ åŸ·è¡Œå·¢ç‹€æ¢å°‹ å› æ­¤éœ€è¦æ‰¾å‡ºæœ€é«˜node
 			SYSHOOK->BlockLLHeadP=newnode;
 		}
 		*/
@@ -404,14 +404,14 @@ HOOKP parse_loop(HOOKP hook,BNP SelfBlockLLHead,FileHand file)
 		read_a_str(str,file); // 
 		newnode->ID=StrAToI(str);
 
-		// 5-31  ´£¦­±N block ´¡¤J¦ê¦C
-		//       ¦³­Ó±¡ªp¥²¶·»¡©ú
-		//       ¦pªG¥»¦¸¶i¨Ó ¬O loop ªº»¼°j ¨º»ò
-		//       ¦b³o¸Ì³]©w hook->ªºBLockLLHead ¨ä¹ê´N¬O©¹ slefblockllhead ªº forloop->hook 
-		//       ¤º³¡³]©w ¦]¬°³o®É¥L­Ì¬O¤@Åéªº
+		// 5-31  ææ—©å°‡ block æ’å…¥ä¸²åˆ—
+		//       æœ‰å€‹æƒ…æ³å¿…é ˆèªªæ˜
+		//       å¦‚æœæœ¬æ¬¡é€²ä¾† æ˜¯ loop çš„éè¿´ é‚£éº¼
+		//       åœ¨é€™è£¡è¨­å®š hook->çš„BLockLLHead å…¶å¯¦å°±æ˜¯å¾€ slefblockllhead çš„ forloop->hook 
+		//       å…§éƒ¨è¨­å®š å› ç‚ºé€™æ™‚ä»–å€‘æ˜¯ä¸€é«”çš„
 		hook->BlockLLHeadP=InsertIntoBlockLLNoUID(hook->BlockLLHeadP,newnode);
 
-		// 5-31 ¦pªG¬O²Ä1¦¸¶i¨Ó Self ·|¬OnuLL ©Ò¥H­n¦b³o¸Ì§@¤W³s±µ
+		// 5-31 å¦‚æœæ˜¯ç¬¬1æ¬¡é€²ä¾† Self æœƒæ˜¯nuLL æ‰€ä»¥è¦åœ¨é€™è£¡ä½œä¸Šé€£æ¥
 		if((hook->BlockLLHeadP!=NULL) && (SelfBlockLLHead==NULL))
 			SelfBlockLLHead=hook->BlockLLHeadP;
 
@@ -419,7 +419,7 @@ HOOKP parse_loop(HOOKP hook,BNP SelfBlockLLHead,FileHand file)
 		read_a_str(str,file); // TYPE
 		read_a_str(str,file); // 
 		newnode->TYPE=StrAToI(str);
-		read_a_str(str,file); // NEWBAP ¤@©w¦³bap
+		read_a_str(str,file); // NEWBAP ä¸€å®šæœ‰bap
 		newnode->bap=allocate_a_new_bap();
 			read_a_str(str,file); // BITMAPID
 			read_a_str(str,file); //
@@ -502,7 +502,7 @@ HOOKP parse_loop(HOOKP hook,BNP SelfBlockLLHead,FileHand file)
 					newnode->bap->CTRLNodeLLHead=InsertIntoCTRLNodesLL(newnode->bap->CTRLNodeLLHead,ctrlnode);
 				}
 			}
-		// BAP§¹¦¨
+		// BAPå®Œæˆ
 		while(1)
 		{
 			if(StrCompare(str,"ENDBAP") == 0)
@@ -550,17 +550,17 @@ HOOKP parse_loop(HOOKP hook,BNP SelfBlockLLHead,FileHand file)
 						newnode->pap->CTRLNodeLLHead=InsertIntoCTRLNodesLL(newnode->pap->CTRLNodeLLHead,ctrlnode);
 					}
 				}
-			// ¸õ¹L ENDPAP
+			// è·³é ENDPAP
 			read_a_str(str,file); // next str
 		}
-		// PAP §¹¦¨
+		// PAP å®Œæˆ
 		// NEWLOOPHOOK or not
 		if(StrCompare(str,"NEWLOOPHOOK") == 0)
 		{
 			read_a_str(str,file); // NEWHOOK
 			(HOOKP)newnode->LoopBlockHOOKP=allocate_a_new_hook();
-			/////////////////////////////// »¼°j
-			// »¡©ú
+			/////////////////////////////// éè¿´
+			// èªªæ˜
 			// 
 			(HOOKP)newnode->LoopBlockHOOKP=parse_loop((HOOKP)newnode->LoopBlockHOOKP,newnode,file);
 			read_a_str(str,file); // next str
@@ -569,7 +569,7 @@ HOOKP parse_loop(HOOKP hook,BNP SelfBlockLLHead,FileHand file)
 		if(StrCompare(str,"NEWCASEHOOK") == 0)
 		{
 			/////////////////////////////////
-			// 5-26 ¥¼§¹¦¨
+			// 5-26 æœªå®Œæˆ
 			//
 			read_a_str(str,file); // next str
 		}
@@ -579,16 +579,16 @@ HOOKP parse_loop(HOOKP hook,BNP SelfBlockLLHead,FileHand file)
 			read_a_str(str,file); // 
 			newnode->filename=MemHandleLock(MemHandleNew(StrLen(str)+1));
 			StrCopy(newnode->filename,str);
-			// 5-31 »¼°j ¸ü¤J LOAD()
+			// 5-31 éè¿´ è¼‰å…¥ LOAD()
 			if(newnode != SelfBlockLLHead)
-			{// ¸õ¹L²Ä1­Ó HOOKBLOCK °õ¦æ¸ü¤J
-				//  ³o¸Ì»P custom load Ãş¦ü 
-				// ¤£¦P¤§³B¬O ³o¸Ì¸ü¤J«áªº¦ê¦C²Ä1­Óblock ·|³Q±Ë±ó±¼
-				// ¥H newnode ¥N´À
+			{// è·³éç¬¬1å€‹ HOOKBLOCK åŸ·è¡Œè¼‰å…¥
+				//  é€™è£¡èˆ‡ custom load é¡ä¼¼ 
+				// ä¸åŒä¹‹è™•æ˜¯ é€™è£¡è¼‰å…¥å¾Œçš„ä¸²åˆ—ç¬¬1å€‹block æœƒè¢«æ¨æ£„æ‰
+				// ä»¥ newnode ä»£æ›¿
 				(HOOKP)newnode->hookP=allocate_a_new_hook();
 				(HOOKP)newnode->hookP=LOAD((HOOKP)newnode->hookP,str);
 				((HOOKP)newnode->hookP)->BlockLLHeadP->NEXTNODE->PREVNODE=NULL;
-				// ­«³]­I´º
+				// é‡è¨­èƒŒæ™¯
 				Rbnp=((HOOKP)newnode->hookP)->BlockLLHeadP->NEXTNODE;
 				while(Rbnp!=NULL)
 				{
@@ -596,10 +596,10 @@ HOOKP parse_loop(HOOKP hook,BNP SelfBlockLLHead,FileHand file)
 					Rbnp->BackgroundBlockLLHead=newnode;
 					Rbnp=Rbnp->NEXTNODE;
 				}
-				// newnode ¦b³o¸Ì­n§â ­è­è LOAD¶i¨Óªº¦ê¦CÀY¤@­Ó ªºIOLLHead·m¹L¨Ó
-				// ¦]¬°·t½u¬q¤w¸g«Ø¦n¤F
+				// newnode åœ¨é€™è£¡è¦æŠŠ å‰›å‰› LOADé€²ä¾†çš„ä¸²åˆ—é ­ä¸€å€‹ çš„IOLLHeadæ¶éä¾†
+				// å› ç‚ºæš—ç·šæ®µå·²ç¶“å»ºå¥½äº†
 				newnode->bap->IONodeLLHead=((HOOKP)newnode->hookP)->BlockLLHeadP->bap->IONodeLLHead;
-				// ¨«¤@¹M wireLL §â ID==1 ªº´«¦¨ newnode
+				// èµ°ä¸€é wireLL æŠŠ ID==1 çš„æ›æˆ newnode
 				newwire=((HOOKP)newnode->hookP)->WireLLHeadP;
 				while(newwire!=NULL)
 				{
@@ -621,13 +621,13 @@ HOOKP parse_loop(HOOKP hook,BNP SelfBlockLLHead,FileHand file)
 		}
 		
 		
-		// ³]©wself
+		// è¨­å®šself
 		newnode->SelfBlockLLHead=SelfBlockLLHead;
-		// ³]©wbackground
+		// è¨­å®šbackground
 		newnode->BackgroundBlockLLHead=SelfBlockLLHead;
 		
-		// §¹¦¨¤@­Óblock ´¡¤J¦ê¦C
-		// 5-31 ·h¨ì«e­± ¥H«K»¼°j parse_loop ªº®É­Ô wire ·|§ä¤£¨ì ¨º­ÓID ªºblock
+		// å®Œæˆä¸€å€‹block æ’å…¥ä¸²åˆ—
+		// 5-31 æ¬åˆ°å‰é¢ ä»¥ä¾¿éè¿´ parse_loop çš„æ™‚å€™ wire æœƒæ‰¾ä¸åˆ° é‚£å€‹ID çš„block
 		//hook->BlockLLHeadP=InsertIntoBlockLLNoUID(hook->BlockLLHeadP,newnode);
 		
 		// ENDBLOCK or ENDNODE
@@ -647,34 +647,34 @@ HOOKP parse_loop(HOOKP hook,BNP SelfBlockLLHead,FileHand file)
 	while(1)
 	{
 		read_a_str(str,file);	// StartBlockP?
-		// ³B²z STARTWIRE ¤º³¡
-		// §ä¥X³o­ÓID¥Ø«eªºptr
+		// è™•ç† STARTWIRE å…§éƒ¨
+		// æ‰¾å‡ºé€™å€‹IDç›®å‰çš„ptr
 		if(StrCompare(str,"STARTBID") == 0)
 		{
 			newwire=allocate_a_new_wire_node();
 
 			read_a_str(str,file); // 
 			//newwire->StartBlockP=FindNodeByID(SYSHOOK->BlockLLHeadP,StrAToI(str));
-			// 5-30 ­n§ä¥X­ş­Ónode
-			// 5-31 §ï ¥H±qÀY ¦V¤U ±´´M ªº¤è¦¡ ¦]¬°³o®Éªº¦ê¦C¥i¥H¦ê±µ°_¨Ó¤F
-			//      ¤]´N¬O»¡ ¦pªG³o®É­Ô¬O ²Ä2¦¸ ¶i¨Ó³o¸Ì ¨º»ò¥²¬O°j°éµ²ºc
-			//      ­ì¥»µLªk ±qÀY§ä¥X ³o­ÓIDªºBLOCK ¬O¦]¬° «e­± ±Nnewnode ´¡¤J
-			//      ¦ê¦Cªº®É¾÷¬O¦b ¶i¨Ó³o¸Ì¤§«á ¦]¦¹ ¦b³o¸Ì ¥H±´´Mªk ¦³®É·|§ä¤£¨ì
-			//      ³o­Ó ID ªº BLOCK ©Ò¥H¡@²{¦b§ï¦¨ ¦b¶i¨Ó³o¸Ì¤§«e ´N§â newnode ´¡¤J
-			//      ¦p¦¹¤@¨Ó¥Ñ ÀY ±´´M¤U¨Ó ´N¥i¥H³q³q§ä¨ì
-			//      §ó¥¿¤@ÂI ¦pªG­n±´´M ID ÅÜ¦¨ block ¨º»ò¥u­n ±q ¥Ø«eªº selfblockllhead ¶}©l´N¥i¥H
-			//      ¤F ¦]¬° ¥Ø«eªº wire ¤£¥i¯à¶W¹L ¥Ø«e selfblockllhead ªº½d³ò
-			//      wire ©ÒÄİ½d³ò ³£³Q­­¨î¦í¤F 
+			// 5-30 è¦æ‰¾å‡ºå“ªå€‹node
+			// 5-31 æ”¹ ä»¥å¾é ­ å‘ä¸‹ æ¢å°‹ çš„æ–¹å¼ å› ç‚ºé€™æ™‚çš„ä¸²åˆ—å¯ä»¥ä¸²æ¥èµ·ä¾†äº†
+			//      ä¹Ÿå°±æ˜¯èªª å¦‚æœé€™æ™‚å€™æ˜¯ ç¬¬2æ¬¡ é€²ä¾†é€™è£¡ é‚£éº¼å¿…æ˜¯è¿´åœˆçµæ§‹
+			//      åŸæœ¬ç„¡æ³• å¾é ­æ‰¾å‡º é€™å€‹IDçš„BLOCK æ˜¯å› ç‚º å‰é¢ å°‡newnode æ’å…¥
+			//      ä¸²åˆ—çš„æ™‚æ©Ÿæ˜¯åœ¨ é€²ä¾†é€™è£¡ä¹‹å¾Œ å› æ­¤ åœ¨é€™è£¡ ä»¥æ¢å°‹æ³• æœ‰æ™‚æœƒæ‰¾ä¸åˆ°
+			//      é€™å€‹ ID çš„ BLOCK æ‰€ä»¥ã€€ç¾åœ¨æ”¹æˆ åœ¨é€²ä¾†é€™è£¡ä¹‹å‰ å°±æŠŠ newnode æ’å…¥
+			//      å¦‚æ­¤ä¸€ä¾†ç”± é ­ æ¢å°‹ä¸‹ä¾† å°±å¯ä»¥é€šé€šæ‰¾åˆ°
+			//      æ›´æ­£ä¸€é» å¦‚æœè¦æ¢å°‹ ID è®Šæˆ block é‚£éº¼åªè¦ å¾ ç›®å‰çš„ selfblockllhead é–‹å§‹å°±å¯ä»¥
+			//      äº† å› ç‚º ç›®å‰çš„ wire ä¸å¯èƒ½è¶…é ç›®å‰ selfblockllhead çš„ç¯„åœ
+			//      wire æ‰€å±¬ç¯„åœ éƒ½è¢«é™åˆ¶ä½äº† 
 			//if((newwire->StartBlockP=FindNodeByID(SYSHOOK->BlockLLHeadP,StrAToI(str)))==NULL)
 			//if((newwire->StartBlockP=FindNodeByID(hook->BlockLLHeadP,StrAToI(str)))==NULL)
 			//	newwire->StartBlockP=SelfBlockLLHead;
-			// ©Ò¥H§ï¦¨³o¼Ë´N¦n¤F 
-			// ¹w´ú¨âºØ±¡ªp
-			// 1. IOÂI¦ì¦b °j°éµ²ºc¤W ¨º»ò·|¶Ç¦^ SelfBlockLLHead ªº«ü¼Ğ
-			// 2. IOÂI¦ì¦b °j°éµ²ºc¤º ¨º»ò FindNodeByID ·|¦V¤º±´´M ¤]´N¬O newnode->LoopBlockHOOKP ¸Ì­±
-			//    ¦¹®É ¤º³¡¤è¶ô¤w¸g§G«Ø§¹²¦
+			// æ‰€ä»¥æ”¹æˆé€™æ¨£å°±å¥½äº† 
+			// é æ¸¬å…©ç¨®æƒ…æ³
+			// 1. IOé»ä½åœ¨ è¿´åœˆçµæ§‹ä¸Š é‚£éº¼æœƒå‚³å› SelfBlockLLHead çš„æŒ‡æ¨™
+			// 2. IOé»ä½åœ¨ è¿´åœˆçµæ§‹å…§ é‚£éº¼ FindNodeByID æœƒå‘å…§æ¢å°‹ ä¹Ÿå°±æ˜¯ newnode->LoopBlockHOOKP è£¡é¢
+			//    æ­¤æ™‚ å…§éƒ¨æ–¹å¡Šå·²ç¶“ä½ˆå»ºå®Œç•¢
 			if(StrCompare(str,"1") == 0)
-			{// ¦pªG BlockID ¬O 0 «h¥²©w¦s¦b¤@­Ó³Ì°ª blockLLHead ¬O hookblock
+			{// å¦‚æœ BlockID æ˜¯ 0 å‰‡å¿…å®šå­˜åœ¨ä¸€å€‹æœ€é«˜ blockLLHead æ˜¯ hookblock
 				hook_block=SelfBlockLLHead;
 				while(hook_block->TYPE != HOOKBLOCK)
 				{
@@ -695,8 +695,8 @@ HOOKP parse_loop(HOOKP hook,BNP SelfBlockLLHead,FileHand file)
 			//if((newwire->EndBlockP=FindNodeByID(hook->BlockLLHeadP,StrAToI(str)))==NULL)
 			//	newwire->EndBlockP=SelfBlockLLHead;
 			if(StrCompare(str,"1") == 0)
-			{// ¦pªG BlockID ¬O 0 ªí¥Ü¸Óblock¬O hookblock
-			 // «h¦ê¦C¤¤¥²©w¦s¦b¤@­Ó³Ì°ª blockLLHead ¬O hookblock
+			{// å¦‚æœ BlockID æ˜¯ 0 è¡¨ç¤ºè©²blockæ˜¯ hookblock
+			 // å‰‡ä¸²åˆ—ä¸­å¿…å®šå­˜åœ¨ä¸€å€‹æœ€é«˜ blockLLHead æ˜¯ hookblock
 				hook_block=SelfBlockLLHead;
 				while(hook_block->TYPE != HOOKBLOCK)
 				{
@@ -715,7 +715,7 @@ HOOKP parse_loop(HOOKP hook,BNP SelfBlockLLHead,FileHand file)
 			hook->WireLLHeadP=InsertIntoWireLL(hook->WireLLHeadP,newwire);
 		}
 		//
-		// §¹¦¨¤@­Ówire ´¡¤J¦ê¦C
+		// å®Œæˆä¸€å€‹wire æ’å…¥ä¸²åˆ—
 		//
 		if(StrCompare(str,"ENDWIRE") == 0)
 		{
@@ -727,23 +727,23 @@ HOOKP parse_loop(HOOKP hook,BNP SelfBlockLLHead,FileHand file)
 }
 /***********************************************************************
  * 2003-4-12
- * 2003-4-13 ­×§ïrecursionHeadÅÜ¼Æ§ï¥H¦V¨t²Î¯Á¨úªÅ¶¡
- * 2003-5-26 ·sª©
+ * 2003-4-13 ä¿®æ”¹recursionHeadè®Šæ•¸æ”¹ä»¥å‘ç³»çµ±ç´¢å–ç©ºé–“
+ * 2003-5-26 æ–°ç‰ˆ
  ***********************************************************************/
 HOOKP LOAD(HOOKP sysHead,char *filename )
 {
 	FileHand 	loadfile;
 	
-	// ¨ú±oÀÉ®× handle
+	// å–å¾—æª”æ¡ˆ handle
 	loadfile = FileOpen (0,filename,appDBType,appCreatorID,fileModeReadOnly,NULL);
 
 	sysHead=parse_loop(sysHead,NULL, loadfile);
-	// ±N HOOKBLOCK ¤¤ªº hookp «ü¼Ğ«Ø¥ß
+	// å°‡ HOOKBLOCK ä¸­çš„ hookp æŒ‡æ¨™å»ºç«‹
 	(HOOKP)sysHead->BlockLLHeadP->hookP=allocate_a_new_hook();
-	// ±NÀÉ¦W¿é¤J
+	// å°‡æª”åè¼¸å…¥
 	sysHead->BlockLLHeadP->filename=MemHandleLock(MemHandleNew(StrLen(filename)+1));
 	StrCopy(sysHead->BlockLLHeadP->filename,filename);
-	// ³]©w ¦ÛÄİ »P­I´º
+	// è¨­å®š è‡ªå±¬ èˆ‡èƒŒæ™¯
 	sysHead->BlockLLHeadP->SelfBlockLLHead=sysHead->BlockLLHeadP;
 	sysHead->BlockLLHeadP->BackgroundBlockLLHead=sysHead->BlockLLHeadP;
 
@@ -756,8 +756,8 @@ void ProcessCUSTOMLoad(char *filename )
 {
 
 	LOAD(&CUSTUMHOOK,filename);
-	// ³]©w hookp ®É»İª`·N »İ«ü¦V ¤U¤@­Ó block ¦]¬°¥»¨­ ¤w¸g¬O§O¤Hªº block¤F
-	// ¦Ó hookp ¤¤ªº¦ê¦C »İ±NÀY®³±¼ ¥H§K¹J¨ì ¦^·¹¾÷¨î ¦Ó¥X°İÃD
+	// è¨­å®š hookp æ™‚éœ€æ³¨æ„ éœ€æŒ‡å‘ ä¸‹ä¸€å€‹ block å› ç‚ºæœ¬èº« å·²ç¶“æ˜¯åˆ¥äººçš„ blockäº†
+	// è€Œ hookp ä¸­çš„ä¸²åˆ— éœ€å°‡é ­æ‹¿æ‰ ä»¥å…é‡åˆ° å›æº¯æ©Ÿåˆ¶ è€Œå‡ºå•é¡Œ
 	CUSTUMHOOK.BlockLLHeadP->NEXTNODE->PREVNODE=NULL;
 	((HOOKP)CUSTUMHOOK.BlockLLHeadP->hookP)->BlockLLHeadP=CUSTUMHOOK.BlockLLHeadP->NEXTNODE;
 	((HOOKP)CUSTUMHOOK.BlockLLHeadP->hookP)->WireLLHeadP=CUSTUMHOOK.WireLLHeadP;
@@ -798,7 +798,7 @@ Boolean LOADFormHandleEvent(EventPtr eventP)
 		*/
 		case frmOpenEvent:
 			BuildLOADMenu();
-			// ²£¥ÍÀÉ®×¦Cªí
+			// ç”¢ç”Ÿæª”æ¡ˆåˆ—è¡¨
 
 			//WinEraseWindow();
 			frmP = FrmGetActiveForm();
@@ -820,7 +820,7 @@ Boolean LOADFormHandleEvent(EventPtr eventP)
 			{
 				filename = LstGetSelectionText(lst,CurrentRecord);
 				if(FrmCustomAlert(DeleteFileComfirAlert,filename,"","")==0)
-				{//Åã¥Ü½T»{µøµ¡
+				{//é¡¯ç¤ºç¢ºèªè¦–çª—
 					//DmDeleteDatabase(0,DmFindDatabase(0,filename));
 					FileDelete(0,filename);
 				}

@@ -24,7 +24,7 @@ extern struct hand HandPointer;
 extern int prev_x,prev_y;
 extern EndPoint WireStart,WireStop;
 //extern BNP LLP;
-extern HOOKP SYSHOOK;	// µ{¦¡¥D¦ê¦CªºÀY
+extern HOOKP SYSHOOK;	// ç¨‹å¼ä¸»ä¸²åˆ—çš„é ­
 extern  int penMoveAverage;
 extern  Boolean CanvasState;//=true;
 extern WNP WLLP;
@@ -39,9 +39,9 @@ struct{
 	BNP llp;
 }DragStatus;
 
-// ¤¸¥ó²æÂ÷­ì¥»©ÒÄİ¦ê¦C
+// å…ƒä»¶è„«é›¢åŸæœ¬æ‰€å±¬ä¸²åˆ—
 BNP ESCout;
-// °Êµe
+// å‹•ç•«
 extern Boolean RunLock;
 //extern Boolean RunWho;
 //extern Boolean Animation;
@@ -88,7 +88,7 @@ extern void SAVE(char *filename );
 ************************************************************************/
 
 // **********************************************
-// * 4-24 ¥[¤J³B²zµ²ºc¥\¯à
+// * 4-24 åŠ å…¥è™•ç†çµæ§‹åŠŸèƒ½
 // *
 // *
 // **********************************************
@@ -128,7 +128,7 @@ void DrawWires(WNP wllp,Boolean show,Boolean ClearBit)
 		while(wllp != NULL)
 		{
 		
-		// ¸õ¹L·t½u¬q
+		// è·³éæš—ç·šæ®µ
   	  if((wllp->StartBlockP != SYSHOOK->BlockLLHeadP) && (wllp->EndBlockP != SYSHOOK->BlockLLHeadP))
 		{
 			/*
@@ -144,7 +144,7 @@ void DrawWires(WNP wllp,Boolean show,Boolean ClearBit)
 			}
 			*/
 			// 5-15
-			// ¤£¦b°Êµe®É ¦Ó¥B ¤£¦b run «h ²M°£ÅÜ¼Æ
+			// ä¸åœ¨å‹•ç•«æ™‚ è€Œä¸” ä¸åœ¨ run å‰‡ æ¸…é™¤è®Šæ•¸
 			if(ClearBit)
 			{
 				wllp->DIRTY=false;
@@ -161,14 +161,14 @@ void DrawWires(WNP wllp,Boolean show,Boolean ClearBit)
 			StartWindow.y=0;
 			EndWindow.x=0;
 			EndWindow.y=0;
-			// ¬°³B²zµ²ºc¤º¤¸¥ó±µ½u
-			// ­pºâµ´¹ï®y¼Ğ
+			// ç‚ºè™•ç†çµæ§‹å…§å…ƒä»¶æ¥ç·š
+			// è¨ˆç®—çµ•å°åº§æ¨™
 			if(startblock->SelfBlockLLHead != SYSHOOK->BlockLLHeadP)
 			{
 				StartWindow.x=0;StartWindow.y=0;
 				bllp = startblock->SelfBlockLLHead;
 				while(bllp != SYSHOOK->BlockLLHeadP)
-				{//4-26 ¨«¤@¹M¦ê¦C¡A¥[¥Xµ´¹ï®y¼Ğ
+				{//4-26 èµ°ä¸€éä¸²åˆ—ï¼ŒåŠ å‡ºçµ•å°åº§æ¨™
 					StartWindow.x += bllp->bap->XY.x;
 					StartWindow.y += bllp->bap->XY.y;
 					bllp = bllp->SelfBlockLLHead;
@@ -180,7 +180,7 @@ void DrawWires(WNP wllp,Boolean show,Boolean ClearBit)
 				EndWindow.x=0;EndWindow.y=0;
 				bllp = endblock->SelfBlockLLHead;
 				while(bllp != SYSHOOK->BlockLLHeadP)
-				{//4-26 ¨«¤@¹M¦ê¦C¡A¥[¥Xµ´¹ï®y¼Ğ
+				{//4-26 èµ°ä¸€éä¸²åˆ—ï¼ŒåŠ å‡ºçµ•å°åº§æ¨™
 					EndWindow.x += bllp->bap->XY.x;
 					EndWindow.y += bllp->bap->XY.y;
 					bllp = bllp->SelfBlockLLHead;
@@ -212,13 +212,13 @@ void DrawWires(WNP wllp,Boolean show,Boolean ClearBit)
 
 		if(SHOW_NOTREADYBIT)
 		{
-			// debug ¨q¥X¸`ÂIª¬ºA
+			// debug ç§€å‡ºç¯€é»ç‹€æ…‹
 			StrPrintF(debugtxt,"%c",(startnode->NotReady)?'T':'F');
 				WinDrawChars(debugtxt,
 					StrLen(debugtxt),
 			 			start.x ,
 						start.y -16);
-			// debug ¨q¥X¸`ÂIª¬ºA
+			// debug ç§€å‡ºç¯€é»ç‹€æ…‹
 			StrPrintF(debugtxt,"%c",(endnode->NotReady)?'T':'F');
 				WinDrawChars(debugtxt,
 					StrLen(debugtxt),
@@ -243,13 +243,13 @@ void DrawWires(WNP wllp,Boolean show,Boolean ClearBit)
 
 		if(SHOW_NOTREADYBIT)
 		{
-			// debug ¨q¥X¸`ÂIª¬ºA
+			// debug ç§€å‡ºç¯€é»ç‹€æ…‹
 			StrPrintF(debugtxt,"%c",(startnode->NotReady)?'T':'F');
 				WinEraseChars(debugtxt,
 					StrLen(debugtxt),
 			 			start.x ,
 						start.y -16);
-			// debug ¨q¥X¸`ÂIª¬ºA
+			// debug ç§€å‡ºç¯€é»ç‹€æ…‹
 			StrPrintF(debugtxt,"%c",(endnode->NotReady)?'T':'F');
 				WinEraseChars(debugtxt,
 					StrLen(debugtxt),
@@ -294,7 +294,7 @@ void DrawWires(WNP wllp,Boolean show,Boolean ClearBit)
 
 		}
 		*/
-		}// if ·t½u¬q
+		}// if æš—ç·šæ®µ
 			wllp = wllp->NEXTNODE;
 		}
 }
@@ -323,13 +323,13 @@ static void DrawCUSTOMBLOCKLattice(BNP llp,int window_x,int window_y)
 	br.y = llp->bap->XY.y+llp->bap->SIZE.y-1 + window_y;
 	tr.x = llp->bap->XY.x + llp->bap->SIZE.x-1 + window_x;
 	tr.y = llp->bap->XY.y + window_y;
-	//µe®Ø®Ø
+	//ç•«æ¡†æ¡†
 	WinDrawLine(tl.x,tl.y,bl.x,bl.y);
 	WinDrawLine(bl.x,bl.y,br.x,br.y);
 	WinDrawLine(br.x,br.y,tr.x,tr.y);
 	WinDrawLine(tr.x,tr.y,tl.x,tl.y);
 	WinDrawLine(tl.x+(llp->bap->SIZE.x/2),tl.y,tl.x+(llp->bap->SIZE.x/2),bl.y);
-	//µe®æ¤l ¨«¤@¹MIOnodeÃìµ²¦ê¦C
+	//ç•«æ ¼å­ èµ°ä¸€éIOnodeéˆçµä¸²åˆ—
 	ionodep = llp->bap->IONodeLLHead;
 	while(ionodep != NULL)
 	{
@@ -391,7 +391,7 @@ Boolean DrawRunPointOnWire(WNP wnp,Boolean not_show_result)
 
 	while(wnp != NULL)
 	{
-		// ¸õ¹L·t½u¬q
+		// è·³éæš—ç·šæ®µ
 		ItIsNotDarkLine=true;
 		
 	if((wnp->StartBlockP->TYPE==HOOKBLOCK)&&(wnp->StartBlockP == SYSHOOK->BlockLLHeadP))
@@ -401,7 +401,7 @@ Boolean DrawRunPointOnWire(WNP wnp,Boolean not_show_result)
 		ItIsNotDarkLine=false;
 	
 
-	// ¨M©w°Êµe¤è¦V
+	// æ±ºå®šå‹•ç•«æ–¹å‘
 	if(wnp->EndNodeP->TYPE==0)
 	{
 		TempBNP=wnp->EndBlockP;
@@ -417,21 +417,21 @@ Boolean DrawRunPointOnWire(WNP wnp,Boolean not_show_result)
 	
   	  if(ItIsNotDarkLine &&(wnp->DIRTY == false))
   	  {
-		//if(wnp->DIRTY)// dirty ªí¥Ü¸Ó½u¬q¤w¸g°õ¦æ¹L
-		// 6-2 ¸Ó½u¬q·Ç³Æ°õ¦æ ÁÙ¨S¨ì²×ÂI
+		//if(wnp->DIRTY)// dirty è¡¨ç¤ºè©²ç·šæ®µå·²ç¶“åŸ·è¡Œé
+		// 6-2 è©²ç·šæ®µæº–å‚™åŸ·è¡Œ é‚„æ²’åˆ°çµ‚é»
 		if( ( (wnp->StartNodeP->NotReady == false) && (wnp->EndNodeP->NotReady == true) 
 		&& ( ((wnp->RUNPOINT.x == -1)&&(wnp->RUNPOINT.y == -1))?false:true) ) )
 		{
 	// 6-2
 	No_Any_Data_Move=false;
-	// ­pºâµ´¹ï®y¼Ğ
+	// è¨ˆç®—çµ•å°åº§æ¨™
 	StartNode.x=wnp->StartNodeP->TL.x +(wnp->StartNodeP->EXT.x/2)+ wnp->StartBlockP->bap->XY.x;
 	StartNode.y=wnp->StartNodeP->TL.y +(wnp->StartNodeP->EXT.y/2)+ wnp->StartBlockP->bap->XY.y;
 	if(wnp->StartBlockP->SelfBlockLLHead != SYSHOOK->BlockLLHeadP)
 	{
 		bllp = wnp->StartBlockP->SelfBlockLLHead;
 		while(bllp != SYSHOOK->BlockLLHeadP)
-		{//4-26 ¨«¤@¹M¦ê¦C¡A¥[¥Xµ´¹ï®y¼Ğ
+		{//4-26 èµ°ä¸€éä¸²åˆ—ï¼ŒåŠ å‡ºçµ•å°åº§æ¨™
 			StartNode.x += bllp->bap->XY.x;
 			StartNode.y += bllp->bap->XY.y;
 			bllp = bllp->SelfBlockLLHead;
@@ -443,7 +443,7 @@ Boolean DrawRunPointOnWire(WNP wnp,Boolean not_show_result)
 	{
 		bllp = wnp->EndBlockP->SelfBlockLLHead;
 		while(bllp != SYSHOOK->BlockLLHeadP)
-		{//4-26 ¨«¤@¹M¦ê¦C¡A¥[¥Xµ´¹ï®y¼Ğ
+		{//4-26 èµ°ä¸€éä¸²åˆ—ï¼ŒåŠ å‡ºçµ•å°åº§æ¨™
 			EndNode.x += bllp->bap->XY.x;
 			EndNode.y += bllp->bap->XY.y;
 			bllp = bllp->SelfBlockLLHead;
@@ -468,7 +468,7 @@ Boolean DrawRunPointOnWire(WNP wnp,Boolean not_show_result)
 
 				//for(;wnp->RUNPOINT.x != EndNode.x;wnp->RUNPOINT.x++);
 				//for(;wnp->RUNPOINT.y != EndNode.y;wnp->RUNPOINT.y++);
-				// ¿é¤J¨âÂI ¨ú±o¥|ÂI
+				// è¼¸å…¥å…©é» å–å¾—å››é»
 				CaculateTurnLine(&StartNode,&Turn1,&Turn2,&EndNode);
 				
 				switch(wnp->RUNSEG)
@@ -533,7 +533,7 @@ Boolean DrawRunPointOnWire(WNP wnp,Boolean not_show_result)
 		
 				WinDrawRectangle(&Rtest,3);
 				
-				// ¨ì²×ÂI
+				// åˆ°çµ‚é»
 				if((wnp->RUNPOINT.x == EndNode.x)&&
 				(wnp->RUNPOINT.y == EndNode.y))
 				{
@@ -543,14 +543,14 @@ Boolean DrawRunPointOnWire(WNP wnp,Boolean not_show_result)
 					//wnp->DIRTY = false;
 					not_finish=false;
 				}else{
-					//not_finish=true; // ÁÙ¦³ ¥¼§¹¦¨ªº½u 
+					//not_finish=true; // é‚„æœ‰ æœªå®Œæˆçš„ç·š 
 				}
 				
 
-				// °_ÂI
+				// èµ·é»
 		if(SHOW_VALUE)
 		{
-			//6-7 ³]©w¦r«¬¹êÅç
+			//6-7 è¨­å®šå­—å‹å¯¦é©—
 //stdFont = 0x00, // Small font used for the user's writing.  Shows a good amount
 //boldFont, 	  // Small font.  Bold for easier reading.  Used often for ui.
 //largeFont,	  // Larger font for easier reading.  Shows a lot less.
@@ -570,7 +570,7 @@ Boolean DrawRunPointOnWire(WNP wnp,Boolean not_show_result)
 			FntSetFont(fontid);
 		}
 	/*		
-			// debug ¨q¥X¸`ÂIª¬ºA
+			// debug ç§€å‡ºç¯€é»ç‹€æ…‹
 			StrPrintF(debugtxt,"%d",wnp->StartNodeP->NotReady);
 				WinDrawChars(debugtxt,
 					StrLen(debugtxt),
@@ -584,25 +584,25 @@ Boolean DrawRunPointOnWire(WNP wnp,Boolean not_show_result)
 			
 			
 
-			}// if ½u¬q¥¼§¹¦¨
+			}// if ç·šæ®µæœªå®Œæˆ
 		}// if not dark line
 	} // not show result
 	else
 	{	
-				// 5-30 ¥[¤JÅã¥Ü¼Æ­È
+				// 5-30 åŠ å…¥é¡¯ç¤ºæ•¸å€¼
 				//if((wnp->RUNPOINT.x == StartNode.x)&&
 				//(wnp->RUNPOINT.y == StartNode.y))
 				//{
 				//}
 				/*
-	// ­pºâµ´¹ï®y¼Ğ
+	// è¨ˆç®—çµ•å°åº§æ¨™
 	StartNode.x=wnp->StartNodeP->TL.x +(wnp->StartNodeP->EXT.x/2)+ wnp->StartBlockP->bap->XY.x;
 	StartNode.y=wnp->StartNodeP->TL.y +(wnp->StartNodeP->EXT.y/2)+ wnp->StartBlockP->bap->XY.y;
 	if(wnp->StartBlockP->SelfBlockLLHead != SYSHOOK->BlockLLHeadP)
 	{
 		bllp = wnp->StartBlockP->SelfBlockLLHead;
 		while(bllp != SYSHOOK->BlockLLHeadP)
-		{//4-26 ¨«¤@¹M¦ê¦C¡A¥[¥Xµ´¹ï®y¼Ğ
+		{//4-26 èµ°ä¸€éä¸²åˆ—ï¼ŒåŠ å‡ºçµ•å°åº§æ¨™
 			StartNode.x += bllp->bap->XY.x;
 			StartNode.y += bllp->bap->XY.y;
 			bllp = bllp->SelfBlockLLHead;
@@ -614,7 +614,7 @@ Boolean DrawRunPointOnWire(WNP wnp,Boolean not_show_result)
 	{
 		bllp = wnp->EndBlockP->SelfBlockLLHead;
 		while(bllp != SYSHOOK->BlockLLHeadP)
-		{//4-26 ¨«¤@¹M¦ê¦C¡A¥[¥Xµ´¹ï®y¼Ğ
+		{//4-26 èµ°ä¸€éä¸²åˆ—ï¼ŒåŠ å‡ºçµ•å°åº§æ¨™
 			EndNode.x += bllp->bap->XY.x;
 			EndNode.y += bllp->bap->XY.y;
 			bllp = bllp->SelfBlockLLHead;
@@ -623,9 +623,9 @@ Boolean DrawRunPointOnWire(WNP wnp,Boolean not_show_result)
 	
 	
 	*/
-				// ¨ì²×ÂI
-				// 6-2 ­×¥¿
-	if(wnp->DIRTY)// dirty ªí¥Ü¸Ó½u¬q¤w¸g°õ¦æ¹L
+				// åˆ°çµ‚é»
+				// 6-2 ä¿®æ­£
+	if(wnp->DIRTY)// dirty è¡¨ç¤ºè©²ç·šæ®µå·²ç¶“åŸ·è¡Œé
 	{
 		
 		//if((wnp->RUNPOINT.x == -1)&&(wnp->RUNPOINT.y == -1))
@@ -639,14 +639,14 @@ Boolean DrawRunPointOnWire(WNP wnp,Boolean not_show_result)
 			{
 				bllp = wnp->EndBlockP->SelfBlockLLHead;
 				while(bllp != SYSHOOK->BlockLLHeadP)
-				{//4-26 ¨«¤@¹M¦ê¦C¡A¥[¥Xµ´¹ï®y¼Ğ
+				{//4-26 èµ°ä¸€éä¸²åˆ—ï¼ŒåŠ å‡ºçµ•å°åº§æ¨™
 					EndNode.x += bllp->bap->XY.x;
 					EndNode.y += bllp->bap->XY.y;
 					bllp = bllp->SelfBlockLLHead;
 				}
 			}
 			
-			//6-7 ³]©w¦r«¬¹êÅç
+			//6-7 è¨­å®šå­—å‹å¯¦é©—
 			fontid=FntGetFont();
 			FntSetFont(boldFont);
 			StrPrintF(debugtxt,"%d",GetNodeData(wnp->EndNodeP));//*((int *)wnp->EndNodeP->P));
@@ -658,7 +658,7 @@ Boolean DrawRunPointOnWire(WNP wnp,Boolean not_show_result)
 		}
 		
 			/*
-			// debug ¨q¥X¸`ÂIª¬ºA
+			// debug ç§€å‡ºç¯€é»ç‹€æ…‹
 			StrPrintF(debugtxt,"%d",wnp->EndNodeP->NotReady);
 				WinDrawChars(debugtxt,
 					StrLen(debugtxt),
@@ -679,11 +679,11 @@ Boolean DrawRunPointOnWire(WNP wnp,Boolean not_show_result)
 		return not_finish;
 }
 //
-// ­n§ï¬°¥i»¼°j§Î¦¡
-// ¦p¹J¨ì¡yµ²ºc¡znode¡A«h»¼°j©I¥s¥»¨ç¦¡µe¥X¡C/
-// 5-12 µ²ºc¥[¤JReDraw ÅÜ¼Æ ¡AÁ×§K¾÷¾¹¤W¨q¹Ïªº°{Ã{
-// ¤]´N¬O»¡¸Óµe¦Aµe ¦]¬°¾÷¾¹¹ê¦b¤ÓºC
-// 5-12 ·s¼W¤Ş¼Æ ReDrawAll ±j¨î­«µe
+// è¦æ”¹ç‚ºå¯éè¿´å½¢å¼
+// å¦‚é‡åˆ°ã€çµæ§‹ã€nodeï¼Œå‰‡éè¿´å‘¼å«æœ¬å‡½å¼ç•«å‡ºã€‚/
+// 5-12 çµæ§‹åŠ å…¥ReDraw è®Šæ•¸ ï¼Œé¿å…æ©Ÿå™¨ä¸Šç§€åœ–çš„é–ƒçˆ
+// ä¹Ÿå°±æ˜¯èªªè©²ç•«å†ç•« å› ç‚ºæ©Ÿå™¨å¯¦åœ¨å¤ªæ…¢
+// 5-12 æ–°å¢å¼•æ•¸ ReDrawAll å¼·åˆ¶é‡ç•«
 void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x,int window_y,Boolean ReDrawAll)
 {
 	//Handle resH;
@@ -706,7 +706,7 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
 	{
 
 		if(show)
-		{//Åã¥Ü
+		{//é¡¯ç¤º
 		   if(bllpH->bap->ReDraw || ReDrawAll)
 		   {
 			switch(bllpH->TYPE)
@@ -719,7 +719,7 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
 
 				break;
 				case LOOPBLOCK :
-						// ²M°£©³¦â
+						// æ¸…é™¤åº•è‰²
 				Rtest.topLeft.x=bllpH->bap->XY.x + window_x;
 				Rtest.topLeft.y=bllpH->bap->XY.y + window_y;
 				Rtest.extent.x=bllpH->bap->SIZE.x;
@@ -750,7 +750,7 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
 					DrawIcon(LOOP1Bitmap,bllpH->bap->XY.x + window_x,bllpH->bap->XY.y + (bllpH->bap->SIZE.y/2)-3 + window_y);
 					//WHILELOOPLOOP
 					if(bllpH->bap->BITMAPID==WHILELOOPBitmap)
-					{// §ïÅÜ¹w³]¤¸¥óªº¦ì¸m ¬Û¹ï¦ì¸m
+					{// æ”¹è®Šé è¨­å…ƒä»¶çš„ä½ç½® ç›¸å°ä½ç½®
 ((HOOKP)bllpH->LoopBlockHOOKP)->BlockLLHeadP->bap->XY.x=bllpH->bap->SIZE.x-15;
 ((HOOKP)bllpH->LoopBlockHOOKP)->BlockLLHeadP->bap->XY.y=bllpH->bap->SIZE.y-18 ;
 //	DrawIcon(WHILELOOPLOOPBitmap,bllpH->bap->XY.x +bllpH->bap->SIZE.x+ window_x-10,
@@ -758,19 +758,19 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
 
 					}
 					if(bllpH->bap->BITMAPID==FORLOOPBitmap)
-					{// 5-30 ¥[¤J for °j°éªº¹w³]¤¸¥ó³B²z
+					{// 5-30 åŠ å…¥ for è¿´åœˆçš„é è¨­å…ƒä»¶è™•ç†
 ((HOOKP)bllpH->LoopBlockHOOKP)->BlockLLHeadP->bap->XY.x=8 ;
 ((HOOKP)bllpH->LoopBlockHOOKP)->BlockLLHeadP->bap->XY.y=13 ;
 ((HOOKP)bllpH->LoopBlockHOOKP)->BlockLLHeadP->NEXTNODE->bap->XY.x=8 ;
 ((HOOKP)bllpH->LoopBlockHOOKP)->BlockLLHeadP->NEXTNODE->bap->XY.y=bllpH->bap->SIZE.y-17 ;
 					}
-					// 5-8 ³B²zªÅ³s±µªºIO¸`ÂI
+					// 5-8 è™•ç†ç©ºé€£æ¥çš„IOç¯€é»
 					ionode = 	bllpH->bap->IONodeLLHead;
 					InSideHaveNoWire = true;
 					OutSideHaveNoWire = true;
 					while(ionode != NULL)
 					{
-					    // §ä¥X©ÒÄİ¦ê¦Cªºªê§J
+					    // æ‰¾å‡ºæ‰€å±¬ä¸²åˆ—çš„è™å…‹
 					    switch(bllpH->SelfBlockLLHead->TYPE)
 					    {
 							case HOOKBLOCK :
@@ -784,7 +784,7 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
 							break;
 					    }
 					    wirep = thook->WireLLHeadP;
-						// ¥~½u¬q¦ê¦C
+						// å¤–ç·šæ®µä¸²åˆ—
 						while(wirep != NULL)
 						{
 							if(wirep->StartNodeP == ionode)
@@ -793,9 +793,9 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
 								OutSideHaveNoWire = false;
 							wirep = wirep->NEXTNODE;
 						}
-						// ¤º ª`·N ªê§J¹ï¶H
+						// å…§ æ³¨æ„ è™å…‹å°è±¡
 						wirep = ((HOOKP)bllpH->LoopBlockHOOKP)->WireLLHeadP;
-						// ¤º½u¬q¦ê¦C
+						// å…§ç·šæ®µä¸²åˆ—
 						while(wirep != NULL)
 						{
 							if(wirep->StartNodeP == ionode)
@@ -804,9 +804,9 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
 								InSideHaveNoWire = false;
 							wirep = wirep->NEXTNODE;
 						}
-						// ­Y¸Ó IO ¸`ÂI¨S¦³±µ½u«h²¾°£¥¦
+						// è‹¥è©² IO ç¯€é»æ²’æœ‰æ¥ç·šå‰‡ç§»é™¤å®ƒ
 						if((InSideHaveNoWire == true) && (OutSideHaveNoWire == true))
-						{// ²¾°£«á ½u¬qÅÜ¼Æ­«³]
+						{// ç§»é™¤å¾Œ ç·šæ®µè®Šæ•¸é‡è¨­
 							bllpH->bap->IONodeLLHead = RemoveIONodeLinkList(
 									bllpH->bap->IONodeLLHead,ionode);
 							ionode = bllpH->bap->IONodeLLHead;
@@ -815,7 +815,7 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
 						}
 					}
 					
-					// µe¥XIO ¸`ÂI
+					// ç•«å‡ºIO ç¯€é»
 					ionode = 	bllpH->bap->IONodeLLHead;
 					while(ionode != NULL)
 					{
@@ -827,7 +827,7 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
 						
 						ionode = ionode->NEXT;
 					}
-					//±µµÛ³B²z¤º³¡¤¸¥ó(»¼°j) // Á×§KªÅ¦ê¦C
+					//æ¥è‘—è™•ç†å…§éƒ¨å…ƒä»¶(éè¿´) // é¿å…ç©ºä¸²åˆ—
 							DrawDiagram(((HOOKP)bllpH->LoopBlockHOOKP)->BlockLLHeadP,
 									((HOOKP)bllpH->LoopBlockHOOKP)->WireLLHeadP,
 									false,
@@ -837,7 +837,7 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
 						
 				break;
 		        case CASEBLOCK :
-						// ²M°£©³¦â
+						// æ¸…é™¤åº•è‰²
 				Rtest.topLeft.x=bllpH->bap->XY.x + window_x;
 				Rtest.topLeft.y=bllpH->bap->XY.y + window_y;
 				Rtest.extent.x=bllpH->bap->SIZE.x;
@@ -874,13 +874,13 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
 								bllpH->bap->XY.y+2 + window_y);
 						
 
-					// 5-8 ³B²zªÅ³s±µªºIO¸`ÂI
+					// 5-8 è™•ç†ç©ºé€£æ¥çš„IOç¯€é»
 					ionode = 	bllpH->bap->IONodeLLHead;
 					InSideHaveNoWire = true;
 					OutSideHaveNoWire = true;
 					while(ionode != NULL)
 					{
-					    // §ä¥X©ÒÄİ¦ê¦Cªºªê§J
+					    // æ‰¾å‡ºæ‰€å±¬ä¸²åˆ—çš„è™å…‹
 					    switch(bllpH->SelfBlockLLHead->TYPE)
 					    {
 							case HOOKBLOCK :
@@ -894,7 +894,7 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
 							break;
 					    }
 					    wirep = thook->WireLLHeadP;
-						// ¥~½u¬q¦ê¦C
+						// å¤–ç·šæ®µä¸²åˆ—
 						while(wirep != NULL)
 						{
 							if(wirep->StartNodeP == ionode)
@@ -903,9 +903,9 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
 								OutSideHaveNoWire = false;
 							wirep = wirep->NEXTNODE;
 						}
-						// ¤º ª`·N ªê§J¹ï¶H
+						// å…§ æ³¨æ„ è™å…‹å°è±¡
 						wirep = ((HOOKP)bllpH->CurrentHOOKP)->WireLLHeadP;
-						// ¤º½u¬q¦ê¦C
+						// å…§ç·šæ®µä¸²åˆ—
 						while(wirep != NULL)
 						{
 							if(wirep->StartNodeP == ionode)
@@ -914,9 +914,9 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
 								InSideHaveNoWire = false;
 							wirep = wirep->NEXTNODE;
 						}
-						// ­Y¸Ó IO ¸`ÂI¨S¦³±µ½u«h²¾°£¥¦
+						// è‹¥è©² IO ç¯€é»æ²’æœ‰æ¥ç·šå‰‡ç§»é™¤å®ƒ
 						if((InSideHaveNoWire == true) && (OutSideHaveNoWire == true))
-						{// ²¾°£«á ½u¬qÅÜ¼Æ­«³]
+						{// ç§»é™¤å¾Œ ç·šæ®µè®Šæ•¸é‡è¨­
 							bllpH->bap->IONodeLLHead = RemoveIONodeLinkList(
 									bllpH->bap->IONodeLLHead,ionode);
 							ionode = bllpH->bap->IONodeLLHead;
@@ -926,7 +926,7 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
 					}
 					
 					
-						// µe¥XIO ¸`ÂI
+						// ç•«å‡ºIO ç¯€é»
 					ionode = 	bllpH->bap->IONodeLLHead;
 					while(ionode != NULL)
 					{
@@ -937,7 +937,7 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
 						WinDrawRectangle(&Rtest,0);
 						ionode = ionode->NEXT;
 					}
-						//±µµÛ³B²z¤º³¡¤¸¥ó(»¼°j)
+						//æ¥è‘—è™•ç†å…§éƒ¨å…ƒä»¶(éè¿´)
 							DrawDiagram(((HOOKP)bllpH->CurrentHOOKP)->BlockLLHeadP,
 									((HOOKP)bllpH->CurrentHOOKP)->WireLLHeadP,
 									false,
@@ -962,7 +962,7 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
 					);
 				}
 				*/
-				// µe¥~®Ø
+				// ç•«å¤–æ¡†
 				if(bllpH->bap->DrawBorder)
 				{
 	        		WinDrawLine(bllpH->bap->XY.x-1 + window_x,
@@ -985,7 +985,7 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
         		    
         		    bllpH->bap->DrawBorder=false;
 				}else{
-// ²M°£¥~®Ø½u	
+// æ¸…é™¤å¤–æ¡†ç·š	
 		WinEraseLine(bllpH->bap->XY.x-1 + window_x,
             bllpH->bap->XY.y-1 + window_y,
   		    	bllpH->bap->XY.x-1+bllpH->bap->SIZE.x + 1 + window_x,
@@ -1005,7 +1005,7 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
 	    			bllpH->bap->XY.y-1+bllpH->bap->SIZE.y + 1 + window_y);
 				}
 				
-			// DEBUG ¨q¥Xself ¥H¤Î background blockllhead
+			// DEBUG ç§€å‡ºself ä»¥åŠ background blockllhead
 			if(SHOW_ID)
 			{
 			StrPrintF(debugtext,"%d",bllpH->ID);
@@ -1040,11 +1040,11 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
 		   */
 		}
 		else
-		{//²M°£
+		{//æ¸…é™¤
 			
 			if(bllpH->bap->Clean || ReDrawAll)
 			{
-				// ²M°£¥D­n¥~Æ[
+				// æ¸…é™¤ä¸»è¦å¤–è§€
 				Rtest.topLeft.x=bllpH->bap->XY.x + window_x;
 				Rtest.topLeft.y=bllpH->bap->XY.y + window_y;
 				Rtest.extent.x=bllpH->bap->SIZE.x;
@@ -1077,7 +1077,7 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
 				switch(bllpH->TYPE)
 				{
     			    case LOOPBLOCK :
-						// ²M°£¥~®Ø½u
+						// æ¸…é™¤å¤–æ¡†ç·š
 						/*
 	        			WinEraseLine(bllpH->bap->XY.x-1 + window_x,
        		             bllpH->bap->XY.y-1 + window_y,
@@ -1108,7 +1108,7 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
         		    	
     			    break;
 			        case CASEBLOCK :
-						// ²M°£¥~®Ø½u
+						// æ¸…é™¤å¤–æ¡†ç·š
 						/*
 	        			WinEraseLine(bllpH->bap->XY.x-1 + window_x,
        		             bllpH->bap->XY.y-1 + window_y,
@@ -1129,7 +1129,7 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
         		    			bllpH->bap->XY.y-1+bllpH->bap->SIZE.y + window_y);
        		    		*/
         		    	bllpH->bap->DrawBorder = false;
-        		    	// µM«á»¼°j
+        		    	// ç„¶å¾Œéè¿´
 							DrawDiagram(((HOOKP)bllpH->CurrentHOOKP)->BlockLLHeadP,
 									((HOOKP)bllpH->CurrentHOOKP)->WireLLHeadP,
 									false,
@@ -1162,9 +1162,9 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
 	  bllpH = bllpH->NEXTNODE;
 	}
 	
-	// µe¥X¥Ø«e¤u¨ã¹Ï¥Ü
+	// ç•«å‡ºç›®å‰å·¥å…·åœ–ç¤º
 	DrawIcon(BlockPointerState,140,0);
-	// µe¥X¤è¶ô
+	// ç•«å‡ºæ–¹å¡Š
 	DrawIcon(ADDBitmap,120,0);
 	//
 	if(LAMP)
@@ -1194,14 +1194,14 @@ void DrawDiagram(BNP bllpH,WNP wllpH,Boolean Animation,Boolean show,int window_x
 
 }
 /*
- °w¹ï°_ ²×ÂI­I´º¤£¦P
- ¦Ó»İ­n³B²z
- ¦³´XºØ±¡ªp
- 1. ¤@ÂI¦bSYSHOOK ¤@ÂI¦bµ²ºc¤¤
- 2. ¤@ÂI¦bµ²ºc¤¤ ¤@ÂI¦bµ²ºc¤¤
- ¤£ºŞ«ç¼Ë³£»İ­n³B²z±_ª¬µ²ºcªº°İÃD
+ é‡å°èµ· çµ‚é»èƒŒæ™¯ä¸åŒ
+ è€Œéœ€è¦è™•ç†
+ æœ‰å¹¾ç¨®æƒ…æ³
+ 1. ä¸€é»åœ¨SYSHOOK ä¸€é»åœ¨çµæ§‹ä¸­
+ 2. ä¸€é»åœ¨çµæ§‹ä¸­ ä¸€é»åœ¨çµæ§‹ä¸­
+ ä¸ç®¡æ€æ¨£éƒ½éœ€è¦è™•ç†å·¢ç‹€çµæ§‹çš„å•é¡Œ
  
- 5-31 ¤£¨Ï¥Î¤½¦@ÅÜ¼Æ SYSHOOK §ï¥H§PÂ_ TYPE != HOOKBLOCK
+ 5-31 ä¸ä½¿ç”¨å…¬å…±è®Šæ•¸ SYSHOOK æ”¹ä»¥åˆ¤æ–· TYPE != HOOKBLOCK
 */
 void CrossWire( )
 {
@@ -1217,14 +1217,14 @@ void CrossWire( )
 	//WNP wireLLH;
 	UInt16 DeepthStart=0 , DeepthEnd=0;
 	
-	// 5-18 ½Õ¾ãÀY§À¶¶§Ç §À©l²×¬°¿é¤J
+	// 5-18 èª¿æ•´é ­å°¾é †åº å°¾å§‹çµ‚ç‚ºè¼¸å…¥
 	if(WireStop.NodeP->TYPE==0)
 	{
 		tEP = WireStop;
 		WireStop = WireStart;
 		WireStart = tEP;
 	}
-	// 5-7 ­pºâÀY§À¤À§O±_ª¬²`«×
+	// 5-7 è¨ˆç®—é ­å°¾åˆ†åˆ¥å·¢ç‹€æ·±åº¦
 	tBNP = WireStart.BlockP->SelfBlockLLHead;
 //	while(tBNP != SYSHOOK->BlockLLHeadP)
 	while(tBNP->TYPE != HOOKBLOCK)
@@ -1239,9 +1239,9 @@ void CrossWire( )
 		DeepthEnd++;
 		tBNP = tBNP->SelfBlockLLHead;
 	}
-	// 5-7 ºû«ù¡@°_ÂIªº²`«×¡@¬°¡@³Ì¤p
-	// ¦ı¬OÁÙ¬OµLªk¸Ñ¨M  ¸óµ²ºc ªº°İÃD
-	// 5-18 °±¥Î
+	// 5-7 ç¶­æŒã€€èµ·é»çš„æ·±åº¦ã€€ç‚ºã€€æœ€å°
+	// ä½†æ˜¯é‚„æ˜¯ç„¡æ³•è§£æ±º  è·¨çµæ§‹ çš„å•é¡Œ
+	// 5-18 åœç”¨
 	/*
 	if(DeepthStart > DeepthEnd)
 	{
@@ -1250,18 +1250,18 @@ void CrossWire( )
 		WireStart = tEP;
 	}
 	*/
-	// 5-8 §PÂ_¸óµ²ºc
+	// 5-8 åˆ¤æ–·è·¨çµæ§‹
 	//if((DeepthStart != 0) && (DeepthEnd != 0))
 	// if(WireStart.BlockP->SelfBlockLLHead)
 	
 	
-	// 5-8 ¨M©w·s¸`ÂIªº¦ì¸m
-	// ¥ıºâ¥X¯u¹ê¦ì¸m
+	// 5-8 æ±ºå®šæ–°ç¯€é»çš„ä½ç½®
+	// å…ˆç®—å‡ºçœŸå¯¦ä½ç½®
 	true_x_start=0;
 	tBNP = WireStart.BlockP->SelfBlockLLHead;
 //	while(tBNP != SYSHOOK->BlockLLHeadP)
 	while(tBNP->TYPE != HOOKBLOCK)
-	{//4-26 ¨«¤@¹M¦ê¦C¡A¥[¥Xµ´¹ï®y¼Ğ
+	{//4-26 èµ°ä¸€éä¸²åˆ—ï¼ŒåŠ å‡ºçµ•å°åº§æ¨™
 		true_x_start += tBNP->bap->XY.x;
 		tBNP = tBNP->SelfBlockLLHead;
 	}
@@ -1270,15 +1270,15 @@ void CrossWire( )
 	tBNP = WireStop.BlockP->SelfBlockLLHead;
 //	while(tBNP != SYSHOOK->BlockLLHeadP)
 	while(tBNP->TYPE != HOOKBLOCK)
-	{//4-26 ¨«¤@¹M¦ê¦C¡A¥[¥Xµ´¹ï®y¼Ğ
+	{//4-26 èµ°ä¸€éä¸²åˆ—ï¼ŒåŠ å‡ºçµ•å°åº§æ¨™
 		true_x_stop += tBNP->bap->XY.x;
 		tBNP = tBNP->SelfBlockLLHead;
 	}
 	true_x_stop += WireStop.BlockP->bap->XY.x;
 	
-	// 5-8 ¥Ø«e¬O¥H³Ì¹ï¦ì¸m¨Ó§PÂ_¥ª¥kÃä
-	// ±N¨Ó­n¥H¿é¥X¤J¨Ó§PÂ_¥ª¥kÃä
-	// 5-18 ¥H±_ª¬²`«×§PÂ_¥ª¥kÃä ³o®Éªºstart¤@©w¬O¸ê®Æ°_ÂI
+	// 5-8 ç›®å‰æ˜¯ä»¥æœ€å°ä½ç½®ä¾†åˆ¤æ–·å·¦å³é‚Š
+	// å°‡ä¾†è¦ä»¥è¼¸å‡ºå…¥ä¾†åˆ¤æ–·å·¦å³é‚Š
+	// 5-18 ä»¥å·¢ç‹€æ·±åº¦åˆ¤æ–·å·¦å³é‚Š é€™æ™‚çš„startä¸€å®šæ˜¯è³‡æ–™èµ·é»
 	if(DeepthStart > DeepthEnd)
 	{
 		SIDE=false;
@@ -1295,15 +1295,15 @@ void CrossWire( )
 	*/	
 	
 	//
-	// WireStart ¬O§_»P WireStop ¦PÄİ¤@¦ê¦C¡A¬O«h¸õ¶}
+	// WireStart æ˜¯å¦èˆ‡ WireStop åŒå±¬ä¸€ä¸²åˆ—ï¼Œæ˜¯å‰‡è·³é–‹
 	
-	// 5-18 ¤À¬°¨â±ø¸ô 
-	// 1.¦pªG°_ÂI³Ì²` «h±q°_ÂI¨«¥X¨Ó
-	// 2.¦pªG²×ÂI³Ì²` «h±q²×ÂI­Ë¨«¥X¨Ó¨ì°_ÂI
+	// 5-18 åˆ†ç‚ºå…©æ¢è·¯ 
+	// 1.å¦‚æœèµ·é»æœ€æ·± å‰‡å¾èµ·é»èµ°å‡ºä¾†
+	// 2.å¦‚æœçµ‚é»æœ€æ·± å‰‡å¾çµ‚é»å€’èµ°å‡ºä¾†åˆ°èµ·é»
 	while(WireStart.BlockP->SelfBlockLLHead != WireStop.BlockP->SelfBlockLLHead)
 	{
-	// §ä¥XWireStart©ÒÄİµ²ºc
-	// 5-18 ¥Ñ²`«×¨M©w
+	// æ‰¾å‡ºWireStartæ‰€å±¬çµæ§‹
+	// 5-18 ç”±æ·±åº¦æ±ºå®š
 		if(DeepthStart > DeepthEnd)
 		{
 			StructBlockP=WireStart.BlockP->SelfBlockLLHead;
@@ -1313,7 +1313,7 @@ void CrossWire( )
 			StructBlockP=WireStop.BlockP->SelfBlockLLHead;
 		}
 		
-	// 6-1 §ä¥XStructBlock ªº IO ¸`ÂI³Ì¤jID­È
+	// 6-1 æ‰¾å‡ºStructBlock çš„ IO ç¯€é»æœ€å¤§IDå€¼
 	MaxID=0;
 	ionode=StructBlockP->bap->IONodeLLHead;
 	
@@ -1326,13 +1326,13 @@ void CrossWire( )
 	}
 	MaxID++;
 	
-	// ·s¼WIO¸`ÂI
+	// æ–°å¢IOç¯€é»
 	//if( == 1)
-	//{//¡@WireStopªº¸`ÂI = ¿é¤J ¥[¤J¸`ÂI
+	//{//ã€€WireStopçš„ç¯€é» = è¼¸å…¥ åŠ å…¥ç¯€é»
 	
 		ionode = allocate_a_new_IOnode();
 		ionode->ID = MaxID;
-		// ¦pªG¸ê®Æ°_ÂI¤ñ¸û²` ªí¥Ü¥L¦b¸Ì­± «h·sIOÂIÄİ©Ê¬O...
+		// å¦‚æœè³‡æ–™èµ·é»æ¯”è¼ƒæ·± è¡¨ç¤ºä»–åœ¨è£¡é¢ å‰‡æ–°IOé»å±¬æ€§æ˜¯...
 		if(DeepthStart > DeepthEnd)
 		{
 			ionode->TYPE = 0;
@@ -1341,16 +1341,16 @@ void CrossWire( )
 		{
 			ionode->TYPE = 1;
 		}
-		//ionode->TYPE = WireStop.NodeP->TYPE; // ¸Ó¸`ÂIÄİ©Ê
+		//ionode->TYPE = WireStop.NodeP->TYPE; // è©²ç¯€é»å±¬æ€§
 		ionode->P = MemHandleLock(MemHandleNew(sizeof(int)));
 		ionode->BYTES=sizeof(int);
 		ionode->NotReady=true;
 		ionode->NUMS=1;
-		// ¦b¥ªÃäÁÙ¬O¥kÃä
+		// åœ¨å·¦é‚Šé‚„æ˜¯å³é‚Š
 		if(SIDE)
-		{// ¥ªÃä
+		{// å·¦é‚Š
 			ionode->TL.x=0;
-		}else{ // ¥kÃä
+		}else{ // å³é‚Š
 			ionode->TL.x=StructBlockP->bap->SIZE.x-6;
 		}
 		//5-18
@@ -1370,22 +1370,22 @@ void CrossWire( )
 		InsertIntoIONodesLL(
 			StructBlockP->bap->IONodeLLHead,
 				ionode);
-	// ·s¼W½u¬q
+	// æ–°å¢ç·šæ®µ
 	tEP.BlockP=StructBlockP;
 	tEP.NodeP=ionode;
-	// 5-7 ¨M©w¨Ï¥Î­ş¤@­Ó ½u¬q¦ê¦CÀY
-	// 5-7 ¥H«K±N½u¬q¦ê¦CÀY§ó·s§ó·s
+	// 5-7 æ±ºå®šä½¿ç”¨å“ªä¸€å€‹ ç·šæ®µä¸²åˆ—é ­
+	// 5-7 ä»¥ä¾¿å°‡ç·šæ®µä¸²åˆ—é ­æ›´æ–°æ›´æ–°
 	//if(IsTheSameWireLLHead(hookp,WireStop.BlockP))
 	//{
 		//                                      v start  v stop
 	//	hookp = AddWireLinkListNode(hookp,WireStop,tEP);
 	//}else{
-		// ±q WireStop ªº¤¸¥ó¤¤§ä¥X¦ê¦CÀY«¬§O
+		// å¾ WireStop çš„å…ƒä»¶ä¸­æ‰¾å‡ºä¸²åˆ—é ­å‹åˆ¥
 		//5-18
 	if(DeepthStart > DeepthEnd)
 	{
 		switch(WireStart.BlockP->SelfBlockLLHead->TYPE)
-		{// ¥H«K«ü©w§ó·s­ş¤@­Ó½u¬q¦ê¦CÀY
+		{// ä»¥ä¾¿æŒ‡å®šæ›´æ–°å“ªä¸€å€‹ç·šæ®µä¸²åˆ—é ­
 			case HOOKBLOCK :
 				((HOOKP)WireStart.BlockP->SelfBlockLLHead->hookP) = 
 				AddWireLinkListNode(
@@ -1409,7 +1409,7 @@ void CrossWire( )
 	else
 	{
 		switch(WireStop.BlockP->SelfBlockLLHead->TYPE)
-		{// ¥H«K«ü©w§ó·s­ş¤@­Ó½u¬q¦ê¦CÀY
+		{// ä»¥ä¾¿æŒ‡å®šæ›´æ–°å“ªä¸€å€‹ç·šæ®µä¸²åˆ—é ­
 			case HOOKBLOCK :
 				((HOOKP)WireStop.BlockP->SelfBlockLLHead->hookP) = 
 				AddWireLinkListNode(
@@ -1433,7 +1433,7 @@ void CrossWire( )
 	//}
 	
 	
-	// ±N¤§¨ú¥NWireStop¡A¨Ã­«½Æ²Ä1¨BÆJ
+	// å°‡ä¹‹å–ä»£WireStopï¼Œä¸¦é‡è¤‡ç¬¬1æ­¥é©Ÿ
 	//5-18
 	if(DeepthStart > DeepthEnd)
 	{
@@ -1449,12 +1449,12 @@ void CrossWire( )
 	}
 	
 	
-	// ·s¼W½u¬q³s±µWireStart WireStop ³o¸Ì¬O³Ì«á¤@¬q ½u¬q
+	// æ–°å¢ç·šæ®µé€£æ¥WireStart WireStop é€™è£¡æ˜¯æœ€å¾Œä¸€æ®µ ç·šæ®µ
 	// 5-18
 	//if(DeepthStart > DeepthEnd)
 	//{
 		switch(WireStart.BlockP->SelfBlockLLHead->TYPE)
-		{// ¥H«K«ü©w§ó·s­ş¤@­Ó½u¬q¦ê¦CÀY
+		{// ä»¥ä¾¿æŒ‡å®šæ›´æ–°å“ªä¸€å€‹ç·šæ®µä¸²åˆ—é ­
 			case HOOKBLOCK :
 				((HOOKP)WireStart.BlockP->SelfBlockLLHead->hookP) = 
 				AddWireLinkListNode(
@@ -1484,7 +1484,7 @@ void CrossWire( )
 }
 /////////////////////////////////////////////
 // 5-31 
-// ±q CheckWireLink ¤¤¤À¥X¨Ó
+// å¾ CheckWireLink ä¸­åˆ†å‡ºä¾†
 //
 void StartStopAddIntoWLL(void )
 {
@@ -1493,13 +1493,13 @@ void StartStopAddIntoWLL(void )
 						if((WireStart.BlockP->SelfBlockLLHead == WireStop.BlockP->SelfBlockLLHead)
 						|| (WireStart.BlockP == WireStop.BlockP->SelfBlockLLHead) ||
 						(WireStart.BlockP->SelfBlockLLHead == WireStop.BlockP)) 
-						// 5-8 ¥[¤W§PÂ_µ²ºc¤º¤¸¥ó»Pµ²ºc IOnode ³s±µ
-						{// ·í°_¡B²×ÂI¤§©ÒÄİ¦ê¦CÀY¬Û¦P®É
-						    // §ä¥X©ÒÄİ¦ê¦Cªºªê§J
-						    // 5-8 ¥²¶·¦³§ó·s°Ê§@¡A§_«h¤º³¡ªê§Jªºwirellhead·|¥¢³s
-						    // 5-8 ³o¸Ì­n¨M©w¨Ï¥Î½Öªºªê§J
-						    // ¦pªG¬O¬Û¦P©ÒÄİ«h¬O¦P¤@­Óªê§J
-						    // ¦pªG¤£¦P «h­n¿ï¾Ü¥¿½Tªº¨º­Ó
+						// 5-8 åŠ ä¸Šåˆ¤æ–·çµæ§‹å…§å…ƒä»¶èˆ‡çµæ§‹ IOnode é€£æ¥
+						{// ç•¶èµ·ã€çµ‚é»ä¹‹æ‰€å±¬ä¸²åˆ—é ­ç›¸åŒæ™‚
+						    // æ‰¾å‡ºæ‰€å±¬ä¸²åˆ—çš„è™å…‹
+						    // 5-8 å¿…é ˆæœ‰æ›´æ–°å‹•ä½œï¼Œå¦å‰‡å…§éƒ¨è™å…‹çš„wirellheadæœƒå¤±é€£
+						    // 5-8 é€™è£¡è¦æ±ºå®šä½¿ç”¨èª°çš„è™å…‹
+						    // å¦‚æœæ˜¯ç›¸åŒæ‰€å±¬å‰‡æ˜¯åŒä¸€å€‹è™å…‹
+						    // å¦‚æœä¸åŒ å‰‡è¦é¸æ“‡æ­£ç¢ºçš„é‚£å€‹
 						    if(WireStart.BlockP == WireStop.BlockP->SelfBlockLLHead)
 						    {
 						   		tPoint = WireStop;
@@ -1534,29 +1534,29 @@ void StartStopAddIntoWLL(void )
 							//hook = thook; //????
 							//hook.BlockLLHeadP->WireLLHeadP = hook.WireLLHeadP;
 						}else{
-							// ¶i¤J¸óµ²ºc±µ½u³B²z¨ç¦¡
-							// ¦pªG½u¬qÀY»P½u¬q§À¤ÀÄİ¤£¦P¦ê¦C «h
-							//   ­n»İ­n¤À¬q
-							// ³o¨Ç»İ­n¤À¬qªº½u¬q
-							// ·|¦]¬°¦b¤£¦Pªºµ²ºc¤¤ ¦Ó»İ­n´¡¤J¤£¦Pªº¦ê¬q
-							// 5-8 ³o¸ÌÁÙ¦³¤@­Ó·N¸q
-							// µ²ºc¤ºªº¤¸¥ó »P µ²ºc IOnode ³s±µ®É¤]·|¶i¨Ó³o¸Ì
-							// ­n¸õ¶}·í¤@¯ë³s±µ³B²z(¤W­±§PÂ_¦¡­×§ï)
-							// 5-8 CrossWire() §ï¬°¥Ñ¤º³¡¨M©w
-							// »İ­n§ó·sªºwirellhead¬°½Ö
+							// é€²å…¥è·¨çµæ§‹æ¥ç·šè™•ç†å‡½å¼
+							// å¦‚æœç·šæ®µé ­èˆ‡ç·šæ®µå°¾åˆ†å±¬ä¸åŒä¸²åˆ— å‰‡
+							//   è¦éœ€è¦åˆ†æ®µ
+							// é€™äº›éœ€è¦åˆ†æ®µçš„ç·šæ®µ
+							// æœƒå› ç‚ºåœ¨ä¸åŒçš„çµæ§‹ä¸­ è€Œéœ€è¦æ’å…¥ä¸åŒçš„ä¸²æ®µ
+							// 5-8 é€™è£¡é‚„æœ‰ä¸€å€‹æ„ç¾©
+							// çµæ§‹å…§çš„å…ƒä»¶ èˆ‡ çµæ§‹ IOnode é€£æ¥æ™‚ä¹Ÿæœƒé€²ä¾†é€™è£¡
+							// è¦è·³é–‹ç•¶ä¸€èˆ¬é€£æ¥è™•ç†(ä¸Šé¢åˆ¤æ–·å¼ä¿®æ”¹)
+							// 5-8 CrossWire() æ”¹ç‚ºç”±å…§éƒ¨æ±ºå®š
+							// éœ€è¦æ›´æ–°çš„wirellheadç‚ºèª°
 							CrossWire();
 						}
 }
 // ******************************************
-// * ÀË¬d¬O§_¥i¥H«Ø¥ß³s½u
-// * ¦pªG¬O²Ä1¦¸¶i¨Ó¡A·|°O¦í¶}ÀY
+// * æª¢æŸ¥æ˜¯å¦å¯ä»¥å»ºç«‹é€£ç·š
+// * å¦‚æœæ˜¯ç¬¬1æ¬¡é€²ä¾†ï¼Œæœƒè¨˜ä½é–‹é ­
 // * 
 // *
 // *
-// * 2003-4-22 ¨Ó¦ÛCheckOnNode¤º³¡¿W¥ß¥X¨Ó
+// * 2003-4-22 ä¾†è‡ªCheckOnNodeå…§éƒ¨ç¨ç«‹å‡ºä¾†
 // *
 // ******************************************
-// i´N¬O²Ä´X±µÂI ¥H0¬°­º(¤w¸g´î1¤F)
+// iå°±æ˜¯ç¬¬å¹¾æ¥é» ä»¥0ç‚ºé¦–(å·²ç¶“æ¸›1äº†)
 void CheckWireLink(InAreaInfType InAreaInf,IONODEP NodeP)
 {
 	//WNP WLLP;
@@ -1572,17 +1572,17 @@ void CheckWireLink(InAreaInfType InAreaInf,IONODEP NodeP)
 					//WireStop.x = NULL;
 				}
 				else if((WireStop.NodeP == NULL) && (WireStart.BlockP != InAreaInf.llp))
-				{ //¤£¬O¦P¤@ÂI
+				{ //ä¸æ˜¯åŒä¸€é»
 					WireStop.BlockP = InAreaInf.llp;
 					WireStop.NodeP = NodeP;
 				}
 				
 				if((WireStart.NodeP != NULL)&&(WireStop.NodeP != NULL))
-				{// ·í±µ½u«Ø¥ß¡AÀË¬d±µ½u
+				{// ç•¶æ¥ç·šå»ºç«‹ï¼Œæª¢æŸ¥æ¥ç·š
 					if((WireStart.NodeP->TYPE == false) &&
 				 	(WireStop.NodeP->TYPE == false)
 				  	)
-					{// ¿é¥X¤£¥i±µ¦b¤@°_
+					{// è¼¸å‡ºä¸å¯æ¥åœ¨ä¸€èµ·
 						WireStart.BlockP = NULL;
 						WireStop.BlockP = NULL;
 					}
@@ -1592,23 +1592,23 @@ void CheckWireLink(InAreaInfType InAreaInf,IONODEP NodeP)
 					&& (WireStart.NodeP != NULL)
 					&& (WireStart.BlockP != WireStop.BlockP)
 					)
-				{// ³s½u«Ø¥ß ³B²z
+				{// é€£ç·šå»ºç«‹ è™•ç†
 					// THREAD or SCISSOR ?
 					if(BlockPointerState == THREADBitmap)
 					{
 						StartStopAddIntoWLL();
-						// 5-31 ¿W¥ß¥X¥h
+						// 5-31 ç¨ç«‹å‡ºå»
 						/*
 						if((WireStart.BlockP->SelfBlockLLHead == WireStop.BlockP->SelfBlockLLHead)
 						|| (WireStart.BlockP == WireStop.BlockP->SelfBlockLLHead) ||
 						(WireStart.BlockP->SelfBlockLLHead == WireStop.BlockP)) 
-						// 5-8 ¥[¤W§PÂ_µ²ºc¤º¤¸¥ó»Pµ²ºc IOnode ³s±µ
-						{// ·í°_¡B²×ÂI¤§©ÒÄİ¦ê¦CÀY¬Û¦P®É
-						    // §ä¥X©ÒÄİ¦ê¦Cªºªê§J
-						    // 5-8 ¥²¶·¦³§ó·s°Ê§@¡A§_«h¤º³¡ªê§Jªºwirellhead·|¥¢³s
-						    // 5-8 ³o¸Ì­n¨M©w¨Ï¥Î½Öªºªê§J
-						    // ¦pªG¬O¬Û¦P©ÒÄİ«h¬O¦P¤@­Óªê§J
-						    // ¦pªG¤£¦P «h­n¿ï¾Ü¥¿½Tªº¨º­Ó
+						// 5-8 åŠ ä¸Šåˆ¤æ–·çµæ§‹å…§å…ƒä»¶èˆ‡çµæ§‹ IOnode é€£æ¥
+						{// ç•¶èµ·ã€çµ‚é»ä¹‹æ‰€å±¬ä¸²åˆ—é ­ç›¸åŒæ™‚
+						    // æ‰¾å‡ºæ‰€å±¬ä¸²åˆ—çš„è™å…‹
+						    // 5-8 å¿…é ˆæœ‰æ›´æ–°å‹•ä½œï¼Œå¦å‰‡å…§éƒ¨è™å…‹çš„wirellheadæœƒå¤±é€£
+						    // 5-8 é€™è£¡è¦æ±ºå®šä½¿ç”¨èª°çš„è™å…‹
+						    // å¦‚æœæ˜¯ç›¸åŒæ‰€å±¬å‰‡æ˜¯åŒä¸€å€‹è™å…‹
+						    // å¦‚æœä¸åŒ å‰‡è¦é¸æ“‡æ­£ç¢ºçš„é‚£å€‹
 						    if(WireStart.BlockP == WireStop.BlockP->SelfBlockLLHead)
 						    {
 						   		tPoint = WireStop;
@@ -1643,16 +1643,16 @@ void CheckWireLink(InAreaInfType InAreaInf,IONODEP NodeP)
 							//hook = thook; //????
 							//hook.BlockLLHeadP->WireLLHeadP = hook.WireLLHeadP;
 						}else{
-							// ¶i¤J¸óµ²ºc±µ½u³B²z¨ç¦¡
-							// ¦pªG½u¬qÀY»P½u¬q§À¤ÀÄİ¤£¦P¦ê¦C «h
-							//   ­n»İ­n¤À¬q
-							// ³o¨Ç»İ­n¤À¬qªº½u¬q
-							// ·|¦]¬°¦b¤£¦Pªºµ²ºc¤¤ ¦Ó»İ­n´¡¤J¤£¦Pªº¦ê¬q
-							// 5-8 ³o¸ÌÁÙ¦³¤@­Ó·N¸q
-							// µ²ºc¤ºªº¤¸¥ó »P µ²ºc IOnode ³s±µ®É¤]·|¶i¨Ó³o¸Ì
-							// ­n¸õ¶}·í¤@¯ë³s±µ³B²z(¤W­±§PÂ_¦¡­×§ï)
-							// 5-8 CrossWire() §ï¬°¥Ñ¤º³¡¨M©w
-							// »İ­n§ó·sªºwirellhead¬°½Ö
+							// é€²å…¥è·¨çµæ§‹æ¥ç·šè™•ç†å‡½å¼
+							// å¦‚æœç·šæ®µé ­èˆ‡ç·šæ®µå°¾åˆ†å±¬ä¸åŒä¸²åˆ— å‰‡
+							//   è¦éœ€è¦åˆ†æ®µ
+							// é€™äº›éœ€è¦åˆ†æ®µçš„ç·šæ®µ
+							// æœƒå› ç‚ºåœ¨ä¸åŒçš„çµæ§‹ä¸­ è€Œéœ€è¦æ’å…¥ä¸åŒçš„ä¸²æ®µ
+							// 5-8 é€™è£¡é‚„æœ‰ä¸€å€‹æ„ç¾©
+							// çµæ§‹å…§çš„å…ƒä»¶ èˆ‡ çµæ§‹ IOnode é€£æ¥æ™‚ä¹Ÿæœƒé€²ä¾†é€™è£¡
+							// è¦è·³é–‹ç•¶ä¸€èˆ¬é€£æ¥è™•ç†(ä¸Šé¢åˆ¤æ–·å¼ä¿®æ”¹)
+							// 5-8 CrossWire() æ”¹ç‚ºç”±å…§éƒ¨æ±ºå®š
+							// éœ€è¦æ›´æ–°çš„wirellheadç‚ºèª°
 							CrossWire();
 						}
 						
@@ -1662,11 +1662,11 @@ void CheckWireLink(InAreaInfType InAreaInf,IONODEP NodeP)
 					{
 					/*
 					  if(WireStart.BlockP->SelfBlockLLHead == WireStop.BlockP->SelfBlockLLHead)
-					  {// ·í°_¡B²×ÂI¤§©ÒÄİ¦ê¦CÀY¬Û¦P®É
+					  {// ç•¶èµ·ã€çµ‚é»ä¹‹æ‰€å±¬ä¸²åˆ—é ­ç›¸åŒæ™‚
 					   if(hook->WireLLHeadP != NULL)
 						if((WLLP = InWireLinkList(hook,WireStart,WireStop)) != NULL)
 						{
-							hook->WireLLHeadP = RemoveWireLinkList(hook->WireLLHeadP,WLLP); // §ä¥XLL¤ºªº½u¡A²¾°£¥¦
+							hook->WireLLHeadP = RemoveWireLinkList(hook->WireLLHeadP,WLLP); // æ‰¾å‡ºLLå…§çš„ç·šï¼Œç§»é™¤å®ƒ
 						}
 					  }else{
 					  
@@ -1681,23 +1681,23 @@ void CheckWireLink(InAreaInfType InAreaInf,IONODEP NodeP)
 //
 // remove the wire connection when block has been kill
 //
-// ¬°¤F¡yµ²ºc¡z¡A­n§ï¬°¥i»¼°jµ²ºc
+// ç‚ºäº†ã€çµæ§‹ã€ï¼Œè¦æ”¹ç‚ºå¯éè¿´çµæ§‹
 //
 //
-// ¥i»¼°j 4/13
+// å¯éè¿´ 4/13
 //
-// blockptr ¬O­n²¾°£ªº¤¸¥ó
+// blockptr æ˜¯è¦ç§»é™¤çš„å…ƒä»¶
 //
-// 5-8 ²¾°£½u¬q
-// §ï¬°¥Ñ blockptr ¤º³¡ªº selfblockllhead §ä¥X HOOK µM«á ¥H¸Ówirellhead¬°ÀY
+// 5-8 ç§»é™¤ç·šæ®µ
+// æ”¹ç‚ºç”± blockptr å…§éƒ¨çš„ selfblockllhead æ‰¾å‡º HOOK ç„¶å¾Œ ä»¥è©²wirellheadç‚ºé ­
 void BreakWireConnection(BNP  blockptr)
 {
 	Boolean exist=false;
 	WNP WireLLHead,wnp;
 	HOOKP thook;
 	
-	// 5-8 §ä¥X hook
-    // §ä¥X©ÒÄİ¦ê¦Cªºªê§J
+	// 5-8 æ‰¾å‡º hook
+    // æ‰¾å‡ºæ‰€å±¬ä¸²åˆ—çš„è™å…‹
     switch(blockptr->SelfBlockLLHead->TYPE)
     {
 		case HOOKBLOCK :
@@ -1710,7 +1710,7 @@ void BreakWireConnection(BNP  blockptr)
 			thook = (HOOKP)blockptr->SelfBlockLLHead->CurrentHOOKP;
 		break;
     }
-    // Åª¥X
+    // è®€å‡º
     WireLLHead = thook->WireLLHeadP;
     wnp = WireLLHead;
 	while(wnp != NULL)
@@ -1734,8 +1734,8 @@ void BreakWireConnection(BNP  blockptr)
 	}
 	
 	thook->WireLLHeadP = WireLLHead;
-	// §ó·s
-    // §ä¥X©ÒÄİ¦ê¦Cªºªê§J
+	// æ›´æ–°
+    // æ‰¾å‡ºæ‰€å±¬ä¸²åˆ—çš„è™å…‹
     switch(blockptr->SelfBlockLLHead->TYPE)
     {
 		case HOOKBLOCK :
@@ -1752,16 +1752,16 @@ void BreakWireConnection(BNP  blockptr)
 
 
 /*
-	¥\¯à Âà²¾¤¸¥ó
-	5-7 Âà²¾¤¸¥ó§ï¬°­×§ï«e«á¸`ÂI
-	­ì¥»¬O·s¼W->¥[¤J §ï¬°
-	¥u¬O±q³o­ÓÃìµ² §ï¨ì ¥t¤@­ÓÃìµ² ¦Ó­ì¥»ªºÃìµ²ªº¦a¤è¸É°_¨Ó
-	¦pªG­ì¥»ªºÃìµ²¥u³Ñ¤@­Ó ´N­nª`·N ­ì¥»ªºÃìµ²ÀY­n§ó·s
+	åŠŸèƒ½ è½‰ç§»å…ƒä»¶
+	5-7 è½‰ç§»å…ƒä»¶æ”¹ç‚ºä¿®æ”¹å‰å¾Œç¯€é»
+	åŸæœ¬æ˜¯æ–°å¢->åŠ å…¥ æ”¹ç‚º
+	åªæ˜¯å¾é€™å€‹éˆçµ æ”¹åˆ° å¦ä¸€å€‹éˆçµ è€ŒåŸæœ¬çš„éˆçµçš„åœ°æ–¹è£œèµ·ä¾†
+	å¦‚æœåŸæœ¬çš„éˆçµåªå‰©ä¸€å€‹ å°±è¦æ³¨æ„ åŸæœ¬çš„éˆçµé ­è¦æ›´æ–°
 	
-	¦]¬°¥~³¡³]­p¥u­n§ì¨ìªº¤¸¥ó´N±N¨ä±À¨ìÃìµ²ªº³Ì«á­±
-	©Ò¥H³o¸Ì¦pªG¤£·|¦³²¾¥XÃìµ²²Ä¤@­Óªº±¡§Î
-	©Ò¥H¤£»İ­n§ó·sÃìµ²ÀY 
-	¥u¦³¦b¤¸¥ó³Ñ¤@­Óªº®É­Ô¤~»İ­n¡C
+	å› ç‚ºå¤–éƒ¨è¨­è¨ˆåªè¦æŠ“åˆ°çš„å…ƒä»¶å°±å°‡å…¶æ¨åˆ°éˆçµçš„æœ€å¾Œé¢
+	æ‰€ä»¥é€™è£¡å¦‚æœä¸æœƒæœ‰ç§»å‡ºéˆçµç¬¬ä¸€å€‹çš„æƒ…å½¢
+	æ‰€ä»¥ä¸éœ€è¦æ›´æ–°éˆçµé ­ 
+	åªæœ‰åœ¨å…ƒä»¶å‰©ä¸€å€‹çš„æ™‚å€™æ‰éœ€è¦ã€‚
 */
 static void ChangeLinkList(UInt16 now_x,UInt16 now_y)
 {
@@ -1770,49 +1770,49 @@ static void ChangeLinkList(UInt16 now_x,UInt16 now_y)
 	BNP bllp;
 	UInt16 x,y;
 	//
-	// 4-24 ·s¤èªk¡A¬d¸ß«ü¼Ğ¥Ø«e¸¨ÂI¤§¦ê¦CÀY
+	// 4-24 æ–°æ–¹æ³•ï¼ŒæŸ¥è©¢æŒ‡æ¨™ç›®å‰è½é»ä¹‹ä¸²åˆ—é ­
 	//
 		if(HandPointer.CatchWhat->BackgroundBlockLLHead != 
 				HandPointer.CatchWhat->SelfBlockLLHead)
-		{// ²×ÂI»P°_ÂI¤ÀÄİ¤£¦P¦ê¦C¡A»İ­n·h²¾
-				  // ·h²¾«e¡A¸Ñ°£³s½u
+		{// çµ‚é»èˆ‡èµ·é»åˆ†å±¬ä¸åŒä¸²åˆ—ï¼Œéœ€è¦æ¬ç§»
+				  // æ¬ç§»å‰ï¼Œè§£é™¤é€£ç·š
 			BreakWireConnection(HandPointer.CatchWhat);
 				  				
-			// ³o¸Ì­n­«¼g¡A°w¹ï±_ª¬°j°é»İ­n
+			// é€™è£¡è¦é‡å¯«ï¼Œé‡å°å·¢ç‹€è¿´åœˆéœ€è¦
 			if(HandPointer.CatchWhat->SelfBlockLLHead == SYSHOOK->BlockLLHeadP)
-			{// ************±q ¥D¦ê¦C Âà²¾¨ì µ²ºc¦ê¦C
+			{// ************å¾ ä¸»ä¸²åˆ— è½‰ç§»åˆ° çµæ§‹ä¸²åˆ—
 				
 				
-					// ­n§ä¥X¯u¥¿ªº¬Û¹ï¦ì¸m
+					// è¦æ‰¾å‡ºçœŸæ­£çš„ç›¸å°ä½ç½®
 				x=0;y=0;
 				bllp = HandPointer.CatchWhat->BackgroundBlockLLHead;
 				
 				while(bllp != SYSHOOK->BlockLLHeadP)
-				{//4-26 ¨«¤@¹M¦ê¦C¡A¥[¥Xµ´¹ï®y¼Ğ
+				{//4-26 èµ°ä¸€éä¸²åˆ—ï¼ŒåŠ å‡ºçµ•å°åº§æ¨™
 					x += bllp->bap->XY.x;
 					y += bllp->bap->XY.y;
 					bllp = bllp->SelfBlockLLHead;
 				}
-				// 5-7 §ï
+				// 5-7 æ”¹
 				HandPointer.CatchWhat->bap->XY.x = now_x - HandPointer.RelativePoint.x - x;
 				HandPointer.CatchWhat->bap->XY.y = now_y - HandPointer.RelativePoint.y - y;
 				HandPointer.CatchWhat->SelfBlockLLHead=HandPointer.CatchWhat->BackgroundBlockLLHead;
 				HandPointer.CatchWhat->NEXTNODE=NULL;
-				// 5-7 ±N­ì¦ê¦C­×¸É°_¨Ó
-				if(HandPointer.CatchWhat->PREVNODE != NULL)// ³o­Ó¦ê¦C¸`ÂI¨S¦³ÀY
+				// 5-7 å°‡åŸä¸²åˆ—ä¿®è£œèµ·ä¾†
+				if(HandPointer.CatchWhat->PREVNODE != NULL)// é€™å€‹ä¸²åˆ—ç¯€é»æ²’æœ‰é ­
 					HandPointer.CatchWhat->PREVNODE->NEXTNODE = HandPointer.CatchWhat->NEXTNODE;
-				if(HandPointer.CatchWhat->NEXTNODE != NULL)// ³o­Ó¦ê¦C¸`ÂI¨S¦³§À
+				if(HandPointer.CatchWhat->NEXTNODE != NULL)// é€™å€‹ä¸²åˆ—ç¯€é»æ²’æœ‰å°¾
 					HandPointer.CatchWhat->NEXTNODE->PREVNODE = HandPointer.CatchWhat->PREVNODE;
 				/*
-				// ¨t²Î¦ê¦C¦Ü¤ÖÁÙ¦³¤@­Ó¤¸¥ó¦s¦b¡A¤£·|¦¨¬°ªÅ¦ê¦C
+				// ç³»çµ±ä¸²åˆ—è‡³å°‘é‚„æœ‰ä¸€å€‹å…ƒä»¶å­˜åœ¨ï¼Œä¸æœƒæˆç‚ºç©ºä¸²åˆ—
 				if((HandPointer.CatchWhat->PREVNODE==NULL)&&(HandPointer.CatchWhat->NEXTNODE==NULL))
-				{// ³o¬O³Ì«á¤@­ÓÃìµ²¸`ÂI
+				{// é€™æ˜¯æœ€å¾Œä¸€å€‹éˆçµç¯€é»
 					HandPointer.CatchWhat->SelfBlockLLHead->
 				}
 				*/
 
 
-					// ¥[¤J¡yµ²ºc¡zbllpH ¬O¥Ø«eµ²ºc
+					// åŠ å…¥ã€çµæ§‹ã€bllpH æ˜¯ç›®å‰çµæ§‹
 				bllpH = HandPointer.CatchWhat->BackgroundBlockLLHead;
 				switch(bllpH->TYPE)
 				{
@@ -1831,84 +1831,84 @@ static void ChangeLinkList(UInt16 now_x,UInt16 now_y)
 				}
 				
 				
-			}else{// ±q µ²ºc¦ê¦C Âà²¾¨ì ¥D¦ê¦C ©Î¬O µ²ºc¦ê¦C ¶¡ Âà²¾
+			}else{// å¾ çµæ§‹ä¸²åˆ— è½‰ç§»åˆ° ä¸»ä¸²åˆ— æˆ–æ˜¯ çµæ§‹ä¸²åˆ— é–“ è½‰ç§»
 				if(HandPointer.CatchWhat->BackgroundBlockLLHead == SYSHOOK->BlockLLHeadP)
-				{// ********* ±q µ²ºc¦ê¦C Âà²¾¨ì ¥D¦ê¦C
+				{// ********* å¾ çµæ§‹ä¸²åˆ— è½‰ç§»åˆ° ä¸»ä¸²åˆ—
 					
-				// 5-7 ±N­ì¦ê¦C­×¸É°_¨Ó
-				if(HandPointer.CatchWhat->PREVNODE != NULL)// ³o­Ó¦ê¦C¸`ÂI¨S¦³ÀY
+				// 5-7 å°‡åŸä¸²åˆ—ä¿®è£œèµ·ä¾†
+				if(HandPointer.CatchWhat->PREVNODE != NULL)// é€™å€‹ä¸²åˆ—ç¯€é»æ²’æœ‰é ­
 					HandPointer.CatchWhat->PREVNODE->NEXTNODE = HandPointer.CatchWhat->NEXTNODE;
-				if(HandPointer.CatchWhat->NEXTNODE != NULL)// ³o­Ó¦ê¦C¸`ÂI¨S¦³§À
+				if(HandPointer.CatchWhat->NEXTNODE != NULL)// é€™å€‹ä¸²åˆ—ç¯€é»æ²’æœ‰å°¾
 					HandPointer.CatchWhat->NEXTNODE->PREVNODE = HandPointer.CatchWhat->PREVNODE;
 				bllpH = HandPointer.CatchWhat->SelfBlockLLHead;
 				switch(bllpH->TYPE)
 				{
 				case LOOPBLOCK :
 				if((HandPointer.CatchWhat->PREVNODE==NULL)&&(HandPointer.CatchWhat->NEXTNODE==NULL))
-				{// ³o¬O³Ì«á¤@­ÓÃìµ²¸`ÂI
+				{// é€™æ˜¯æœ€å¾Œä¸€å€‹éˆçµç¯€é»
 					((HOOKP)HandPointer.CatchWhat->SelfBlockLLHead->LoopBlockHOOKP)->
 						BlockLLHeadP=NULL;
 				}
 				break;
 				case CASEBLOCK :
 				if((HandPointer.CatchWhat->PREVNODE==NULL)&&(HandPointer.CatchWhat->NEXTNODE==NULL))
-				{// ³o¬O³Ì«á¤@­ÓÃìµ²¸`ÂI
+				{// é€™æ˜¯æœ€å¾Œä¸€å€‹éˆçµç¯€é»
 					((HOOKP)HandPointer.CatchWhat->SelfBlockLLHead->CurrentHOOKP)->
 						BlockLLHeadP=NULL;
 				}
 				break;
 				}
-				// 5-7 §ïÅÜ¦ì¸m ¤Î ©ÒÄİ¦ê¦C
+				// 5-7 æ”¹è®Šä½ç½® åŠ æ‰€å±¬ä¸²åˆ—
 				HandPointer.CatchWhat->bap->XY.x = now_x - HandPointer.RelativePoint.x;
 				HandPointer.CatchWhat->bap->XY.y = now_y - HandPointer.RelativePoint.y;
 				HandPointer.CatchWhat->SelfBlockLLHead=SYSHOOK->BlockLLHeadP;
 				HandPointer.CatchWhat->NEXTNODE=NULL;
 
-					// ¦^¨ì¥D¦ê¦C
+					// å›åˆ°ä¸»ä¸²åˆ—
 				SYSHOOK->BlockLLHeadP = InsertIntoBlockLLwithUID(SYSHOOK->BlockLLHeadP,HandPointer.CatchWhat);
-					// ±q­ì©ÒÄİ¦ê¦C¤¤²¾°£
+					// å¾åŸæ‰€å±¬ä¸²åˆ—ä¸­ç§»é™¤
 			//		bllpH->BlockLLHeadP = RemoveBlockLinkList(bllpH->BlockLLHeadP,HandPointer.CatchWhat);//deleteBlockH
-				}else{//  *********** µ²ºc¦ê¦C ¶¡ Âà²¾
-					// ­n§ä¥X¯u¥¿ªº¬Û¹ï¦ì¸m
+				}else{//  *********** çµæ§‹ä¸²åˆ— é–“ è½‰ç§»
+					// è¦æ‰¾å‡ºçœŸæ­£çš„ç›¸å°ä½ç½®
 					x=0;y=0;
 					bllp = HandPointer.CatchWhat->BackgroundBlockLLHead;
 					while(bllp != SYSHOOK->BlockLLHeadP)
-					{//4-26 ¨«¤@¹M¦ê¦C¡A¥[¥Xµ´¹ï®y¼Ğ
+					{//4-26 èµ°ä¸€éä¸²åˆ—ï¼ŒåŠ å‡ºçµ•å°åº§æ¨™
 						x += bllp->bap->XY.x;
 						y += bllp->bap->XY.y;
 						bllp = bllp->SelfBlockLLHead;
 					}
 					
-				// 5-7 ±N­ì¦ê¦C­×¸É°_¨Ó
-				if(HandPointer.CatchWhat->PREVNODE != NULL)// ³o­Ó¦ê¦C¸`ÂI¨S¦³ÀY
+				// 5-7 å°‡åŸä¸²åˆ—ä¿®è£œèµ·ä¾†
+				if(HandPointer.CatchWhat->PREVNODE != NULL)// é€™å€‹ä¸²åˆ—ç¯€é»æ²’æœ‰é ­
 					HandPointer.CatchWhat->PREVNODE->NEXTNODE = HandPointer.CatchWhat->NEXTNODE;
-				if(HandPointer.CatchWhat->NEXTNODE != NULL)// ³o­Ó¦ê¦C¸`ÂI¨S¦³§À
+				if(HandPointer.CatchWhat->NEXTNODE != NULL)// é€™å€‹ä¸²åˆ—ç¯€é»æ²’æœ‰å°¾
 					HandPointer.CatchWhat->NEXTNODE->PREVNODE = HandPointer.CatchWhat->PREVNODE;
 				bllpH = HandPointer.CatchWhat->SelfBlockLLHead;
 				switch(bllpH->TYPE)
 				{
 				case LOOPBLOCK :
 				if((HandPointer.CatchWhat->PREVNODE==NULL)&&(HandPointer.CatchWhat->NEXTNODE==NULL))
-				{// ³o¬O³Ì«á¤@­ÓÃìµ²¸`ÂI
+				{// é€™æ˜¯æœ€å¾Œä¸€å€‹éˆçµç¯€é»
 					((HOOKP)HandPointer.CatchWhat->SelfBlockLLHead->LoopBlockHOOKP)->
 						BlockLLHeadP=NULL;
 				}
 				break;
 				case CASEBLOCK :
 				if((HandPointer.CatchWhat->PREVNODE==NULL)&&(HandPointer.CatchWhat->NEXTNODE==NULL))
-				{// ³o¬O³Ì«á¤@­ÓÃìµ²¸`ÂI
+				{// é€™æ˜¯æœ€å¾Œä¸€å€‹éˆçµç¯€é»
 					((HOOKP)HandPointer.CatchWhat->SelfBlockLLHead->CurrentHOOKP)->
 						BlockLLHeadP=NULL;
 				}
 				break;
 				}
-				// 5-7 §ïÅÜ¦ì¸m ¤Î ©ÒÄİ¦ê¦C
+				// 5-7 æ”¹è®Šä½ç½® åŠ æ‰€å±¬ä¸²åˆ—
 				HandPointer.CatchWhat->bap->XY.x = now_x - HandPointer.RelativePoint.x - x;
 				HandPointer.CatchWhat->bap->XY.y = now_y - HandPointer.RelativePoint.y - y;
 				HandPointer.CatchWhat->SelfBlockLLHead=HandPointer.CatchWhat->BackgroundBlockLLHead;
 				HandPointer.CatchWhat->NEXTNODE=NULL;
 
-					// ¶i¤J·s¦ê¦C
+					// é€²å…¥æ–°ä¸²åˆ—
 					bllpH = HandPointer.CatchWhat->BackgroundBlockLLHead;
 			switch(bllpH->TYPE)
 			{
@@ -1935,14 +1935,14 @@ Boolean PenDownInBlockToolArea(EventPtr eventP)
 {
 	Boolean In=false;
 	
-	// ¬O§_¸¨¦b¤u¨ã¹Ï¥Ü¡A­Y¬O«h¶i¤Jtools form
+	// æ˜¯å¦è½åœ¨å·¥å…·åœ–ç¤ºï¼Œè‹¥æ˜¯å‰‡é€²å…¥tools form
 	if(CheckBoundary(140,0,18,18,eventP->screenX,eventP->screenY))
 	{
 		In =true;
 		FrmPopupForm(BlockToolsForm);
 	}else if(CheckBoundary(120,0,16,16,eventP->screenX,eventP->screenY)){
 		In =true;
-	// ¬O§_¸¨¦b¤è¶ô¹Ï¥Ü¡A­Y¬O«h¶i¤Jfunctions form
+	// æ˜¯å¦è½åœ¨æ–¹å¡Šåœ–ç¤ºï¼Œè‹¥æ˜¯å‰‡é€²å…¥functions form
 		FrmPopupForm(FunctionsForm);
 	}else if(CheckBoundary(100,0,16,16,eventP->screenX,eventP->screenY)){
 		In =true;
@@ -1973,9 +1973,9 @@ Boolean PenDownInBlockToolArea(EventPtr eventP)
 		{
 			STOP=1;
 			RUN=1;
-			// ²M°£¤¸¥óºX¼Ğ
+			// æ¸…é™¤å…ƒä»¶æ——æ¨™
 			CheckConnection(SYSHOOK->BlockLLHeadP->NEXTNODE,false);
-			// ½u¬q ª¬ºA­«¸m
+			// ç·šæ®µ ç‹€æ…‹é‡ç½®
 			ResetWireStatus(SYSHOOK->BlockLLHeadP->NEXTNODE,
 			SYSHOOK->WireLLHeadP);
 
@@ -1998,20 +1998,20 @@ Boolean PenDownInBlockToolArea(EventPtr eventP)
 			RUNFOREVER=true;
 			STOP=1;
 			RUN=1;
-			// ²M°£¤¸¥óºX¼Ğ
+			// æ¸…é™¤å…ƒä»¶æ——æ¨™
 			CheckConnection(SYSHOOK->BlockLLHeadP->NEXTNODE,false);
-			// ½u¬q ª¬ºA­«¸m
+			// ç·šæ®µ ç‹€æ…‹é‡ç½®
 			ResetWireStatus(SYSHOOK->BlockLLHeadP->NEXTNODE,
 			SYSHOOK->WireLLHeadP);
 			FrmGotoForm(BlockDiagramForm);
 		}
 	}else if(CheckBoundary(0,0,33,15,eventP->screenX,eventP->screenY)){
 		In =true;
-	// ¬O§_¸¨¦b¼ĞÃD¡A­Y¬O«hÂà´« form
+	// æ˜¯å¦è½åœ¨æ¨™é¡Œï¼Œè‹¥æ˜¯å‰‡è½‰æ› form
 		FrmGotoForm(FrontPanelForm);
 	}
 	
-	// 6-2 ¦pªGµ§¦b«D§@¥Î°Ï «h¤£­n°õ¦æ°Ê§@
+	// 6-2 å¦‚æœç­†åœ¨éä½œç”¨å€ å‰‡ä¸è¦åŸ·è¡Œå‹•ä½œ
 	
 	if(CheckBoundary(0,0,160,16,eventP->screenX,eventP->screenY))
 	{
@@ -2033,7 +2033,7 @@ extern void BlockpenDownProcess(EventPtr eventP)
 	InAreaInfType InAreaInf;
 	InAreaInf.InArea=false;
 	
-	// 5-9 ­×§ïÃä¬É§PÂ_ now_x »P now_y ªº³]©w
+	// 5-9 ä¿®æ”¹é‚Šç•Œåˆ¤æ–· now_x èˆ‡ now_y çš„è¨­å®š
 	CaculateNowXNowY(&now_x,&now_y,eventP->screenX,eventP->screenY);
 	/*
 		//if(eventP->screenX<10)now_x=10;else now_x = eventP->screenX;
@@ -2045,20 +2045,20 @@ extern void BlockpenDownProcess(EventPtr eventP)
 	}else{
 	switch(BlockPointerState){
 		case HANDBitmap:
-			// 6-2 °õ¦æ¤¤¤£¥i½s¿è
+			// 6-2 åŸ·è¡Œä¸­ä¸å¯ç·¨è¼¯
 			if(RUN!=0)
 			{
 				RUN=0;
 				STOP=0;
 				RUNFOREVER=false;
 			}
-		// 5-6 ¥[¤J¥\¯à ¤Z¸¨¦b½d³ò¤ºªº¤¸¥ó²¾¨ì¦ê¦C³Ì«á­± 
-		// ³o¼Ë·|¨Ï±oÅã¥Ü¦b³Ì¤W¼h (±o¨ì³Ì¤jZ­È)
+		// 5-6 åŠ å…¥åŠŸèƒ½ å‡¡è½åœ¨ç¯„åœå…§çš„å…ƒä»¶ç§»åˆ°ä¸²åˆ—æœ€å¾Œé¢ 
+		// é€™æ¨£æœƒä½¿å¾—é¡¯ç¤ºåœ¨æœ€ä¸Šå±¤ (å¾—åˆ°æœ€å¤§Zå€¼)
 			InAreaInf = IsInArea(InAreaInf,SYSHOOK->BlockLLHeadP->NEXTNODE,now_x,now_y,0,0); //LLP will set
-			// 5-30 ¸õ¶} ¹w³]¤¸¥ó
+			// 5-30 è·³é–‹ é è¨­å…ƒä»¶
 			if((InAreaInf.InArea)&&(InAreaInf.llp->TYPE != CTRLBLOCK))
 			{
-				// ²¾¨ì¦ê¦C³Ì«á­±
+				// ç§»åˆ°ä¸²åˆ—æœ€å¾Œé¢
 				NestItemMoveToLastPosition(InAreaInf.llp);
 				// in boundary
 				switch(InAreaInf.llp->SelfBlockLLHead->TYPE)
@@ -2068,7 +2068,7 @@ extern void BlockpenDownProcess(EventPtr eventP)
 						DrawIcon(CLENCHBitmap,now_x+offset_x,now_y+offset_y);
 						HandPointer.HandState = CLENCHBitmap;
 						HandPointer.CatchWhat = InAreaInf.llp; // point now bap->
-				// ½Æ»s¨ì clone ¤¤
+				// è¤‡è£½åˆ° clone ä¸­
 					//HandPointer.Clone->TYPE=InAreaInf.llp->TYPE;
 					//HandPointer.Clone->bap=InAreaInf.llp->bap;
 					//HandPointer.Clone->LoopBlockHOOKP=InAreaInf.llp->LoopBlockHOOKP;
@@ -2077,7 +2077,7 @@ extern void BlockpenDownProcess(EventPtr eventP)
 					//HandPointer.Clone->SelfBlockLLHead=InAreaInf.llp->SelfBlockLLHead;
 					//HandPointer.Clone->BackgroundBlockLLHead=InAreaInf.llp->BackgroundBlockLLHead;
 					//HandPointer.Clone->bap->ReDraw=true;
-						// ¬Û¹ï¦ì¸m­n­«ºâ
+						// ç›¸å°ä½ç½®è¦é‡ç®—
 
 						x=0;y=0;
 						bllp = HandPointer.CatchWhat->BackgroundBlockLLHead;
@@ -2097,7 +2097,7 @@ extern void BlockpenDownProcess(EventPtr eventP)
 						DrawIcon(CLENCHBitmap,now_x+offset_x,now_y+offset_y);
 						HandPointer.HandState = CLENCHBitmap;
 						HandPointer.CatchWhat = InAreaInf.llp; // point now bap->
-						// ¬Û¹ï¦ì¸m­n­«ºâ
+						// ç›¸å°ä½ç½®è¦é‡ç®—
 						
 						x=0;y=0;
 						
@@ -2118,8 +2118,8 @@ extern void BlockpenDownProcess(EventPtr eventP)
 				//////////////////////////////////////////////////////////////
 				////////////////////////////////////////////////////////////////
 				//HandPointer.StartbllpH = InAreaInf.llp;
-				// 4-23 ¬ö¿ı¤¸¥ó©ÒÄİ¦ê¦CÀY¡A¥H³Æ¤¸¥óÂà²¾¤§¥Î
-				// 4-24 §R°£¸ÓÅÜ¼Æ¡A§ï¬°Block¤º³¡¦Û¤v°O¦íÀY¦ì¸m
+				// 4-23 ç´€éŒ„å…ƒä»¶æ‰€å±¬ä¸²åˆ—é ­ï¼Œä»¥å‚™å…ƒä»¶è½‰ç§»ä¹‹ç”¨
+				// 4-24 åˆªé™¤è©²è®Šæ•¸ï¼Œæ”¹ç‚ºBlockå…§éƒ¨è‡ªå·±è¨˜ä½é ­ä½ç½®
 			}// if inarea
 			else
 			{
@@ -2128,7 +2128,7 @@ extern void BlockpenDownProcess(EventPtr eventP)
 			}
 		break;
 		case THREADBitmap:
-			// 6-2 °õ¦æ¤¤¤£¥i½s¿è
+			// 6-2 åŸ·è¡Œä¸­ä¸å¯ç·¨è¼¯
 			if(RUN!=0)
 			{
 				RUN=0;
@@ -2149,7 +2149,7 @@ extern void BlockpenDownProcess(EventPtr eventP)
 			}
 		break;
 		case DRAGBitmap:
-			// 6-2 °õ¦æ¤¤¤£¥i½s¿è
+			// 6-2 åŸ·è¡Œä¸­ä¸å¯ç·¨è¼¯
 			if(RUN!=0)
 			{
 				RUN=0;
@@ -2159,16 +2159,16 @@ extern void BlockpenDownProcess(EventPtr eventP)
 			InAreaInf = IsInArea(InAreaInf,SYSHOOK->BlockLLHeadP->NEXTNODE,now_x,now_y,0,0); 
 			if(InAreaInf.InArea)
 			{
-				// ²¾¨ì¦ê¦C³Ì«á­±
+				// ç§»åˆ°ä¸²åˆ—æœ€å¾Œé¢
 				NestItemMoveToLastPosition(InAreaInf.llp);
 
 			//if(InAreaInf.llp->bap->BITMAPID == WHILELOOPBitmap)
 				switch(InAreaInf.llp->TYPE)
-				{//«ö¨ì wHileloop
+				{//æŒ‰åˆ° wHileloop
 				 case LOOPBLOCK :
 					if(((ctrlnode = CheckOnCTRLNode(InAreaInf,now_x,now_y)) != NULL )&& 
 					       (ctrlnode->ID == DRAGNODE))
-					{// ¦³«ö¨ì drag point
+					{// æœ‰æŒ‰åˆ° drag point
 						DragStatus.llp = InAreaInf.llp;
 						InAreaInf.llp->bap->ReDraw=true;
 					}
@@ -2195,11 +2195,11 @@ extern void BlockpenDownProcess(EventPtr eventP)
 				 
 				}
 			}else{
-			// µe ICON
+			// ç•« ICON
 			}
 		break;
 		case SCISSORBitmap:
-			// 6-2 °õ¦æ¤¤¤£¥i½s¿è
+			// 6-2 åŸ·è¡Œä¸­ä¸å¯ç·¨è¼¯
 			if(RUN!=0)
 			{
 				RUN=0;
@@ -2220,7 +2220,7 @@ extern void BlockpenDownProcess(EventPtr eventP)
 			}
 		break;
 		case KILLBitmap:
-			// 6-2 °õ¦æ¤¤¤£¥i½s¿è
+			// 6-2 åŸ·è¡Œä¸­ä¸å¯ç·¨è¼¯
 			if(RUN!=0)
 			{
 				RUN=0;
@@ -2237,7 +2237,7 @@ extern void BlockpenDownProcess(EventPtr eventP)
 				// remove wire connection
 				BreakWireConnection(InAreaInf.llp);
 				// remove Block Link
-				// 5-30 ³o¸ÌÀ³¸Ó¦b¼f·V³B²z ¦]¬°¦³ªº¤è¶ô¸Ì­±¦³°ÊºA«ü¼Ğ »İ¤@­Ó­Ó²¾°£
+				// 5-30 é€™è£¡æ‡‰è©²åœ¨å¯©æ…è™•ç† å› ç‚ºæœ‰çš„æ–¹å¡Šè£¡é¢æœ‰å‹•æ…‹æŒ‡æ¨™ éœ€ä¸€å€‹å€‹ç§»é™¤
 				SYSHOOK->BlockLLHeadP = RemoveBlockLinkList(SYSHOOK->BlockLLHeadP,InAreaInf.llp);
 
 			}
@@ -2290,7 +2290,7 @@ extern void BlockpenMoveProcess(EventPtr eventP)
 	InAreaInfType InAreaInf;
 	InAreaInf.InArea=false;
 	
-	// 5-9 ­×§ïÃä¬É§PÂ_ now_x »P now_y ªº³]©w
+	// 5-9 ä¿®æ”¹é‚Šç•Œåˆ¤æ–· now_x èˆ‡ now_y çš„è¨­å®š
 	CaculateNowXNowY(&now_x,&now_y,eventP->screenX,eventP->screenY);
 /*
 		//if(eventP->screenX<10)now_x=10;else now_x = eventP->screenX;
@@ -2310,7 +2310,7 @@ extern void BlockpenMoveProcess(EventPtr eventP)
 			if(HandPointer.HandState == CLENCHBitmap)
 			{
 			/*
-				// 5-12 ¤¸¥ó­«Ã¸(²M°£)
+				// 5-12 å…ƒä»¶é‡ç¹ª(æ¸…é™¤)
 				HandPointer.CatchWhat->bap->ReDraw = true;
 			if(HandPointer.CatchWhat->SelfBlockLLHead == HandPointer.CatchWhat->BackgroundBlockLLHead)
 			{
@@ -2324,12 +2324,12 @@ extern void BlockpenMoveProcess(EventPtr eventP)
 				if(HandPointer.CatchWhat->BackgroundBlockLLHead != SYSHOOK->BlockLLHeadP)
 				{
 				NestReDraw(HandPointer.CatchWhat->BackgroundBlockLLHead);
-				// ²æÂ÷¦b³o¸Ìµo¥Í
+				// è„«é›¢åœ¨é€™è£¡ç™¼ç”Ÿ
 				}
 			}
 			*/	
 				/*
-				// 5-12 ±_ª¬­«Ã¸
+				// 5-12 å·¢ç‹€é‡ç¹ª
 				llp = HandPointer.CatchWhat->SelfBlockLLHead;
 				while(llp != SYSHOOK->BlockLLHeadP)
 				{
@@ -2339,19 +2339,19 @@ extern void BlockpenMoveProcess(EventPtr eventP)
 				llp->bap->ReDraw=true;
 				*/
 		 // clear diagram
-		 // 5-13 ³o¤@¦¸§ï¦¨ ¥u­n¬O¤W¤@¦¸¦³¥X²{ ReDraw ªº¤¸¥ó ³o¸Ì´N§â¥¦²M°£
-		 // ¦ı¬O³y¦¨¥u­n¤¸¥ó¶i¥h¥X¨Ó ¸Ó­I´º´N·|®ø¥¢
+		 // 5-13 é€™ä¸€æ¬¡æ”¹æˆ åªè¦æ˜¯ä¸Šä¸€æ¬¡æœ‰å‡ºç¾ ReDraw çš„å…ƒä»¶ é€™è£¡å°±æŠŠå®ƒæ¸…é™¤
+		 // ä½†æ˜¯é€ æˆåªè¦å…ƒä»¶é€²å»å‡ºä¾† è©²èƒŒæ™¯å°±æœƒæ¶ˆå¤±
 		DrawDiagram(SYSHOOK->BlockLLHeadP->NEXTNODE,((HOOKP)SYSHOOK->BlockLLHeadP->hookP)->WireLLHeadP,false,false,0,0,false);
 		// 
 		
 		// clear prev. pointer icon
 		DrawIcon(BLANKBitmap,prev_x+offset_x,prev_y+offset_y);
-				// ³]©w·s®y¼Ğ­È
+				// è¨­å®šæ–°åº§æ¨™å€¼
 				setNewObjXY(now_x-HandPointer.RelativePoint.x,now_y-HandPointer.RelativePoint.y);
-				// ½Æ»s¨ì clone ¤¤
-				// 5-12 ¬°¤FÅı¤¸¥ó·h²¾¤¤ ¸óµ²ºc®ÉÁÙ¯à¥¿±`Åã¥Ü
-				// ¦ı¬O¥Ø«e¦³°İÃD µLªk­pºâ¿Ã¹õ¦ì¸m
-				// 5-12 ¼o°£
+				// è¤‡è£½åˆ° clone ä¸­
+				// 5-12 ç‚ºäº†è®“å…ƒä»¶æ¬ç§»ä¸­ è·¨çµæ§‹æ™‚é‚„èƒ½æ­£å¸¸é¡¯ç¤º
+				// ä½†æ˜¯ç›®å‰æœ‰å•é¡Œ ç„¡æ³•è¨ˆç®—è¢å¹•ä½ç½®
+				// 5-12 å»¢é™¤
 					//HandPointer.Clone->TYPE=HandPointer.CatchWhat->TYPE;
 					//HandPointer.Clone->bap=HandPointer.CatchWhat->bap;
 					//HandPointer.Clone->LoopBlockHOOKP=HandPointer.CatchWhat->LoopBlockHOOKP;
@@ -2363,7 +2363,7 @@ extern void BlockpenMoveProcess(EventPtr eventP)
 
 				// in boundary
 				
-				// 5-12 ¤¸¥ó­«Ã¸
+				// 5-12 å…ƒä»¶é‡ç¹ª
 				HandPointer.CatchWhat->bap->ReDraw = true;
 				HandPointer.CatchWhat->bap->Clean = true;
 
@@ -2374,13 +2374,13 @@ extern void BlockpenMoveProcess(EventPtr eventP)
 					InAreaInf = IsInArea(InAreaInf,llp,now_x,now_y,0,0); //LLP will set
 					
 					if(InAreaInf.InArea)
-					{// §ä¨ì¸¨¦b¤¸¥ó¤W¡A¦ı©Î³\¬O¤â¤¤¨º­Ó¤¸¥ó¡A¦]¦¹¥ı¸õ¹L
+					{// æ‰¾åˆ°è½åœ¨å…ƒä»¶ä¸Šï¼Œä½†æˆ–è¨±æ˜¯æ‰‹ä¸­é‚£å€‹å…ƒä»¶ï¼Œå› æ­¤å…ˆè·³é
 						llp = InAreaInf.llp->NEXTNODE;
 					}
 					
 					
 				}while((InAreaInf.InArea == true) &&
-				(HandPointer.CatchWhat == InAreaInf.llp));//Á×§K¬O¤â¤¤¨º­Ó¤¸¥ó
+				(HandPointer.CatchWhat == InAreaInf.llp));//é¿å…æ˜¯æ‰‹ä¸­é‚£å€‹å…ƒä»¶
 				
 				if(InAreaInf.InArea)
 				{
@@ -2388,60 +2388,60 @@ extern void BlockpenMoveProcess(EventPtr eventP)
 					switch(InAreaInf.llp->TYPE)
 					{
 						case LOOPBLOCK :
-						// 5-12 ±_ª¬­«Ã¸ ¦V¤U±´´M ©¹¤º³¡±´´M
+						// 5-12 å·¢ç‹€é‡ç¹ª å‘ä¸‹æ¢å°‹ å¾€å…§éƒ¨æ¢å°‹
 						NestReDraw(((HOOKP)InAreaInf.llp->LoopBlockHOOKP)->BlockLLHeadP);
 
-						// 5-12 ±_ª¬­«Ã¸ ¦V¤U±´´M ©¹¨Ó³B±´´M
+						// 5-12 å·¢ç‹€é‡ç¹ª å‘ä¸‹æ¢å°‹ å¾€ä¾†è™•æ¢å°‹
 				if(HandPointer.CatchWhat->SelfBlockLLHead != SYSHOOK->BlockLLHeadP)
 				{
 						NestReDraw(HandPointer.CatchWhat->SelfBlockLLHead);
 				}
-			        		//¸¨ÂI¦b·sªºµ²ºc¤¤¡Aµe¥~®Ø
+			        		//è½é»åœ¨æ–°çš„çµæ§‹ä¸­ï¼Œç•«å¤–æ¡†
 			        		InAreaInf.llp->bap->DrawBorder = true;
-							// ­×§ïbackground
+							// ä¿®æ”¹background
 							HandPointer.CatchWhat->BackgroundBlockLLHead = InAreaInf.llp;
 							//BackgroundBlockLLHead;
 						break;
 		        		case CASEBLOCK :
-						// 5-12 ±_ª¬­«Ã¸ ¦V¤U±´´M ©¹¤º³¡±´´M
+						// 5-12 å·¢ç‹€é‡ç¹ª å‘ä¸‹æ¢å°‹ å¾€å…§éƒ¨æ¢å°‹
 						NestReDraw(((HOOKP)InAreaInf.llp->CurrentHOOKP)->BlockLLHeadP);
 						
-						// 5-12 ±_ª¬­«Ã¸ ¦V¤U±´´M ©¹¨Ó³B±´´M
+						// 5-12 å·¢ç‹€é‡ç¹ª å‘ä¸‹æ¢å°‹ å¾€ä¾†è™•æ¢å°‹
 				if(HandPointer.CatchWhat->SelfBlockLLHead != SYSHOOK->BlockLLHeadP)
 				{
 						NestReDraw(HandPointer.CatchWhat->SelfBlockLLHead);
 				}
-			        		//¸¨ÂI¦b·sªºµ²ºc¤¤¡Aµe¥~®Ø
+			        		//è½é»åœ¨æ–°çš„çµæ§‹ä¸­ï¼Œç•«å¤–æ¡†
 			        		InAreaInf.llp->bap->DrawBorder = true;
-							// ­×§ïbackground
+							// ä¿®æ”¹background
 							HandPointer.CatchWhat->BackgroundBlockLLHead = InAreaInf.llp;
 							//BackgroundBlockLLHead;
 						break;
 						default:
-							// ¤£¬O¸¨¦bµ²ºc¤¤
-							// ­×§ïbackground
+							// ä¸æ˜¯è½åœ¨çµæ§‹ä¸­
+							// ä¿®æ”¹background
 							//HandPointer.CatchWhat->BackgroundBlockLLHead = SYSHOOK->BlockLLHeadP;
 						break;
 					}
 				}else{
-					// ¨S¦³¸¨¦b¤¸¥ó¤W
-					// ­×§ïbackground
+					// æ²’æœ‰è½åœ¨å…ƒä»¶ä¸Š
+					// ä¿®æ”¹background
 					HandPointer.CatchWhat->BackgroundBlockLLHead = SYSHOOK->BlockLLHeadP;
 					
-			// 5-12 ±_ª¬­«Ã¸ ¦V¤U±´´M
+			// 5-12 å·¢ç‹€é‡ç¹ª å‘ä¸‹æ¢å°‹
 			if(HandPointer.CatchWhat->SelfBlockLLHead == HandPointer.CatchWhat->BackgroundBlockLLHead)
 			{
 				if(HandPointer.CatchWhat->SelfBlockLLHead != SYSHOOK->BlockLLHeadP)
 				NestReDraw(HandPointer.CatchWhat->SelfBlockLLHead);
 			}
 			else
-			{// ¤¸¥óÂ÷¶}©ÒÄİ­I´º
+			{// å…ƒä»¶é›¢é–‹æ‰€å±¬èƒŒæ™¯
 				if(HandPointer.CatchWhat->SelfBlockLLHead != SYSHOOK->BlockLLHeadP)
 				NestReDraw(HandPointer.CatchWhat->SelfBlockLLHead);
 				if(HandPointer.CatchWhat->BackgroundBlockLLHead != SYSHOOK->BlockLLHeadP)
 				{
 				NestReDraw(HandPointer.CatchWhat->BackgroundBlockLLHead);
-				// ²æÂ÷¦b³o¸Ìµo¥Í
+				// è„«é›¢åœ¨é€™è£¡ç™¼ç”Ÿ
 				}
 			}
 			
@@ -2450,7 +2450,7 @@ extern void BlockpenMoveProcess(EventPtr eventP)
 
 				//Draw Diagram(SYSHOOK->BlockLLHeadP->NEXTNODE,((HOOKP)SYSHOOK->BlockLLHeadP->hookP)->WireLLHeadP,1,0,0,true); 
 
-			// 5-13 ³]©wESCout ÅÜ¼Æ
+			// 5-13 è¨­å®šESCout è®Šæ•¸
 			if(HandPointer.CatchWhat->SelfBlockLLHead == HandPointer.CatchWhat->BackgroundBlockLLHead)
 			{
 				if(ESCout != NULL)
@@ -2461,9 +2461,9 @@ extern void BlockpenMoveProcess(EventPtr eventP)
 				}
 			}
 			else
-			{// ¤¸¥óÂ÷¶}©ÒÄİ­I´º
+			{// å…ƒä»¶é›¢é–‹æ‰€å±¬èƒŒæ™¯
 				if(ESCout != HandPointer.CatchWhat->BackgroundBlockLLHead)
-				{// ¤¸¥ó¡@ÁöÂ÷¶}©ÒÄİ­I´º¡@¦ı»P¤W¤@¦¸°±¯d­I´º¤£¦P¡@¥²¶·¥O¤W¦¸­I´º­«Ã¸
+				{// å…ƒä»¶ã€€é›–é›¢é–‹æ‰€å±¬èƒŒæ™¯ã€€ä½†èˆ‡ä¸Šä¸€æ¬¡åœç•™èƒŒæ™¯ä¸åŒã€€å¿…é ˆä»¤ä¸Šæ¬¡èƒŒæ™¯é‡ç¹ª
 					if(ESCout != NULL)
 					{
 						ESCout->bap->ReDraw = true;
@@ -2474,11 +2474,11 @@ extern void BlockpenMoveProcess(EventPtr eventP)
 				}
 			}
 			
-			// 5-12 ±_ª¬­«Ã¸ ¦V¤U±´´M ¤@¥¹©Ò§ì¥»¨­¬Oµ²ºc ¥»¨­¤S³B¦ê¦C³Ì«á¤@­Ó
+			// 5-12 å·¢ç‹€é‡ç¹ª å‘ä¸‹æ¢å°‹ ä¸€æ—¦æ‰€æŠ“æœ¬èº«æ˜¯çµæ§‹ æœ¬èº«åˆè™•ä¸²åˆ—æœ€å¾Œä¸€å€‹
 			NestReDraw(HandPointer.CatchWhat);
 			
 	DrawDiagram(SYSHOOK->BlockLLHeadP->NEXTNODE,((HOOKP)SYSHOOK->BlockLLHeadP->hookP)->WireLLHeadP,false,true,0,0,false); // redraw diagram
-	// ¥uµe³o­Ó¤¸¥ó
+	// åªç•«é€™å€‹å…ƒä»¶
 	//DrawDiagram(HandPointer.Clone,NULL,true,0,0,false); //
 				DrawIcon(CLENCHBitmap,now_x+offset_x,now_y+offset_y);
 			}
@@ -2497,9 +2497,9 @@ extern void BlockpenMoveProcess(EventPtr eventP)
 		case DRAGBitmap:
 			if(DragStatus.llp != NULL)
 			{
-				//DragStatus.llp->bap->Clean=true;// ¬°¤F²M°£³o­Ó¤¸¥ó
+				//DragStatus.llp->bap->Clean=true;// ç‚ºäº†æ¸…é™¤é€™å€‹å…ƒä»¶
 				/*
-				// 5-12 ±_ª¬­«Ã¸
+				// 5-12 å·¢ç‹€é‡ç¹ª
 				llp = DragStatus.llp->SelfBlockLLHead;
 				while(llp != SYSHOOK->BlockLLHeadP)
 				{
@@ -2512,8 +2512,8 @@ extern void BlockpenMoveProcess(EventPtr eventP)
 				
 		// clear prev. pointer icon
 		//DrawIcon(BLANKBitmap,prev_x+offset_x,prev_y+offset_y);
-		// À³¸Ó§ï¬°±_ª¬³B²z
-		// 5-13 §ï¬°±_ª¬³B²z
+		// æ‡‰è©²æ”¹ç‚ºå·¢ç‹€è™•ç†
+		// 5-13 æ”¹ç‚ºå·¢ç‹€è™•ç†
 				DragStatus.llp->bap->SIZE.x = now_x - 
 					DragStatus.llp->bap->XY.x ;
 				DragStatus.llp->bap->SIZE.y = now_y - 
@@ -2538,7 +2538,7 @@ extern void BlockpenMoveProcess(EventPtr eventP)
 				if(DragStatus.llp->bap->SIZE.y < 32)
 					DragStatus.llp->bap->SIZE.y = 32;
 					
-				// 5-13 ³Ì¤j­­¨î
+				// 5-13 æœ€å¤§é™åˆ¶
 				if(DragStatus.llp->SelfBlockLLHead != SYSHOOK->BlockLLHeadP)
 				{
 					if((DragStatus.llp->bap->SIZE.x + DragStatus.llp->bap->XY.x) > 
@@ -2554,10 +2554,10 @@ extern void BlockpenMoveProcess(EventPtr eventP)
 				
 				DragStatus.llp->bap->ReDraw=true;
 				DragStatus.llp->bap->Clean=true;
-				// 5-12 ±_ª¬­«Ã¸ ¦V¤U±´´M 5-13 §ï
+				// 5-12 å·¢ç‹€é‡ç¹ª å‘ä¸‹æ¢å°‹ 5-13 æ”¹
 				if(DragStatus.llp->SelfBlockLLHead != SYSHOOK->BlockLLHeadP)
 					NestReDraw(DragStatus.llp->SelfBlockLLHead);
-				// 5-13 ¸ÕÅç
+				// 5-13 è©¦é©—
 				Dragllp=DragStatus.llp->SelfBlockLLHead;
 				while(Dragllp != SYSHOOK->BlockLLHeadP)
 				{
@@ -2565,7 +2565,7 @@ extern void BlockpenMoveProcess(EventPtr eventP)
 					Dragllp->bap->Clean=true;
 					Dragllp=Dragllp->SelfBlockLLHead;
 				}
-				// 5-18 ­×§ï¿é¥X¸`ÂI¦ì¸m
+				// 5-18 ä¿®æ”¹è¼¸å‡ºç¯€é»ä½ç½®
 				ionode = DragStatus.llp->bap->IONodeLLHead;
 				while(ionode!=NULL)
 				{
@@ -2578,11 +2578,11 @@ extern void BlockpenMoveProcess(EventPtr eventP)
 				//Draw Diagram(SYSHOOK->BlockLLHeadP->NEXTNODE,((HOOKP)SYSHOOK->BlockLLHeadP->hookP)->WireLLHeadP,1,0,0,false); 
 					//WinDrawLine(DragStatus.llp->bap->XY.x,DragStatus.llp->bap->XY.y,DragStatus.llp->bap->XY.x+DragStatus.llp->bap->SIZE.x,DragStatus.llp->bap->XY.y+DragStatus.llp->bap->SIZE.y);
 			}else{
-			// µe ICON
+			// ç•« ICON
 			}
 		/*
-		DragStatus.llp->bap->ReDraw=true;// ¬°¤F²M°£³o­Ó¤¸¥ó
-		// 5-12 ±_ª¬­«Ã¸
+		DragStatus.llp->bap->ReDraw=true;// ç‚ºäº†æ¸…é™¤é€™å€‹å…ƒä»¶
+		// 5-12 å·¢ç‹€é‡ç¹ª
 		llp = DragStatus.llp->SelfBlockLLHead;
 		while(llp != SYSHOOK->BlockLLHeadP)
 		{
@@ -2680,7 +2680,7 @@ extern void BlockpenMoveProcess(EventPtr eventP)
 	InAreaInf.InArea=false;
 
 	
-	// 5-9 ­×§ïÃä¬É§PÂ_ now_x »P now_y ªº³]©w
+	// 5-9 ä¿®æ”¹é‚Šç•Œåˆ¤æ–· now_x èˆ‡ now_y çš„è¨­å®š
 	CaculateNowXNowY(&now_x,&now_y,eventP->screenX,eventP->screenY);
 /*
 		//if(eventP->screenX<10)now_x=10;else now_x = eventP->screenX;
@@ -2704,19 +2704,19 @@ extern void BlockpenMoveProcess(EventPtr eventP)
 				//if((prev_y) < 10+15)prev_y=10+15;
 			 if(HandPointer.HandState == CLENCHBitmap)
 			 {
-				// 4-23 ­pµe¡G·í¤â©ñ¶}¡AÀË¬d...
-				// 1. °_ÂI©Ò¦bªº¦ê¦C¡yÀY¡z»P²×ÂI©Ò¦b¦ê¦CÀY ¬O§_¤£¦P¡H
-				// 2. ¤£¦P¡Gªí¥Ü»İ­nÂà²¾¤¸¥ó©Ò¦b¦ê¦C
-				// 3. ¦P¡Gªí¥Ü¥u¬O¤¸¥ó²¾°Ê
+				// 4-23 è¨ˆç•«ï¼šç•¶æ‰‹æ”¾é–‹ï¼Œæª¢æŸ¥...
+				// 1. èµ·é»æ‰€åœ¨çš„ä¸²åˆ—ã€é ­ã€èˆ‡çµ‚é»æ‰€åœ¨ä¸²åˆ—é ­ æ˜¯å¦ä¸åŒï¼Ÿ
+				// 2. ä¸åŒï¼šè¡¨ç¤ºéœ€è¦è½‰ç§»å…ƒä»¶æ‰€åœ¨ä¸²åˆ—
+				// 3. åŒï¼šè¡¨ç¤ºåªæ˜¯å…ƒä»¶ç§»å‹•
 				// 5-13
-				// 4. ¥ş½u²¾¨ì¦ê¦C³Ì«á­±
+				// 4. å…¨ç·šç§»åˆ°ä¸²åˆ—æœ€å¾Œé¢
 				//
 				// ChangeLinkList()
-				// 4-24 §¹¦¨
+				// 4-24 å®Œæˆ
 				HandPointer.CatchWhat->bap->Clean=true;//5-12
 				DrawDiagram(SYSHOOK->BlockLLHeadP->NEXTNODE,((HOOKP)SYSHOOK->BlockLLHeadP->hookP)->WireLLHeadP,false,0,0,0,false); // erase diagram
 				ChangeLinkList(now_x,now_y);
-				// ±_ª¬ ²¾¨ì¦ê¦C³Ì«á­±
+				// å·¢ç‹€ ç§»åˆ°ä¸²åˆ—æœ€å¾Œé¢
         		NestItemMoveToLastPosition(HandPointer.CatchWhat);
 			 }
 				// clear prev. icon image
@@ -2734,7 +2734,7 @@ extern void BlockpenMoveProcess(EventPtr eventP)
 		break;
 		case DRAGBitmap:
 			if(DragStatus.llp != NULL)
-			{	// ¦h­Ó±±¨îÂI
+			{	// å¤šå€‹æ§åˆ¶é»
 			    ctrlnode = DragStatus.llp->bap->CTRLNodeLLHead;
 			    while(ctrlnode != NULL)
 			    {
@@ -2754,7 +2754,7 @@ extern void BlockpenMoveProcess(EventPtr eventP)
 									ctrlnode->EXT.x;
 			    		break;
 			    		case SCPAGEDOWN:
-			    		// ¤£¥Î§ïÅÜ
+			    		// ä¸ç”¨æ”¹è®Š
 			    		break;
 			    	}
 					
@@ -2772,7 +2772,7 @@ extern void BlockpenMoveProcess(EventPtr eventP)
 
 	//DrawDiagram(SYSHOOK->BlockLLHeadP->NEXTNODE,((HOOKP)SYSHOOK->BlockLLHeadP->hookP)->WireLLHeadP,false,1,0,0,true); // redraw diagram
 			}else{
-			// ²M°£ ICON
+			// æ¸…é™¤ ICON
 			}
 	DrawDiagram(SYSHOOK->BlockLLHeadP->NEXTNODE,((HOOKP)SYSHOOK->BlockLLHeadP->hookP)->WireLLHeadP,false,1,0,0,true); // redraw diagram
 		break;
@@ -3011,7 +3011,7 @@ extern Boolean BlockDiagramFormHandleEvent(EventPtr eventP)
 			//WinDrawChars(str,StrLen(str),eventP->screenX,eventP->screenY);
 			
 			
-			//if(eventP->screenY > 15) //  5-9 ¬°¤Ftools palette ®³±¼­­¨î
+			//if(eventP->screenY > 15) //  5-9 ç‚ºäº†tools palette æ‹¿æ‰é™åˆ¶
 			//{
 				// Do check diagram
 				BlockpenDownProcess(eventP);
@@ -3084,14 +3084,14 @@ extern Boolean BlockDiagramFormHandleEvent(EventPtr eventP)
 		break;
 		case nilEvent:
 
-		// µ¥¨ì block ªºformload ¨Æ¥ó¶i¨Ó ¤~¶i¦æ°õ¦æ°Ê§@ ¥H«K
-		// block form ¥i¥HÅã¥Ü°Êµe
+		// ç­‰åˆ° block çš„formload äº‹ä»¶é€²ä¾† æ‰é€²è¡ŒåŸ·è¡Œå‹•ä½œ ä»¥ä¾¿
+		// block form å¯ä»¥é¡¯ç¤ºå‹•ç•«
 //		if((event.eType == frmLoadEvent)&&(event.data.frmLoad.formID ==BlockDiagramForm))
 //			RunLock=true;
 		
-		// 2­Ó±¡ªp ¥i¥H°õ¦æ
-		// 1. ¿O¥´¶} ¥Ñ panel ¤U¹F°õ¦æ ³o®É·|Âà©¹ block ³B «á¤~°õ¦æ
-		// 2. ¿O¨S¶} ¥Ñ panel ¤U¹F°õ¦æ
+		// 2å€‹æƒ…æ³ å¯ä»¥åŸ·è¡Œ
+		// 1. ç‡ˆæ‰“é–‹ ç”± panel ä¸‹é”åŸ·è¡Œ é€™æ™‚æœƒè½‰å¾€ block è™• å¾Œæ‰åŸ·è¡Œ
+		// 2. ç‡ˆæ²’é–‹ ç”± panel ä¸‹é”åŸ·è¡Œ
 		//if((RUN==1 && RunLock)||(RUN==1 && LAMP==false))
 		if(RUN==1)
 		{
@@ -3102,9 +3102,9 @@ extern Boolean BlockDiagramFormHandleEvent(EventPtr eventP)
 			}else{
 				if(RUNFOREVER)
 				{
-					// ²M°£¤¸¥óºX¼Ğ
+					// æ¸…é™¤å…ƒä»¶æ——æ¨™
 					CheckConnection(SYSHOOK->BlockLLHeadP->NEXTNODE,false);
-					// ½u¬q ª¬ºA­«¸m
+					// ç·šæ®µ ç‹€æ…‹é‡ç½®
 					ResetWireStatus(SYSHOOK->BlockLLHeadP->NEXTNODE,
 					SYSHOOK->WireLLHeadP);
 
@@ -3114,7 +3114,7 @@ extern Boolean BlockDiagramFormHandleEvent(EventPtr eventP)
 					STOP=0;
 				
 				DrawIcon(RUNWAITBitmap,60,0);
-				// 6-2 ²M°£µe­±
+				// 6-2 æ¸…é™¤ç•«é¢
 				frmP = FrmGetActiveForm();
 				WinEraseWindow();
 				FrmDrawForm ( frmP);
@@ -3132,9 +3132,9 @@ extern Boolean BlockDiagramFormHandleEvent(EventPtr eventP)
 			}else{
 				RunWho=false;
 				if(DoBlockRun(SYSHOOK->BlockLLHeadP->NEXTNODE))
-				{// ¶Ç¦^ true ªí¥Ü °õ¦æ§¹¤@¦¸ wire ¥H¤Î block run
-				 // ¦ıÁÙ¦³¥¼§¹¦¨
-				}else{// ¶Ç¦^ false ªí¥Ü¾ãÅé°õ¦æ¤@¦¸µ²§ô
+				{// å‚³å› true è¡¨ç¤º åŸ·è¡Œå®Œä¸€æ¬¡ wire ä»¥åŠ block run
+				 // ä½†é‚„æœ‰æœªå®Œæˆ
+				}else{// å‚³å› false è¡¨ç¤ºæ•´é«”åŸ·è¡Œä¸€æ¬¡çµæŸ
 					RUN=0;
 					STOP=0;
 					RunLock=false;
@@ -3146,7 +3146,7 @@ extern Boolean BlockDiagramFormHandleEvent(EventPtr eventP)
 		
 
 
-				// ½u°Êµe	
+				// ç·šå‹•ç•«	
 			//if(Animation)
 			//{
 			//	Animation=false;

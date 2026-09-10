@@ -58,7 +58,7 @@ void ResetWireStatus(BNP BlockLLHeadP,WNP WireLLHeadP)
 }
 /***********************************************************************
  * 2003-4-12
- * 2003-5-17 §ï ±_ª¬
+ * 2003-5-17 æ”¹ å·¢ç‹€
  ***********************************************************************/
 void CheckConnection(BNP BL,Boolean IOBlockClear)
 {
@@ -90,10 +90,10 @@ void CheckConnection(BNP BL,Boolean IOBlockClear)
 				
 			switch(BL->bap->BITMAPID)
 			{
-				case CTRLU8BLOCKBitmap: // ³o¨Ç block ¥u¦³¤@­ÓIOÂI
+				case CTRLU8BLOCKBitmap: // é€™äº› block åªæœ‰ä¸€å€‹IOé»
 				case LOGICCTRLBitmap:
-				//case FORLOOPNBitmap: // 5-31 ¹êÅç
-				// ¦pªG¤£¬OSYSHOOKªº¤¸¥ó ¨º»ò´N¸Ó³]©wnotready
+				//case FORLOOPNBitmap: // 5-31 å¯¦é©—
+				// å¦‚æœä¸æ˜¯SYSHOOKçš„å…ƒä»¶ é‚£éº¼å°±è©²è¨­å®šnotready
 				if(IOBlockClear)
 				{
 					BL->bap->IONodeLLHead->NotReady = true;
@@ -129,7 +129,7 @@ void CheckConnection(BNP BL,Boolean IOBlockClear)
 						((HOOKP)BL->LoopBlockHOOKP)->BlockLLHeadP->
 						NEXTNODE->
 						bap->IONodeLLHead->P) = 0;
-					// 5-30 ¦b³o¸Ì­± ·|¶¶«Kreset forloop ªºN ,I ªºIO ª¬ºA
+					// 5-30 åœ¨é€™è£¡é¢ æœƒé †ä¾¿reset forloop çš„N ,I çš„IO ç‹€æ…‹
 					CheckConnection(((HOOKP)BL->LoopBlockHOOKP)->BlockLLHeadP,IOBlockClear);
 				break;
 				case CUSTOMBLOCKBitmap:
@@ -347,10 +347,10 @@ void DoItemRUN(BNP BL)
 						nodeP->bap->IONodes[0].DATAnotREADY = false;
 					}
 				}
-				// ICON node¦³¨â­Ó¨¤¦â
-				// ¿W¥ß®É¬O¦ê¦CªºÀY ³B²z®É­n¸õ¹L
-				// ³Q¡y¦Û­q¤è¶ô¡zÅª¤J®É ¬O¨t²Î¦ê¦Cªº¨ä¤¤¤@­Ónode
-				// °µ°õ¦æ®É¨S¦³¸õ¹Lªº°Ê§@¡A¦]¬°BlockLLHeadP ´N¬O°O¦í¦ê¦C²Ä¤@­Ónode ¤£¬OICON
+				// ICON nodeæœ‰å…©å€‹è§’è‰²
+				// ç¨ç«‹æ™‚æ˜¯ä¸²åˆ—çš„é ­ è™•ç†æ™‚è¦è·³é
+				// è¢«ã€è‡ªè¨‚æ–¹å¡Šã€è®€å…¥æ™‚ æ˜¯ç³»çµ±ä¸²åˆ—çš„å…¶ä¸­ä¸€å€‹node
+				// åšåŸ·è¡Œæ™‚æ²’æœ‰è·³éçš„å‹•ä½œï¼Œå› ç‚ºBlockLLHeadP å°±æ˜¯è¨˜ä½ä¸²åˆ—ç¬¬ä¸€å€‹node ä¸æ˜¯ICON
 				DoRun(BL->BlockLLHeadP->NEXTNODE,BL->WireLLHeadP);// 
 				for(i=0;i<BL->bap->IONodeN;i++)
 				{
@@ -444,13 +444,13 @@ void DoWireRun(WNP WireLLHeadP)
 		  {
 			//startblock = FindItemByID(BlockLLHeadP,WL->wire.StartBlockID);
 			//endblock   = FindItemByID(BlockLLHeadP,WL->wire.EndBlockID);
-			// ÂÂ
+			// èˆŠ
 			//startblock = (BNP)WL->wire.StartBlockP;
 			//endblock   = (BNP)WL->wire.EndBlockP;
 			startnode	=	WL->StartNodeP;
 			endnode		=	WL->EndNodeP;
 			// if one node is output then another node is input
-			// ÂÂ
+			// èˆŠ
 			//if((startblock->bap->IONodes[WL->wire.StartNodeID].DATAnotREADY == false) &&
 			//	(startblock->bap->IONodes[WL->wire.StartNodeID].IO == false))//check output status
 			if((startnode->NotReady == false) &&
@@ -593,21 +593,21 @@ void DoRun_WireRun(WNP WireLLHeadP)
 		{  if((WL->DIRTY == false))
 	  	  {if((WL->StartBlockP != SYSHOOK->BlockLLHeadP) && (WL->EndBlockP != SYSHOOK->BlockLLHeadP))
 	  	 //{ if((WL->StartBlockP->TYPE != HOOKBLOCK) && (WL->EndBlockP->TYPE != HOOKBLOCK))
-		  {//¸õ¹L ·t½u¬q
+		  {//è·³é æš—ç·šæ®µ
 
 			//startblock = FindItemByID(BlockLLHeadP,WL->wire.StartBlockID);
 			//endblock   = FindItemByID(BlockLLHeadP,WL->wire.EndBlockID);
-			// ÂÂ
+			// èˆŠ
 			//startblock = (BNP)WL->wire.StartBlockP;
 			//endblock   = (BNP)WL->wire.EndBlockP;
 			startnode	=	WL->StartNodeP;
 			endnode		=	WL->EndNodeP;
 			// if one node is output then another node is input
-			// ÂÂ
+			// èˆŠ
 			//if((startblock->bap->IONodes[WL->wire.StartNodeID].DATAnotREADY == false) &&
 			//	(startblock->bap->IONodes[WL->wire.StartNodeID].IO == false))//check output status
 			
-			// 5-18 ¥[¤J§Àºİ§PÂ_ ¦pªG§Àºİ¤]¤w¸g ¸ê®Æ³Æ§´ ´N¤£­n·h²¾
+			// 5-18 åŠ å…¥å°¾ç«¯åˆ¤æ–· å¦‚æœå°¾ç«¯ä¹Ÿå·²ç¶“ è³‡æ–™å‚™å¦¥ å°±ä¸è¦æ¬ç§»
 			if((startnode->NotReady == false) &&
 				(startnode->TYPE == 0) && (endnode->NotReady == true))//check output status
 			{
@@ -754,8 +754,8 @@ Boolean DoRun_HOOKBLOCK(BNP BL)
 	Boolean handle=false;
 	int swap_i;
 	
-				// 5-17 while °j°é±Ä¥Î ¤º³¡¹w³]¤@­Ó¤¸¥ó 
-				// ³o­Ó¤¸¥ó¬O¥Î¨Ó¨M©w³o­Ó°j°é¬O§_°j°é°õ¦æ
+				// 5-17 while è¿´åœˆæ¡ç”¨ å…§éƒ¨é è¨­ä¸€å€‹å…ƒä»¶ 
+				// é€™å€‹å…ƒä»¶æ˜¯ç”¨ä¾†æ±ºå®šé€™å€‹è¿´åœˆæ˜¯å¦è¿´åœˆåŸ·è¡Œ
 				//
 /*
 		    	ionode = BL->bap->IONodeLLHead;
@@ -775,7 +775,7 @@ Boolean DoRun_HOOKBLOCK(BNP BL)
 */
 					/////////////////////////////////
 					// 6-3 
-					// §ïª© ¿é¤J³Æ§´ ´ú¸Õ¤èªk
+					// æ”¹ç‰ˆ è¼¸å…¥å‚™å¦¥ æ¸¬è©¦æ–¹æ³•
 					//
 					/////////////////////////////////
 				if((BL->bap->INodeNUM != 0)&&(BL->bap->INodeNUM != -1))
@@ -785,8 +785,8 @@ Boolean DoRun_HOOKBLOCK(BNP BL)
 				}
 				
 /*				
-				// 6-2 ¥[¤J§PÂ_ ¿é¥X¬O§_¤w§¹¦¨ ¦pªG¬O «h¤£¥Î¦A¶i¥h°õ¦æ¤F
-				//     ¦pªG¦³¤@­Ó¥¼§¹¦¨ «hNOTALLOK ¬°¯u
+				// 6-2 åŠ å…¥åˆ¤æ–· è¼¸å‡ºæ˜¯å¦å·²å®Œæˆ å¦‚æœæ˜¯ å‰‡ä¸ç”¨å†é€²å»åŸ·è¡Œäº†
+				//     å¦‚æœæœ‰ä¸€å€‹æœªå®Œæˆ å‰‡NOTALLOK ç‚ºçœŸ
 		    	ionode = BL->bap->IONodeLLHead;
 				while(ionode != NULL)
 				{   
@@ -807,7 +807,7 @@ Boolean DoRun_HOOKBLOCK(BNP BL)
 				if(INPUTREADY && ((BL->bap->ONodeNUM == -1)?true:(BL->bap->ONodeNUM != 0)))
 				{
 
-				// 6-3 §â¿é¤J¸ê®Æ³Æ§´
+				// 6-3 æŠŠè¼¸å…¥è³‡æ–™å‚™å¦¥
 				ionode=BL->bap->IONodeLLHead;
 				while(ionode != NULL)
 				{   
@@ -832,7 +832,7 @@ Boolean DoRun_HOOKBLOCK(BNP BL)
 					}	
 					ionode=ionode->NEXT;
 				}
-				// 6-3 §âoutput wire ÅÜDIRTY ³o¼Ë¸Ì­±ªºrun wire ´N¤£·|°õ¦æ
+				// 6-3 æŠŠoutput wire è®ŠDIRTY é€™æ¨£è£¡é¢çš„run wire å°±ä¸æœƒåŸ·è¡Œ
 				ionode=BL->bap->IONodeLLHead;
 				while(ionode != NULL)
 				{   
@@ -847,7 +847,7 @@ Boolean DoRun_HOOKBLOCK(BNP BL)
 					ionode=ionode->NEXT;
 				}
 
-				// 5-18 °j°éÃä¤WªºIOÂI ¦b³o¸Ì°ÊºA¤Á´« ¦]¬°¶i¨ì¸Ì­±¤§«á ¨¤¦âÅÜ´«
+				// 5-18 è¿´åœˆé‚Šä¸Šçš„IOé» åœ¨é€™è£¡å‹•æ…‹åˆ‡æ› å› ç‚ºé€²åˆ°è£¡é¢ä¹‹å¾Œ è§’è‰²è®Šæ›
 
 				swap_i=BL->bap->ONodeNUM;
 				BL->bap->ONodeNUM=BL->bap->INodeNUM;
@@ -871,7 +871,7 @@ Boolean DoRun_HOOKBLOCK(BNP BL)
 				{
 					LAMP=LAMPSTATUS;
 
-					// 5-18 °j°éÃä¤WªºIOÂI ¦b³o¸Ì°ÊºA¤Á¦^¨Ó
+					// 5-18 è¿´åœˆé‚Šä¸Šçš„IOé» åœ¨é€™è£¡å‹•æ…‹åˆ‡å›ä¾†
 				swap_i=BL->bap->ONodeNUM;
 				BL->bap->ONodeNUM=BL->bap->INodeNUM;
 				BL->bap->INodeNUM=swap_i;
@@ -887,10 +887,10 @@ Boolean DoRun_HOOKBLOCK(BNP BL)
 						
 					ionode=ionode->NEXT;
 					}
-					// 5-18 ¤º³¡¥¼§¹¦¨ ±j¨î handle ¬° true
+					// 5-18 å…§éƒ¨æœªå®Œæˆ å¼·åˆ¶ handle ç‚º true
 					handle=true;
 					
-					// 5-18 °Êµe¤º³¡¥¼§¹¦¨ ¿é¥X¥¼§¹¦¨
+					// 5-18 å‹•ç•«å…§éƒ¨æœªå®Œæˆ è¼¸å‡ºæœªå®Œæˆ
 			    	ionode = BL->bap->IONodeLLHead;
 					while(ionode != NULL)
 					{
@@ -904,10 +904,10 @@ Boolean DoRun_HOOKBLOCK(BNP BL)
 					
 				}
 				else
-				{	// ¤w§¹¦¨ ¤º³¡¹Bºâ
+				{	// å·²å®Œæˆ å…§éƒ¨é‹ç®—
 					LAMP=LAMPSTATUS;
 
-					// 5-18 °j°éÃä¤WªºIOÂI ¦b³o¸Ì°ÊºA¤Á¦^¨Ó
+					// 5-18 è¿´åœˆé‚Šä¸Šçš„IOé» åœ¨é€™è£¡å‹•æ…‹åˆ‡å›ä¾†
 				swap_i=BL->bap->ONodeNUM;
 				BL->bap->ONodeNUM=BL->bap->INodeNUM;
 				BL->bap->INodeNUM=swap_i;
@@ -924,7 +924,7 @@ Boolean DoRun_HOOKBLOCK(BNP BL)
 					ionode=ionode->NEXT;
 					}
 					
-					// 5-18 °Êµe¤º³¡¤w§¹¦¨ ¿é¥X¤]§¹¦¨
+					// 5-18 å‹•ç•«å…§éƒ¨å·²å®Œæˆ è¼¸å‡ºä¹Ÿå®Œæˆ
 					/*
 			    	ionode = BL->bap->IONodeLLHead;
 					while(ionode != NULL)
@@ -940,7 +940,7 @@ Boolean DoRun_HOOKBLOCK(BNP BL)
 					
 				//FrmCustomAlert(MESSAGEAlert,"HOOKBLOCK is finish.","","");
 
-				// 6-3 §â¸ê®Æ§ì¥X¨Ó
+				// 6-3 æŠŠè³‡æ–™æŠ“å‡ºä¾†
 				ionode=BL->bap->IONodeLLHead;
 				while(ionode != NULL)
 				{   
@@ -968,7 +968,7 @@ Boolean DoRun_HOOKBLOCK(BNP BL)
 					ionode=ionode->NEXT;
 				}
 			
-					// 6-3 ­nÀË¬d°j°é¤è¶ô¥»¨­ªº©Ò¦³¿é¥X¬O§_¤w¸g§¹¦¨ §_«hÄ~Äò°õ¦æ
+					// 6-3 è¦æª¢æŸ¥è¿´åœˆæ–¹å¡Šæœ¬èº«çš„æ‰€æœ‰è¼¸å‡ºæ˜¯å¦å·²ç¶“å®Œæˆ å¦å‰‡ç¹¼çºŒåŸ·è¡Œ
 				if((BL->bap->ONodeNUM != 0) && (BL->bap->ONodeNUM != -1))
 				{
 					handle=true;
@@ -989,7 +989,7 @@ Boolean DoRun_HOOKBLOCK(BNP BL)
 					ionode=ionode->NEXT;
 					}
 */
-					// 6-1 ±N©Ò¦³¿é¥XÂI¸ê®Æ¾ã²z °e¦Ü HOOKBLOCK ªº¿é¥X IOÂI
+					// 6-1 å°‡æ‰€æœ‰è¼¸å‡ºé»è³‡æ–™æ•´ç† é€è‡³ HOOKBLOCK çš„è¼¸å‡º IOé»
 				/*	
 			    	ionode = BL->bap->IONodeLLHead;
 					while(ionode != NULL)
@@ -998,7 +998,7 @@ Boolean DoRun_HOOKBLOCK(BNP BL)
 						{
 							if(ionode->NotReady==true)
 							{
-								// §ä¥X¦³³s¨ì³o­ÓÂIªº½u¬q
+								// æ‰¾å‡ºæœ‰é€£åˆ°é€™å€‹é»çš„ç·šæ®µ
 								WL=((HOOKP)BL->hookP)->WireLLHeadP;
 								while(WL!=NULL)
 								{
@@ -1057,8 +1057,8 @@ Boolean DoRun_LOOPBLOCK(BNP BL)
 				if(BL->bap->BITMAPID == WHILELOOPBitmap)
 					BITMAPID=BL->bap->BITMAPID;
 				*/
-				// 5-17 while °j°é±Ä¥Î ¤º³¡¹w³]¤@­Ó¤¸¥ó 
-				// ³o­Ó¤¸¥ó¬O¥Î¨Ó¨M©w³o­Ó°j°é¬O§_°j°é°õ¦æ
+				// 5-17 while è¿´åœˆæ¡ç”¨ å…§éƒ¨é è¨­ä¸€å€‹å…ƒä»¶ 
+				// é€™å€‹å…ƒä»¶æ˜¯ç”¨ä¾†æ±ºå®šé€™å€‹è¿´åœˆæ˜¯å¦è¿´åœˆåŸ·è¡Œ
 				//
 				/*
 		    	ionode = BL->bap->IONodeLLHead;
@@ -1078,7 +1078,7 @@ Boolean DoRun_LOOPBLOCK(BNP BL)
 				*/
 					/////////////////////////////////
 					// 6-3 
-					// §ïª© ¿é¤J³Æ§´ ´ú¸Õ¤èªk
+					// æ”¹ç‰ˆ è¼¸å…¥å‚™å¦¥ æ¸¬è©¦æ–¹æ³•
 					//
 					/////////////////////////////////
 				if((BL->bap->INodeNUM != 0)&&(BL->bap->INodeNUM != -1))
@@ -1087,10 +1087,10 @@ Boolean DoRun_LOOPBLOCK(BNP BL)
 						handle = true;
 				}
 				
-				// 6-2 ¥[¤J§PÂ_ ¿é¥X¬O§_¤w§¹¦¨ ¦pªG¬O «h¤£¥Î¦A¶i¥h°õ¦æ¤F
-				//     ¨S¿é¥X¸`ÂI «h¬OÄİ©ó¤@©w­n°õ¦æ
-				//     ¦³¿é¥X¸`ÂI ¦ı¦³¥¼§¹¦¨ ´NÄİ©ó­n°õ¦æ
-				//     ¦³¿é¥X¸`ÂI ¦ı¥ş¤w°õ¦æ ´N¤£¥Î¦A¶i¤J
+				// 6-2 åŠ å…¥åˆ¤æ–· è¼¸å‡ºæ˜¯å¦å·²å®Œæˆ å¦‚æœæ˜¯ å‰‡ä¸ç”¨å†é€²å»åŸ·è¡Œäº†
+				//     æ²’è¼¸å‡ºç¯€é» å‰‡æ˜¯å±¬æ–¼ä¸€å®šè¦åŸ·è¡Œ
+				//     æœ‰è¼¸å‡ºç¯€é» ä½†æœ‰æœªå®Œæˆ å°±å±¬æ–¼è¦åŸ·è¡Œ
+				//     æœ‰è¼¸å‡ºç¯€é» ä½†å…¨å·²åŸ·è¡Œ å°±ä¸ç”¨å†é€²å…¥
 				/*
 		    	ionode = BL->bap->IONodeLLHead;
 				while(ionode != NULL)
@@ -1112,7 +1112,7 @@ Boolean DoRun_LOOPBLOCK(BNP BL)
 				if(INPUTREADY && ((BL->bap->ONodeNUM == -1)?true:(BL->bap->ONodeNUM != 0)))
 				{
 				//
-				// 5-18 °j°éÃä¤WªºIOÂI ¦b³o¸Ì°ÊºA¤Á´« ¦]¬°¶i¨ì¸Ì­±¤§«á ¨¤¦âÅÜ´«
+				// 5-18 è¿´åœˆé‚Šä¸Šçš„IOé» åœ¨é€™è£¡å‹•æ…‹åˆ‡æ› å› ç‚ºé€²åˆ°è£¡é¢ä¹‹å¾Œ è§’è‰²è®Šæ›
 				//
 				swap_i=BL->bap->ONodeNUM;
 				BL->bap->ONodeNUM=BL->bap->INodeNUM;
@@ -1137,7 +1137,7 @@ Boolean DoRun_LOOPBLOCK(BNP BL)
 				if(DoRun(((HOOKP)BL->LoopBlockHOOKP)->BlockLLHeadP,((HOOKP)BL->LoopBlockHOOKP)->WireLLHeadP))
 				{
 					//
-					// 5-18 °j°éÃä¤WªºIOÂI ¦b³o¸Ì°ÊºA¤Á¦^¨Ó
+					// 5-18 è¿´åœˆé‚Šä¸Šçš„IOé» åœ¨é€™è£¡å‹•æ…‹åˆ‡å›ä¾†
 					//
 				swap_i=BL->bap->ONodeNUM;
 				BL->bap->ONodeNUM=BL->bap->INodeNUM;
@@ -1158,10 +1158,10 @@ Boolean DoRun_LOOPBLOCK(BNP BL)
 					ionode=ionode->NEXT;
 					}
 
-					// 5-18 ¤º³¡¥¼§¹¦¨ ±j¨î handle ¬° true
+					// 5-18 å…§éƒ¨æœªå®Œæˆ å¼·åˆ¶ handle ç‚º true
 					handle=true;
 					
-					// 5-18 °Êµe¤º³¡¥¼§¹¦¨ ¿é¥X¥¼§¹¦¨
+					// 5-18 å‹•ç•«å…§éƒ¨æœªå®Œæˆ è¼¸å‡ºæœªå®Œæˆ
 					
 			    	ionode = BL->bap->IONodeLLHead;
 					while(ionode != NULL)
@@ -1176,9 +1176,9 @@ Boolean DoRun_LOOPBLOCK(BNP BL)
 					
 				}
 				else
-				{	// ¤w§¹¦¨ ¤º³¡¹Bºâ
+				{	// å·²å®Œæˆ å…§éƒ¨é‹ç®—
 					//
-					// 5-18 °j°éÃä¤WªºIOÂI ¦b³o¸Ì°ÊºA¤Á¦^¨Ó
+					// 5-18 è¿´åœˆé‚Šä¸Šçš„IOé» åœ¨é€™è£¡å‹•æ…‹åˆ‡å›ä¾†
 					//
 				swap_i=BL->bap->ONodeNUM;
 				BL->bap->ONodeNUM=BL->bap->INodeNUM;
@@ -1199,7 +1199,7 @@ Boolean DoRun_LOOPBLOCK(BNP BL)
 					ionode=ionode->NEXT;
 					}
 
-					// 6-3 ­nÀË¬d°j°é¤è¶ô¥»¨­ªº©Ò¦³¿é¥X¬O§_¤w¸g§¹¦¨ §_«hÄ~Äò°õ¦æ
+					// 6-3 è¦æª¢æŸ¥è¿´åœˆæ–¹å¡Šæœ¬èº«çš„æ‰€æœ‰è¼¸å‡ºæ˜¯å¦å·²ç¶“å®Œæˆ å¦å‰‡ç¹¼çºŒåŸ·è¡Œ
 					//ALLOUTREADY=true;
 				if((BL->bap->ONodeNUM != 0) && (BL->bap->ONodeNUM != -1))
 				{
@@ -1221,7 +1221,7 @@ Boolean DoRun_LOOPBLOCK(BNP BL)
 					ionode=ionode->NEXT;
 					}
 				*/	
-					// 6-3 ©Ò¦³¿é¥X³£¤w§¹¦¨  «h¨Ï ¥ş³¡¿é¥X­«¸mª¬ºA
+					// 6-3 æ‰€æœ‰è¼¸å‡ºéƒ½å·²å®Œæˆ  å‰‡ä½¿ å…¨éƒ¨è¼¸å‡ºé‡ç½®ç‹€æ…‹
 					/*
 					if(ALLOUTREADY )
 					{
@@ -1237,7 +1237,7 @@ Boolean DoRun_LOOPBLOCK(BNP BL)
 						}
 					}
 					*/
-					// 5-18 °Êµe¤º³¡¤w§¹¦¨ ¿é¥X¤]§¹¦¨
+					// 5-18 å‹•ç•«å…§éƒ¨å·²å®Œæˆ è¼¸å‡ºä¹Ÿå®Œæˆ
 					/*
 			    	ionode = BL->bap->IONodeLLHead;
 					while(ionode != NULL)
@@ -1250,30 +1250,30 @@ Boolean DoRun_LOOPBLOCK(BNP BL)
 					ionode=ionode->NEXT;
 					}
 					*/
-					// 6-3 ³Ñ¤U¥»¨­ªº¿é¥XÂI ¥¼§¹¦¨ «h ¤£°õ¦æ°j°é±ø¥ó§PÂ_
+					// 6-3 å‰©ä¸‹æœ¬èº«çš„è¼¸å‡ºé» æœªå®Œæˆ å‰‡ ä¸åŸ·è¡Œè¿´åœˆæ¢ä»¶åˆ¤æ–·
 					if(handle==false)
 					{
 						/////////////////////////////////
-						// °j°é°õ¦æÅŞ¿è
+						// è¿´åœˆåŸ·è¡Œé‚è¼¯
 						//
-						// ¤º³¡°õ¦æ§¹²¦ ¦ı¬O °j°é±±¨î©O¡H
-						// 5-30 while  °j°é »P for °j°é ¦b³o¸Ì¤£¦P
+						// å…§éƒ¨åŸ·è¡Œå®Œç•¢ ä½†æ˜¯ è¿´åœˆæ§åˆ¶å‘¢ï¼Ÿ
+						// 5-30 while  è¿´åœˆ èˆ‡ for è¿´åœˆ åœ¨é€™è£¡ä¸åŒ
 						switch(BL->bap->BITMAPID)
 						{
 						case WHILELOOPBitmap:
 						if(((HOOKP)BL->LoopBlockHOOKP)->BlockLLHeadP->bap->IONodeLLHead->NotReady == false)
 							if(*(int *)(((HOOKP)BL->LoopBlockHOOKP)->BlockLLHeadP->bap->IONodeLLHead->P)==true)
-							{// ­«¸mª¬ºA
+							{// é‡ç½®ç‹€æ…‹
 								handle=true;
-								// ¤¸¥ó IO ÂI ­«¸m
+								// å…ƒä»¶ IO é» é‡ç½®
 								CheckConnection(((HOOKP)BL->LoopBlockHOOKP)->BlockLLHeadP,false);
-								// ½u¬q ª¬ºA­«¸m
+								// ç·šæ®µ ç‹€æ…‹é‡ç½®
 								ResetWireStatus(((HOOKP)BL->LoopBlockHOOKP)->BlockLLHeadP,
 								((HOOKP)BL->LoopBlockHOOKP)->WireLLHeadP);
 								
 								
 								//BL->bap->ONodeNUM
-								//5-18 ¦pªGÄ~Äò°õ¦æ «h»İ­n±N¿é¥X³]©w¬°¥¼§¹¦¨
+								//5-18 å¦‚æœç¹¼çºŒåŸ·è¡Œ å‰‡éœ€è¦å°‡è¼¸å‡ºè¨­å®šç‚ºæœªå®Œæˆ
 						    	ionode = BL->bap->IONodeLLHead;
 								while(ionode != NULL)
 								{
@@ -1298,16 +1298,16 @@ Boolean DoRun_LOOPBLOCK(BNP BL)
 							*((long *)(((HOOKP)BL->LoopBlockHOOKP)->BlockLLHeadP->bap->IONodeLLHead->P)) !=
 							*((long *)(((HOOKP)BL->LoopBlockHOOKP)->BlockLLHeadP->NEXTNODE->bap->IONodeLLHead->P))
 							)
-							{// if ¨â­È¤£µ¥
+							{// if å…©å€¼ä¸ç­‰
 								handle=true;
-								// ¤¸¥ó IO ÂI ­«¸m
+								// å…ƒä»¶ IO é» é‡ç½®
 								CheckConnection(((HOOKP)BL->LoopBlockHOOKP)->BlockLLHeadP,false);
-								// ½u¬q ª¬ºA­«¸m
+								// ç·šæ®µ ç‹€æ…‹é‡ç½®
 								ResetWireStatus(((HOOKP)BL->LoopBlockHOOKP)->BlockLLHeadP,
 								((HOOKP)BL->LoopBlockHOOKP)->WireLLHeadP);
 								
 								
-								//5-18 ¦pªGÄ~Äò°õ¦æ «h»İ­n±N¿é¥X³]©w¬°¥¼§¹¦¨
+								//5-18 å¦‚æœç¹¼çºŒåŸ·è¡Œ å‰‡éœ€è¦å°‡è¼¸å‡ºè¨­å®šç‚ºæœªå®Œæˆ
 						    	ionode = BL->bap->IONodeLLHead;
 								while(ionode != NULL)
 								{
@@ -1321,7 +1321,7 @@ Boolean DoRun_LOOPBLOCK(BNP BL)
 								}
 								
 								
-					// 5-30 ³]©w forloop ªº i ªº­È
+					// 5-30 è¨­å®š forloop çš„ i çš„å€¼
 					// N != I then I++
 					(*((long *)(((HOOKP)BL->LoopBlockHOOKP)->BlockLLHeadP->NEXTNODE->bap->IONodeLLHead->P)))++;
 //	(*(((HOOKP)BL->LoopBlockHOOKP)->BlockLLHeadP->NEXTNODE->bap->IONodeLLHead->P))=(int)(
@@ -1332,16 +1332,16 @@ Boolean DoRun_LOOPBLOCK(BNP BL)
 	//MemMove((((HOOKP)BL->LoopBlockHOOKP)->BlockLLHeadP->NEXTNODE->bap->IONodeLLHead->P),
 	//&ivalue,2);
 
-							}// if ¨â­È¤£µ¥
+							}// if å…©å€¼ä¸ç­‰
 							else
-							{// ¨â­È¬Ûµ¥ ²M°£ I ­È  °j°éµ²§ô
+							{// å…©å€¼ç›¸ç­‰ æ¸…é™¤ I å€¼  è¿´åœˆçµæŸ
 	(*((long *)(((HOOKP)BL->LoopBlockHOOKP)->BlockLLHeadP->NEXTNODE->bap->IONodeLLHead->P)))=0;
 							}
 						}
 						break;
 						}// switch-case
 						
-						}// °j°é¤º³¡ ³Ì«á¤@¨B
+						}// è¿´åœˆå…§éƒ¨ æœ€å¾Œä¸€æ­¥
 				} // DoRUN / else
 				
 
@@ -1361,13 +1361,13 @@ void DoRun_BlockRun(BNP BlockLLHeadP,Boolean *handle)
 	Boolean HAVENOOUTPUT;
 	//IONODEP ionode;
 	//
-	// 6-2 §PÂ_¤¸¥ó¬O§_¥i¥H°õ¦æ
-	//     ¨Ì·Ó¤U¦C³W«h
-	//	   ¿é¤J¥²¶·¥ş³¡§¹¦¨ ¥ş³¡¿é¤J§e²{ANDÃö«Y ²Å¦X±ø¥ó µ²ªG¬°¯u
-	//     ¿é¥X¥u­n¦³¤@­Ó¥¼§¹¦¨ «h¥²¶·Ä~Äò ¥ş³¡¿é¥X¦³ORÃö«Y ²Å¦X±ø¥ó µ²ªG¬°°²
-	//     ¥Øªº 
-	//     ¶i¥h«e ¥²©w ¥ş³¡¿é¤J§¹¦¨ ¥B ¦Ü¤Ö¦³¤@­Ó¿é¥X¥¼§¹¦¨
-	//     ¥X¨Ó«á ¿é¥X¥i¯à·|§ïÅÜ ¤U¤@¦¸¨Ó®É ¦A¨Ó§PÂ_
+	// 6-2 åˆ¤æ–·å…ƒä»¶æ˜¯å¦å¯ä»¥åŸ·è¡Œ
+	//     ä¾ç…§ä¸‹åˆ—è¦å‰‡
+	//	   è¼¸å…¥å¿…é ˆå…¨éƒ¨å®Œæˆ å…¨éƒ¨è¼¸å…¥å‘ˆç¾ANDé—œä¿‚ ç¬¦åˆæ¢ä»¶ çµæœç‚ºçœŸ
+	//     è¼¸å‡ºåªè¦æœ‰ä¸€å€‹æœªå®Œæˆ å‰‡å¿…é ˆç¹¼çºŒ å…¨éƒ¨è¼¸å‡ºæœ‰ORé—œä¿‚ ç¬¦åˆæ¢ä»¶ çµæœç‚ºå‡
+	//     ç›®çš„ 
+	//     é€²å»å‰ å¿…å®š å…¨éƒ¨è¼¸å…¥å®Œæˆ ä¸” è‡³å°‘æœ‰ä¸€å€‹è¼¸å‡ºæœªå®Œæˆ
+	//     å‡ºä¾†å¾Œ è¼¸å‡ºå¯èƒ½æœƒæ”¹è®Š ä¸‹ä¸€æ¬¡ä¾†æ™‚ å†ä¾†åˆ¤æ–·
 
 		BL = BlockLLHeadP;
 		while(BL!=NULL)
@@ -1382,7 +1382,7 @@ void DoRun_BlockRun(BNP BlockLLHeadP,Boolean *handle)
 			{	
 				////////////////////////////////////////////////////////////////////////////
 				////////////////////////////////////////////////////////////////////////////
-				// ¦Û­q¤è¶ô ³B²z
+				// è‡ªè¨‚æ–¹å¡Š è™•ç†
 				//
 				case HOOKBLOCK:
 					if(DoRun_HOOKBLOCK(BL))
@@ -1399,7 +1399,7 @@ void DoRun_BlockRun(BNP BlockLLHeadP,Boolean *handle)
 				break;
 				////////////////////////////////////////////////////////////////////////////
 				////////////////////////////////////////////////////////////////////////////
-				// °j°é°õ¦æ ³B²z
+				// è¿´åœˆåŸ·è¡Œ è™•ç†
 				//
 				case LOOPBLOCK:
 					if(DoRun_LOOPBLOCK(BL))
@@ -1417,7 +1417,7 @@ void DoRun_BlockRun(BNP BlockLLHeadP,Boolean *handle)
 				break;
 				////////////////////////////////////////////////////////////////////////////
 				////////////////////////////////////////////////////////////////////////////
-				//¤@¯ë¤¸¥ó³B²z
+				//ä¸€èˆ¬å…ƒä»¶è™•ç†
 				//
 				default :
 				/*
@@ -1439,7 +1439,7 @@ void DoRun_BlockRun(BNP BlockLLHeadP,Boolean *handle)
 				*/
 					/////////////////////////////////
 					// 6-3 
-					// §ïª© ¿é¤J³Æ§´ ´ú¸Õ¤èªk
+					// æ”¹ç‰ˆ è¼¸å…¥å‚™å¦¥ æ¸¬è©¦æ–¹æ³•
 					//
 					/////////////////////////////////
 				if((BL->bap->INodeNUM != 0)&&(BL->bap->INodeNUM != -1))
@@ -1447,13 +1447,13 @@ void DoRun_BlockRun(BNP BlockLLHeadP,Boolean *handle)
 						INPUTREADY = false;
 						*handle = true;
 				}
-				// 6-2 ¥[¤J§PÂ_ ¿é¥X¬O§_¤w§¹¦¨ ¦pªG¬O «h¤£¥Î¦A¶i¥h°õ¦æ¤F
-				//     ¨S¿é¥X¸`ÂI «h¬OÄİ©ó¤@©w­n°õ¦æ
-				//     ¦³¿é¥X¸`ÂI ¦ı¦³¥¼§¹¦¨ ´NÄİ©ó­n°õ¦æ
-				//     ¦³¿é¥X¸`ÂI ¦ı¥ş¤w°õ¦æ ´N¤£¥Î¦A¶i¤J
+				// 6-2 åŠ å…¥åˆ¤æ–· è¼¸å‡ºæ˜¯å¦å·²å®Œæˆ å¦‚æœæ˜¯ å‰‡ä¸ç”¨å†é€²å»åŸ·è¡Œäº†
+				//     æ²’è¼¸å‡ºç¯€é» å‰‡æ˜¯å±¬æ–¼ä¸€å®šè¦åŸ·è¡Œ
+				//     æœ‰è¼¸å‡ºç¯€é» ä½†æœ‰æœªå®Œæˆ å°±å±¬æ–¼è¦åŸ·è¡Œ
+				//     æœ‰è¼¸å‡ºç¯€é» ä½†å…¨å·²åŸ·è¡Œ å°±ä¸ç”¨å†é€²å…¥
 					/////////////////////////////////
 					// 6-3 
-					// §ïª© ¿é¥X³Æ§´ ´ú¸Õ¤èªk
+					// æ”¹ç‰ˆ è¼¸å‡ºå‚™å¦¥ æ¸¬è©¦æ–¹æ³•
 					//
 					/////////////////////////////////
 				/*
@@ -1485,14 +1485,14 @@ void DoRun_BlockRun(BNP BlockLLHeadP,Boolean *handle)
 }
 /***********************************************************************
  * 2003-4-12
- * 2003-5-15 §ïÅÜ°õ¦æµ²ºc ³o¸Ì­±¥u°õ¦æ¤@¦¸ 
- * 2003-5-15 ­n§â block »P wire ¤À¦¨¨â­Ó¨ç¦¡ ¤~¯à¥¿±`Åã¥Ürun point
- * 2003-5-16 ¥i¬O wire ¬Oºò±µµÛ block ¤~¦æ
- *           ¦]¬° DoItemRun ¤¤ ¦^»¼°j¨ì DoRun ¤¤ ³o®Éªºwirellhead ·|¬O·sªº
- * 2003-6-2  ¤j¾ã²z ¸Ô²Ó»¡©ú.....­«ÂI
- *				1.°Êµe³¡¤À ¥ı°Êµe °Êµe§¹¦¨«á ¤~·|¶i¦æ³B²z½u¬q¸ê®Æ·h²¾
- *				2.§â¤@¨Çµ{¦¡°Ï¶ô ¦A¤À¦¨´X­Ó°Æµ{¦¡
- *				3.Â²³æªº¹ï°õ¦æ³t«×§@³Ì¨Î¤Æ ¡G¤w¸g°µ¹Lªº¤è¶ô ¤£·|­«½Æ°õ¦æ
+ * 2003-5-15 æ”¹è®ŠåŸ·è¡Œçµæ§‹ é€™è£¡é¢åªåŸ·è¡Œä¸€æ¬¡ 
+ * 2003-5-15 è¦æŠŠ block èˆ‡ wire åˆ†æˆå…©å€‹å‡½å¼ æ‰èƒ½æ­£å¸¸é¡¯ç¤ºrun point
+ * 2003-5-16 å¯æ˜¯ wire æ˜¯ç·Šæ¥è‘— block æ‰è¡Œ
+ *           å› ç‚º DoItemRun ä¸­ å›éè¿´åˆ° DoRun ä¸­ é€™æ™‚çš„wirellhead æœƒæ˜¯æ–°çš„
+ * 2003-6-2  å¤§æ•´ç† è©³ç´°èªªæ˜.....é‡é»
+ *				1.å‹•ç•«éƒ¨åˆ† å…ˆå‹•ç•« å‹•ç•«å®Œæˆå¾Œ æ‰æœƒé€²è¡Œè™•ç†ç·šæ®µè³‡æ–™æ¬ç§»
+ *				2.æŠŠä¸€äº›ç¨‹å¼å€å¡Š å†åˆ†æˆå¹¾å€‹å‰¯ç¨‹å¼
+ *				3.ç°¡å–®çš„å°åŸ·è¡Œé€Ÿåº¦ä½œæœ€ä½³åŒ– ï¼šå·²ç¶“åšéçš„æ–¹å¡Š ä¸æœƒé‡è¤‡åŸ·è¡Œ
  *
  ***********************************************************************/
 Boolean DoRun(BNP BlockLLHeadP,WNP WireLLHeadP)
@@ -1507,7 +1507,7 @@ Boolean DoRun(BNP BlockLLHeadP,WNP WireLLHeadP)
 	
 	//Boolean ItIsCUSTOMBLOCK;
 	
-	//CheckConnection(BlockLLHeadP);//5-15 ²¾¨ì¥~­±
+	//CheckConnection(BlockLLHeadP);//5-15 ç§»åˆ°å¤–é¢
 	//do{
 		handle = false;
 		
@@ -1547,7 +1547,7 @@ Boolean DoRun(BNP BlockLLHeadP,WNP WireLLHeadP)
 			handle = true;
 		}else{
 	//
-	// °£¿ù¥Î ¤¤Â_ÂI
+	// é™¤éŒ¯ç”¨ ä¸­æ–·é»
 	///////////////////////////////////////////////////////////////////////////	//
 	/*
 	switch(BlockLLHeadP->SelfBlockLLHead->TYPE)
@@ -1582,10 +1582,10 @@ Boolean DoRun(BNP BlockLLHeadP,WNP WireLLHeadP)
 	*/
 	////////////////////////////////////////////////////////////////////////////
 			DoRun_WireRun(WireLLHeadP);
-			DrawWires(WireLLHeadP,true,false);//§ó·s°T®§
-	   		DrawRunPointOnWire(WireLLHeadP,false);//Åã¥Ü²×IOÂI¼Æ­È
+			DrawWires(WireLLHeadP,true,false);//æ›´æ–°è¨Šæ¯
+	   		DrawRunPointOnWire(WireLLHeadP,false);//é¡¯ç¤ºçµ‚IOé»æ•¸å€¼
 			DoRun_BlockRun(BlockLLHeadP,&handle);
-			DrawWires(WireLLHeadP,true,false);// §ó·s°T®§
+			DrawWires(WireLLHeadP,true,false);// æ›´æ–°è¨Šæ¯
 		}
 		
 	
@@ -1604,10 +1604,10 @@ Boolean DoRun(BNP BlockLLHeadP,WNP WireLLHeadP)
 	
 	
 
-		// 5-16 ³o¸Ìµe°Êµe µM«á¨M©w¤U­±¬O§_Ä~Äò
+		// 5-16 é€™è£¡ç•«å‹•ç•« ç„¶å¾Œæ±ºå®šä¸‹é¢æ˜¯å¦ç¹¼çºŒ
 		/*
 		DrawDiagram(SYSHOOK->BlockLLHeadP->NEXTNODE,((HOOKP)SYSHOOK->BlockLLHeadP->hookP)->WireLLHeadP,true,1,0,0,true);
-	// µe°Êµe
+	// ç•«å‹•ç•«
 	// DrawIcon(WIRERUNPOINTBitmap,startx,i);
 	if(Animation)
 	{
@@ -1620,24 +1620,24 @@ Boolean DoRun(BNP BlockLLHeadP,WNP WireLLHeadP)
 	*/
 	
 	/*
-	// 5-31 ¥[¤J§PÂ_ ¬O HOOKBLOCK ¤Î ¤£¬O SYSHOOK «h ¤£°Êµe
+	// 5-31 åŠ å…¥åˆ¤æ–· æ˜¯ HOOKBLOCK åŠ ä¸æ˜¯ SYSHOOK å‰‡ ä¸å‹•ç•«
 	if(BlockLLHeadP!=NULL)
 	ItIsCUSTOMBLOCK=(BlockLLHeadP->SelfBlockLLHead->TYPE == HOOKBLOCK)&&(BlockLLHeadP->SelfBlockLLHead != SYSHOOK->BlockLLHeadP);
 		if((ItIsCUSTOMBLOCK)?false:((LAMP)?DrawRunPointOnWire(WireLLHeadP,true):false))
 		{
-			// µe½u ¤£²M°£ÅÜ¼Æ
+			// ç•«ç·š ä¸æ¸…é™¤è®Šæ•¸
 			DrawWires(WireLLHeadP,true,false);
 			handle = true;
 
 		}else{
 		
-		// ½u¬q°Êµe§¹¦¨
+		// ç·šæ®µå‹•ç•«å®Œæˆ
 	
 		
-		// ¶i¦æ½u¬q¸ê®Æ·h²¾
+		// é€²è¡Œç·šæ®µè³‡æ–™æ¬ç§»
 		DoRun_WireRun(WireLLHeadP);
 
-		// Åã¥Ü½u¬q²×ÂI ¸ê®Æ­È
+		// é¡¯ç¤ºç·šæ®µçµ‚é» è³‡æ–™å€¼
 		
 		if(ItIsCUSTOMBLOCK)
 		{
@@ -1653,7 +1653,7 @@ Boolean DoRun(BNP BlockLLHeadP,WNP WireLLHeadP)
 		
 		
 		
-		}// if °Êµe
+		}// if å‹•ç•«
 		
 	*/
 	//}while(handle);
@@ -1670,10 +1670,10 @@ Boolean DoRun(BNP BlockLLHeadP,WNP WireLLHeadP)
 
 
 	// 5-18
-	// ½u¬q°õ¦æ¹L  Dirty ·|³]¬° ture
-	// ³o¸Ì­nreset ¥¦
-	// ¦pªG°õ¦æ¤@¦¸µ²§ô
-	// ²M°£½u¬q dirty bit
+	// ç·šæ®µåŸ·è¡Œé  Dirty æœƒè¨­ç‚º ture
+	// é€™è£¡è¦reset å®ƒ
+	// å¦‚æœåŸ·è¡Œä¸€æ¬¡çµæŸ
+	// æ¸…é™¤ç·šæ®µ dirty bit
 	/*
 	if(handle==false)
 	{

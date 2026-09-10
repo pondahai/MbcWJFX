@@ -60,7 +60,7 @@ VoidHand 		ChoicesHandle = 0, ChoicesPtrsHandle;
 
 extern  Boolean DataLoaded=false;
   Boolean CanvasState=true;
-  int STOP=0;	// 0=µL¥Î 1=¥i¥Î 2=°±¤î
+  int STOP=0;	// 0=ç„¡ç”¨ 1=å¯ç”¨ 2=åœæ­¢
   Boolean LAMP=false;
 Boolean RUNFOREVER=false;
 
@@ -70,18 +70,18 @@ int prev_x,prev_y;
  UInt16 PanelPointerState = HANDBitmap; // panel : HAND , FINGER
 //BNP BlockLLHead = NULL;
 //
-// LLP ¥Î¦b InArea »P CheckOnNode ¨ç¼Æ¤§¶¡ªº¤Ş¼Æ¶Ç»¼
-// ¤£¥Î¤F 4-14
+// LLP ç”¨åœ¨ InArea èˆ‡ CheckOnNode å‡½æ•¸ä¹‹é–“çš„å¼•æ•¸å‚³é
+// ä¸ç”¨äº† 4-14
 // BNP LLP;
 
 //extern BNP FunctionsLLHead = NULL;
 //BNP FLLP;
 
- HOOKP SYSHOOK;	// µ{¦¡¥D¦ê¦CªºÀY
+ HOOKP SYSHOOK;	// ç¨‹å¼ä¸»ä¸²åˆ—çš„é ­
  EndPoint WireStart,WireStop;
  struct hand HandPointer;
 
-UInt16 UID=0;// µ¹Block¥Îªº
+UInt16 UID=0;// çµ¦Blockç”¨çš„
 
 BNP BlockToolsLLHeadP;
 BNP PanelToolsLLHeadP;
@@ -93,9 +93,9 @@ BNP FunctionCatagoryLLHead;
 	DWordPtr MYdepthP;
 	BooleanPtr MYenableColorP;
 //
-// 5-15 °Êµe
-// °õ¦æ4ÅÜ¼Æ
- int RUN=0;	// 0=ÀR¤î 1=°õ¦æ 2=¼È°±
+// 5-15 å‹•ç•«
+// åŸ·è¡Œ4è®Šæ•¸
+ int RUN=0;	// 0=éœæ­¢ 1=åŸ·è¡Œ 2=æš«åœ
 //Boolean Animation=false;
 //Boolean RunLock=false;
 //Boolean RunWho=false;
@@ -288,13 +288,13 @@ static void AppEventLoop(void)
 		//EvtGetEvent(&event, evtWaitForever);
 		EvtGetEvent(&event, ((RUN)?1:100));
 		
-		//5-8 ¤£¾å±o¬O­ş¸Ì¥¢³s HOOK ¤¸¥ó¤¤ªº hookp->wirellhead ·|¤£¨£
-		// ©Ò¥H¦b³o¸Ì§ó·s
-		// ª¾¹D¤F
-		// ¦]¬°Hook->Wirellhead ¤@ª½³£¨S¦³³Q§ó·s
-		// µ{¦¡¸Ì­±¥uÃö¤ß hook ¤¸¥ó¤¤ªº hookp->wirellheadp
-		// ¦]¦¹¦b³o¸Ì§â¥¦¸É°_¨Ó
-		// ­n¦Ò¼{§âSYSHOOK ¤½¦@ÅÜ¼Æ¼o°£¤F
+		//5-8 ä¸æ›‰å¾—æ˜¯å“ªè£¡å¤±é€£ HOOK å…ƒä»¶ä¸­çš„ hookp->wirellhead æœƒä¸è¦‹
+		// æ‰€ä»¥åœ¨é€™è£¡æ›´æ–°
+		// çŸ¥é“äº†
+		// å› ç‚ºHook->Wirellhead ä¸€ç›´éƒ½æ²’æœ‰è¢«æ›´æ–°
+		// ç¨‹å¼è£¡é¢åªé—œå¿ƒ hook å…ƒä»¶ä¸­çš„ hookp->wirellheadp
+		// å› æ­¤åœ¨é€™è£¡æŠŠå®ƒè£œèµ·ä¾†
+		// è¦è€ƒæ…®æŠŠSYSHOOK å…¬å…±è®Šæ•¸å»¢é™¤äº†
 		SYSHOOK->WireLLHeadP = ((HOOKP)SYSHOOK->BlockLLHeadP->hookP)->WireLLHeadP;
 		
 		if (! SysHandleEvent(&event))
@@ -344,9 +344,9 @@ static Err AppStart(void)
 	SYSHOOK->BlockLLHeadP = NULL;
 	SYSHOOK->WireLLHeadP = NULL;
 	SYSHOOK = InsertHOOKNode(SYSHOOK);
-	// ´ú¸Õµ{¦¡
+	// æ¸¬è©¦ç¨‹å¼
 	//set_test_data();
-	// «Ø¥ß¤u¨ã½L¹Ï¥Ü¦ê¦C
+	// å»ºç«‹å·¥å…·ç›¤åœ–ç¤ºä¸²åˆ—
 	set_block_tools_palette();
 	set_panel_tools_palette();
 	//
@@ -355,9 +355,9 @@ static Err AppStart(void)
 	//
 	FunctionCatagoryLLHead = set_function_palette();
 	////
-	// ¬ö¿ı­ì­È
+	// ç´€éŒ„åŸå€¼
 	ScrDisplayMode(scrDisplayModeGet,MYwidthP,MYheightP,MYdepthP,MYenableColorP);
-	// ³]©w ¥´¶}¦Ç¶¥Åã¥Ü
+	// è¨­å®š æ‰“é–‹ç°éšé¡¯ç¤º
 	MYdepthp=2;
 	ScrDisplayMode(scrDisplayModeSet,MYwidthP,MYheightP,&MYdepthp,MYenableColorP);
 	TicksPerSecend=SysTicksPerSecond();
@@ -408,7 +408,7 @@ static void AppStop(void)
 {
    StarterPreferenceType prefs;
    
-   //ÄÀ©ñ
+   //é‡‹æ”¾
    ReleaseLLMemPtr(BlockToolsLLHeadP);
    ReleaseLLMemPtr(PanelToolsLLHeadP);
    ReleaseLLMemPtr(FunctionCatagoryLLHead);
@@ -417,7 +417,7 @@ static void AppStop(void)
 	MemHandleUnlock(MemPtrRecoverHandle(SYSHOOK));
 	MemHandleFree(MemPtrRecoverHandle(SYSHOOK));
    
-	// ¦^´_­ì­È
+	// å›å¾©åŸå€¼
 	ScrDisplayMode(scrDisplayModeSet,MYwidthP,MYheightP,MYdepthP,MYenableColorP);
 
 	// Write the saved preferences / saved-state information.  This data 
