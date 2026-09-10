@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MbcWJFX — Block Diagram Viewer</title>
+<style>
+  :root{
+    --bg:#faf9f7; --fg:#1a1a1a; --mut:#6b6b6b; --card:#fff; --bd:#e2e0dc;
+    --accent:#3a6ea5; --palm:#c7d0b8;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme=light]){
+      --bg:#16171a; --fg:#e8e6e3; --mut:#9a9894; --card:#1f2125; --bd:#31343a;
+      --accent:#7aa7d9; --palm:#b9c3a8;
+    }
+  }
+  :root[data-theme=dark]{
+    --bg:#16171a; --fg:#e8e6e3; --mut:#9a9894; --card:#1f2125; --bd:#31343a;
+    --accent:#7aa7d9; --palm:#b9c3a8;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--fg);margin:0;padding:28px 22px;
+       font:14px/1.55 ui-sans-serif,system-ui,"Segoe UI","Noto Sans TC",sans-serif}
+  header{max-width:1000px;margin:0 auto 22px}
+  h1{font-size:19px;margin:0 0 3px;letter-spacing:.01em}
+  header p{margin:0;color:var(--mut);font-size:13px}
+  .wrap{max-width:1000px;margin:0 auto;display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+  .stage{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px}
+  /* Palm 的 bitmap 是不透明的白底黑點，所以畫布一定要是白的，否則每張圖
+     都會拖一塊白方框。LCD 的綠色調用 multiply 疊在上層，白變綠、黑仍是黑。 */
+  .lcd{position:relative;display:inline-block;line-height:0;
+       border:1px solid var(--bd);border-radius:3px;overflow:hidden}
+  .lcd::after{content:"";position:absolute;inset:0;background:var(--palm);
+              mix-blend-mode:multiply;pointer-events:none}
+  #screen{display:block;background:#fff;image-rendering:pixelated;touch-action:none}
+  .side{flex:1;min-width:260px;display:flex;flex-direction:column;gap:14px}
+  .panel{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px 16px}
+  .panel h2{font-size:12px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.07em;color:var(--mut)}
+  label.row{display:flex;align-items:center;gap:9px;padding:3px 0;font-size:13px;cursor:pointer}
+  label.row input{accent-color:var(--accent);cursor:pointer}
+  .ctl{display:flex;align-items:center;gap:9px;font-size:13px;padding:3px 0}
+  .ctl input[type=range]{flex:1;accent-color:var(--accent)}
+  #tree{font:12px/1.6 ui-monospace,"Cascadia Code",Consolas,monospace;margin:0;white-space:pre;
+        overflow-x:auto}
+  #tree .sel{background:var(--accent);color:#fff;border-radius:3px}
+  .hint{color:var(--mut);font-size:12px;margin:10px 0 0}
+  code{font:12px ui-monospace,Consolas,monospace;background:var(--bd);padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>MbcWJFX — Block Diagram Viewer</h1>
+  <p>Palm OS 視覺化程式語言的唯讀檢視器。資料模型照 <code>Src/vpl.h</code>，
+     繪圖照 <code>Src/block.c</code> 的 <code>DrawDiagram()</code> / <code>DrawWires()</code>。</p>
+</header>
+
+<div class="wrap">
+  <div class="stage">
+    <div class="lcd"><canvas id="screen" width="160" height="160"></canvas></div>
+  </div>
+
+  <div class="side">
+    <div class="panel">
+      <h2>顯示</h2>
+      <div class="ctl"><span>縮放</span><input type="range" id="zoom" min="1" max="6" step="1" value="3"><span id="zoomv">3×</span></div>
+      <label class="row"><input type="checkbox" id="showId">顯示元件 ID（SHOW_ID）</label>
+      <label class="row"><input type="checkbox" id="showNodes">標出 IO 節點中心</label>
+      <label class="row"><input type="checkbox" id="showGrid">格線</label>
+    </div>
+
+    <div class="panel">
+      <h2>場景結構</h2>
+      <pre id="tree"></pre>
+      <p class="hint">點畫面上的元件可選取（等同 C 裡的 <code>DrawBorder</code>）。</p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* <<SPRITES>> 由 tools/extract_bitmaps.py 產生，請勿手改 */
+const SPRITES = {
+  1000: {n:"AboutUnnamed1201BitMap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAATElEQVR42mP4//8/Axj8Jw4wQDQQrw2hAconpIcBUxF+qxhwSeMUx+8kTG1E+QFZG3oowQE+15NpA7F+oDSUCMcD+TFNWloiLbWSBACTrWG7hHCHXQAAAABJRU5ErkJggg=="},
+  1100: {n:"SUBBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAASUlEQVR42mP4//8/Axj8Jw4wQDQQrw2hAconpA1dA0FtDATliLIBjzbCGtC0oYcSHODURr4NxPqBOqGEzxTyY5q0tERaaiUJAAC+VWqyfLlofgAAAABJRU5ErkJggg=="},
+  1200: {n:"MULBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAS0lEQVR42mP4//8/Axj8Jw4wQDQQrw2hAconpA1dA0FtDATl8PkBWSkubShKMXViasNnNnZt5NtArB/IDyVi44H8mCYtLZGWWkkCAPEJXr43eQCMAAAAAElFTkSuQmCC"},
+  1300: {n:"DIVBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAASUlEQVR42mP4//8/Axj8Jw4wQDQQrw2hAconpA1dA0FtDATlCDsJvzbsTsJjG3oowQFObeTbQKwfKA0lwvFAfkyTlpZIS60kAQDXr2S4YA0GUQAAAABJRU5ErkJggg=="},
+  1400: {n:"INDICATOR8Bitmap", w:32, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAQCAIAAAD4YuoOAAAAL0lEQVR42mNgYGD4//8/DUkIi+bgP80Awi80MX3UB6M+GPXB8PHBf1oCGpfVDAwAptnzRYVMdT4AAAAASUVORK5CYII="},
+  1500: {n:"CTRLU8Bitmap", w:32, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAQCAIAAAD4YuoOAAAARklEQVR42mNgYGD4//8/FUl0gF2UXAC3CQJQJKgC0KzBYie17MDiNVqZTgsf0CMOENxRHwxPHwyLfIBSylE9fLDHAY1KbAArfXXDhallqgAAAABJRU5ErkJggg=="},
+  1600: {n:"TOOLSBitmap", w:40, h:64, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAABACAIAAADnO6INAAABQElEQVR42u2YSxLDIAxDc/9Lp5sukoKFJGyY6cCiTQvhMeCPzHXtaPd9f79Wthf/9ftnXdw/4eygKx3c5YXg7jvt7OChnXo1GLNrwYAtgNVTx4ddCAYmHYI3+PEBP8atAz/DWTobxdL2MxpWDo5Co3FADridEQfkQnDEdgKICo62QcjH+AFbeDQYJM3OpDNWM2R3wIzjDruGbLTVBlgyxs4mMO4/Q0X5mAdHVjI0w8uIhUDXMVQ2STBdwDuctCgtqOsgfj6WToGXFZQQAApSSgzl0mcb+KjMAz7gdU7sp0VGfphgj50DNthpYJU9m4+ldBSJeKeE6V6zeWDn8oVktwqVKT4E8FDSSjJNO2Mgg9TiI8G4vOJjEEASr2ZKwGrxQcXqLHYhOMG4bJnOFx+LdPUiMOOQR3Md8D+D97RdS/gAyjLMW6+3NOIAAAAASUVORK5CYII="},
+  1700: {n:"CONSTU8Bitmap", w:32, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAQCAIAAAD4YuoOAAAAHUlEQVR42mNgGCbgPw3AqAWjFoxaMGoBqRYMYQAASOzsPnjpgSoAAAAASUVORK5CYII="},
+  1800: {n:"UISBitmap", w:40, h:64, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAABACAIAAADnO6INAAAAxUlEQVR42u2YOxLAIAhEvf+lTZMmxs9GBHQDTWYs8vgJO6bkYTnn+2NpD74z+O1H66TIGzW4f+4DBtOwGIwnQDFitxp/TjXStEhXz4CHPdIC4xdsg8nlZj9eEgEOcIBZxJ72iKyDF4bVWuFG4CLQMXioRvrLpmCcD0bcmqzxpmAw1URg3hp38ql1nZBfa4F9Rqb1kjB6aEIqZwQOzRWaSxroxmDhWqQD4y9iLOCoMU+NpzWXaHJJNNeBI9MaHJqL8KHcy4ULfhcT+NOHFAQAAAAASUVORK5CYII="},
+  1900: {n:"AboutUnnamed1206BitMap", w:64, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAQCAIAAAAphe5+AAAAoUlEQVR42u2W0QrAIAhF/f+f3h4GI9J7NdJiIx8GSbWO3jS5Pm7yQwARx2lOePyvdR4+jeyZBtD6xTKyJHK4KgC9L/mTRjK/JvkUgHimqeLhR0Ii2CskpIdI3JGrkikhrlrz6CmhXQGARNzKDCkbKTAZIHh9kYT2VyFdsLuwjWYABaIkA8H+xSF5rriuZsuom1wUy0h5NdtzVSc+j7kDMGI3ubrUqppApqgAAAAASUVORK5CYII="},
+  2000: {n:"CLENCHBitmap", w:13, h:12, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA0AAAAMCAIAAAA21aCOAAAAQUlEQVR42mP4jwQYGBjQSIQUHkUMYICiDi6Ek8Qnh2Y2pmvQAAOyC6ikjhhLUfxLlDpcStHDD5dS7OoQXmNA9yIAVK5atCoWMlwAAAAASUVORK5CYII="},
+  2100: {n:"HANDBitmap", w:18, h:18, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAIAAADZrBkAAAAAWklEQVR42sXSwQoAIAgD0P3/T9chkNS59FSHCOtRuLDkAMDr4uhZUAlqwpxli2U8YO79P1joXtVPx2KpyIozHRRhQQ6YvkSxjnwEMGazlnSk+pNCtpiFYePe2sZG/R9HnQssAAAAAElFTkSuQmCC"},
+  2200: {n:"BLANKBitmap", w:18, h:18, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAIAAADZrBkAAAAAFklEQVR42mP4TxZgGNU2qm1U22DXBgCOGshifZEKMgAAAABJRU5ErkJggg=="},
+  2300: {n:"RUNBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAPElEQVR42mP4//8/A9EApBii4T8RgHoacOnHpwGrHgIaMPUQ1oDVqQQ0IEvRwAZahhKNY5ooDaSlVpIAAEEHEQzCMW6gAAAAAElFTkSuQmCC"},
+  2400: {n:"PAUSEBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAKUlEQVR42mP4//8/A9EApBii4T8RgEoa4FajsUc1DHINNEsapKVWkgAABlnwHgE2vx0AAAAASUVORK5CYII="},
+  2500: {n:"STOPBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAANElEQVR42mP4//8/A9EApBii4T8RgHoa0NxAQANWd+PUgMevw1cDyaFETjzQLGmQllpJAgBQoqhmMeVXWQAAAABJRU5ErkJggg=="},
+  2600: {n:"LAMPBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAASUlEQVR42mNgIAX8//8fRK0iDuDUADePKA1obhhwDXAhZBKnBggfTQOyHuwa4OowLcGnAaurKHYSsh5kV1E7HohKS6Sl1v8kAgA4sGyifWj/uwAAAABJRU5ErkJggg=="},
+  2700: {n:"THREADBitmap", w:18, h:18, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAIAAADZrBkAAAAAYUlEQVR42p3TQQoAIQxD0X//S8+AMDjQJLV24UJ4om3kuSr0LowZq2aMrwbsb7IkmCDJxklaIyW17ycSObFW4mYt1/2WMG5n7CWz0S2pt625IcfXZY0ceZfPLkThuItv+gIHx+4u4ba+4QAAAABJRU5ErkJggg=="},
+  2800: {n:"FUNCTIONSBitmap", w:40, h:64, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAABACAIAAADnO6INAAABO0lEQVR42u1YyxLEIAjz/3/avfRi5RFSRGfWXnZ2KoQAQqat7Xh6789P5TPgD/9fcY0HSoHnIPKBtUMiey4Oi7FwaIxgVapfh2aKX9IeSLWW28xUa8BuEDzw5nvMefkKTDgirGTgKA/CygLGHRFWDRyHi16pqQYdzbPMTX4MWHM096ZrZXW1fcUNfkg3HMbYrrEGbNfYAoaaUEKlrfx7jNcbtPInF7JFCCu+q7VZDVo5Yi888SPjXRU6SzfjFQJXCPyXEMAdEfIhBuyuRdwqUwiErA5jjMzkaI2vELhC4AqBKiEgflxK/4SpAucym7uvAljEhoDd1sMnTIyxDWxU0dZlOcDgpcpnHJVapalOBuZGdFGqxZVfBLynqz8x1gqJNBfJ2G0fXOWEgdO34Z61qALXrOQDFMieZ1cIPx47K+D9eeWfAAAAAElFTkSuQmCC"},
+  2900: {n:"ARROWBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAPUlEQVR42rXQQQoAIAwDwf3/p/XgpVCiiejeB5oCjCRWMfANtRg4hl4M9gZVvEGZ29GVfgD9vqdAPcEFxyb3mzHrW73BYgAAAABJRU5ErkJggg=="},
+  3000: {n:"FINGERBitmap", w:18, h:18, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAIAAADZrBkAAAAAVklEQVR42s3SMQ4AIAgDwP7/07gRU4qUTSYTvYhURCkAMRWkGeU/7IFbRos1k5ibofa6niHP6fdUZo3hZnTVgrkfqjIrYslG2bLdSBwp4nakxTKMLNo9Sb8hCubLABwAAAAASUVORK5CYII="},
+  3100: {n:"INDICATOR8BLOCKBitmap", w:32, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAQCAIAAAD4YuoOAAAAS0lEQVR42mNgoAP4TzOAsIBG7kZhUd3tWCxAsxyXOEE1+CzASmIy8Kuh1AKsuoi1AGtQ4DEFqxqcFtA8kkctGGALaFtU0LawoykAAIK9cbmF6gJVAAAAAElFTkSuQmCC"},
+  3200: {n:"CTRLU8BLOCKBitmap", w:32, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAQCAIAAAD4YuoOAAAAQ0lEQVR42mNgGCbgPw0AugVobLgiuBSaCJoWwhagmYtmEFYSmUGyBWjWYPUBaRbgDyJMbeT4gLaRPGrBqAUUWjCEAQDOkHS2I7kXqgAAAABJRU5ErkJggg=="},
+  3300: {n:"PRESSFINGERBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAATklEQVR42r2QQQ4AEAwE9/+fLolEaNaoiz2I1kxQxRJJscd04IwESx+FOj2ani4JUi5JgI0R5prKi/B2QzJhdOYNPLqMAu3/wPkj1OmeBnV/arIOvjA+AAAAAElFTkSuQmCC"},
+  3400: {n:"SCISSORBitmap", w:18, h:18, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAIAAADZrBkAAAAAZklEQVR42q3TUQoAIQgE0Ln/pQsKzEZTi+YjhHi0NC3aHoy0LLBM1gtWlP9YRb4yyZVcwOJAggDNmm1bbtEyy6rj102YPh7BO9KnuUPYqbmSJZO3d5Ipc2uoMj4z/7X0vdveinKmA68f5Tf8wbsxAAAAAElFTkSuQmCC"},
+  3500: {n:"KILLBitmap", w:18, h:18, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAIAAADZrBkAAAAAWUlEQVR42p3TNxIAIAgEwPv/p3XGhigcULuSFGcVoA69mLFoGpYCYfl9fyPZkuoBaiRa1sb3BhXjBWwYmTBhzrO9MQX3Q+9fSbVfi0Hu1y+WZ2ZgIzb7bzEuRJ8+7L/LlS8AAAAASUVORK5CYII="},
+  3600: {n:"RUNMANBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAT0lEQVR42q2SwQ4AIAhC/f+fprUulOjUxbWeoMMAWFn78wFQUAbIESHAAX476C3p9QI89lhph8kOVUC4u0FhJHkuHSk5caMa7DztUq+tLS1+X/kVa6twVAAAAABJRU5ErkJggg=="},
+  3700: {n:"STOPMANBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAARElEQVR42mP4//8/A9EApBii4T8RAJ8GrEbg1IDsABrYgOlLfBqgQshhgmoW/TWgaSMhWGmpAdn1hIOVhLREWmolCQAA2fXzGxUvI8kAAAAASUVORK5CYII="},
+  3800: {n:"CUSTOMBLOCKBitmap", w:32, h:32, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAwElEQVR42uWWwQ7AIAhD/f+fdocli5MWStAtyzjsMIjPAqKtPWDdtTOgCvBdNuBiJwD2ywCTN6GAkcaFGGyNArhczBAVhKUqFTncphfQBSt1I+vCMXUiBsfYGsJTJmJAR8B6joCsmjkAKmAVyiZNVTCRcgNDrAFUI/XeOwrEGixTUDoT2XMw8fxBGStgCUkMR2dUVKbTDbDJ2o+N3Z1BZqDb/oQLxdmHbjaR2PMiANj9MioExBe4nqIF78ktRf6kHYEJyGJ/h8cXAAAAAElFTkSuQmCC"},
+  3900: {n:"ANDBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAOklEQVR42mNgIAT+owIsQlhUIKkhrAFND1EakPUQqwGilDQNcHtGkgbSQom0eCAtprGkJdJS638SAQCeQFvBFe2TMQAAAABJRU5ErkJggg=="},
+  4000: {n:"ORBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAQklEQVR42mNgwAv+YwDsoijSqAoYIKL/8QJkBURpQFbDgGkGURqI10NLDehhSmMnkRZKJMcDaTFNcloiObX+JxEAADw6ba+mMt7eAAAAAElFTkSuQmCC"},
+  4100: {n:"NOTBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAASElEQVR42p2SQQoAIAgE5/+ftkMglBVOe1MY3FUBwogpByQngCwc0GEOTjZ7sOS8Ws9stcN7g11ATHAZ3JbEHdylf35JACE1AAppeaNjcy2TAAAAAElFTkSuQmCC"},
+  4200: {n:"DRAGBitmap", w:18, h:18, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAIAAADZrBkAAAAAVklEQVR42tWSMQ4AIAgD7/+f1sFBA7YGNplMymlay2gNf2GIcZiSlcQpqHcySWDOPUMSNvLhSqLC8D4xYRjycb0i5b81W+LdUnXV6eROslzilWSn/jABeY8eDXaO83gAAAAASUVORK5CYII="},
+  4300: {n:"LEDONBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAQUlEQVR42mP4jwoYMAC6AjSl/zEAmjgDXBS/DQgGftWYehAaGPACFGXIqvHbQ1jRMNVAcrCSE3EkJw1yEh/xyRsALVcV+ZdAmgMAAAAASUVORK5CYII="},
+  4400: {n:"LEDOFFBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAR0lEQVR42mP4jwoYMAC6AjSl/zEAmjgDXBS/DQgGpmpcxkMYCA0EnYRQhkc1ph4U3XjA0NBArKdJDlZyIo7kpEFO4iM+eQMA7FD2GLnqp6oAAAAASUVORK5CYII="},
+  4500: {n:"SWONBitmap", w:16, h:32, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAgCAIAAACU62+bAAAAaUlEQVR42mP4TyJgoD2A20KMS0AMcjQQ1IMsSzcNePSgiVOgAaseLCJkakCLSqwpB6EBhY+hAT3i0P2EQwOKbZjBglUzFuMxnYfdS3iyCE4pEvIaRckbT9LAkvjwZHCcSYMon4xqGJoaAE7LgbdtcDuMAAAAAElFTkSuQmCC"},
+  4600: {n:"SWOFFBitmap", w:16, h:32, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAgCAIAAACU62+bAAAAYUlEQVR42u1TMRIAIAji/5+uqQYDyrqmcupEFO4IJVn4hBcJEEUIFKMQemuipM1gZToKloCC6GkqVa4JD6fKXEAwTreOZHijY186lp19go/GMcEEhJv2iTom5OK9+R8uVgVxmXjAtDJ3rgAAAABJRU5ErkJggg=="},
+  4700: {n:"LOGICCTRLBitmap", w:32, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAQCAIAAAD4YuoOAAAAW0lEQVR42mNgGCbgPw3AQFiAzEATh3PRBMm3AI1E1oYpSB0L8NhKggVw/VjFKQ0ieqciXHGL1U+YXifKB1hDDw+JNSkSawFmJGFNVyRYgD+IsCoj2QdUi+QhDAA11hIZONCTWgAAAABJRU5ErkJggg=="},
+  4800: {n:"LOGICINDICATORBitmap", w:32, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAQCAIAAAD4YuoOAAAAYklEQVR42r2URw4AIAgE+f+n9WahheLKySjJ4BAg+hADFhsAqvs6Pa9dASwMs8eKOi/rAHkpn1o/SFETANZzaaOlSNUtkcEcE+AryuYUAX7zEoos+3xW4wDgoGFXBXbZQWMCZGcPHP/UqiQAAAAASUVORK5CYII="},
+  4900: {n:"FORLOOPBitmap", w:32, h:32, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAi0lEQVR42u1WWwrAMAjL/S/dfQw2O0ULRlnH/CjSlsRXSzCUIW0TmkYfaZMgMA/y4d+OiU4J/3TARTcqMbEBK61e5wgIwgYSCPwdDoFzh5aBXvklulJ5cQ8eI9gxRcx3QDeDgEsWl4hJUJGHfKeQM679zT873/8z+BDBDp9duWwpF14d0rFD/FbI9wMpAbK+EbX5HgAAAABJRU5ErkJggg=="},
+  5000: {n:"WHILELOOPBitmap", w:32, h:32, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAlUlEQVR42u1WwRaAIAjj/3/aDh3SwIkyfPWKky9sY5A5KSokHA2aRi/hqEHETMTLvxYmOqX8cyFcdKMTDRsD/Qb4QQLjS1dPvASh80VUQGiRv3BEgHebqTmCXAVrfZ8jAGScGQxbtK5gqCOkoN7XewcreMlJdv6CUobcS7kI8CTx2P4b7ZEEibYl3XjtsI47zG+GfT8AEXNZGPJt5m4AAAAASUVORK5CYII="},
+  5100: {n:"SWITCHCASEBitmap", w:32, h:32, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAiElEQVR42u2UQQrAMAgE8/9P22twR7GhtlD0EHJQRl11mdlqtfcA9rQxwP137/3FEBcIAFdHBMBPCIjS0awrAJAWNdDKzis40AATrwIap+hHe6DNzfseufEeRHOCw6qrA2zVACOTMVXPUIO8AmzFjQpyDfQWuXxLGsweVPZgAAMYwAC+PXZNdgHHL1IRvciu6AAAAABJRU5ErkJggg=="},
+  5200: {n:"WHILELOOPLOOPBitmap", w:10, h:10, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAIAAAACUFjqAAAAKElEQVR42mNgIAj+4wAIaax6UFho+siSRuaiS+O0G81YdJfj8xgeAADQroZ6KTnr/wAAAABJRU5ErkJggg=="},
+  5300: {n:"LOOP1Bitmap", w:7, h:7, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAcAAAAHCAIAAABLMMCEAAAAJUlEQVR42mP4DwYMMADlwkXhJEIUDSBE4QrxmoCiCiaNsB3OBgB+3WKe9qSTIAAAAABJRU5ErkJggg=="},
+  5400: {n:"LOOP2Bitmap", w:7, h:5, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAcAAAAFCAIAAAAG+GGPAAAAG0lEQVR42mP4jwEYgABTCERiCqGIIoSQWcgMABpfU62ubn+AAAAAAElFTkSuQmCC"},
+  5500: {n:"LOOP3Bitmap", w:5, h:5, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAIAAAACDbGyAAAAHUlEQVR42mNgYGD4jwRAHGQhKAsuxIDMQlcPZAAA3OM1y5R+KiMAAAAASUVORK5CYII="},
+  5600: {n:"LOOP4Bitmap", w:5, h:5, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAIAAAACDbGyAAAAGklEQVR42mNggIH///8jWBAOVAg7B0U93BQAq9wd484rOMYAAAAASUVORK5CYII="},
+  5700: {n:"LOOP5Bitmap", w:7, h:5, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAcAAAAFCAIAAAAG+GGPAAAAH0lEQVR42mP4DwYMDAzIDCgHTQIhiiLxHxWgm4AsAQCPzVOtrizdpwAAAABJRU5ErkJggg=="},
+  5800: {n:"SC1Bitmap", w:4, h:7, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAHCAIAAACgB3uHAAAAHElEQVR42mNgYGD4DwMMEIDCgfAZsANseuCmAQAGqSPd3AJNSQAAAABJRU5ErkJggg=="},
+  5900: {n:"SC2Bitmap", w:4, h:7, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAHCAIAAACgB3uHAAAAGklEQVR42mP4DwMMQIBgQTgM2AGKDLoeOB8AufUj3eU5VDoAAAAASUVORK5CYII="},
+  6000: {n:"untitledBitmap", w:63, h:100, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAD8AAABkCAIAAAC+dH+8AAAEEUlEQVR42u2c4W7DMAiE/f4v7UmbNHWJge/OOGql7UdVNWmDMRwHho35yX/jX/q3lH6M8anS/4j++voZ0l8kHt9/y5UsV5XcEF16fdbyTaTEQVT+u4Dowff7cwmi11JHV3UsdbPUmSpiy9oSo/gj/fL7XBrjqrryTPrE7iMrTy6VV8lul6Y/cqG5Jgz9bfpDYfdj+4+bvuE/a+kvP7q/AGNzll63uEeC+dcPSy+PAkXi0PevR9uC8L7XeMiC70/PnDsxenUBd4XlN/AdE+w+wa/88xxkCTWo3ZQgJo87+yALwdqJVr0g7YULZPeSBBKSbC6D6l5lqgY9JHolxlZgjscClmCXoEqJM/kCCuLF7TuSm7zJwxPKTiDeXx65DC4klCY6LjAe2j3c4lI+Ej4NYK1ZmmRLSZyHZOnyRvZaiYTY/N5L0ChLIzAC19OYwWR2j+xsjPaQbDhPJ2LmuC4hqQT2NWJ6vuvZNCSYNDuxbVQFAMOFQt2r3gPDJ8zZ/WjVgmVevltujlBLa2S2LanMrteS3eA7YDiDz+8lNIA2TThVveF2oD6XKBY1HDWvbRR6/wbK0na8tl102e7VXxRwWq8xojrmjug8x4U8R8OcHe0eqgJRvDcwPkmCYYkhqW86sfaZoNtWJOT8/hAFskXf5ffqaqVKsmz3vY7VfsSJdO/5QGPZVcizPX5/oiysVsO3+H1RH7U0KqXkiCk0dk307gZFzJ0UydZuA895DHl4s4iv+80DH/sMz6zfnzhOa+n2kfPa3nYir46Q8Ry1mrBvabZloszwvToAy666D+hi5DyHNyxyIrnzOwW/V1nuaR0ju8+9hPdI9r7f4jlR09gzZq2dldsVkd73nKWaFZHnIAV2F5Hv9KJHbook0NbZyTuEJBRruUGXjes7n5NNFvj9wzBf2qTmtVFLy9FVlVagWc7zmENMjlYB8tOYI/zRqIjAdO6EzUCk9s9OTuN9fbSv9iHbB6tTb0iSb5AKCgaP38kThGgln9fpA1OGXrSpmd6Op2JqxJoaKvC+98zj3OvVcryhhp3Hk7PbqIv1D0OWhhS8gQW1XWkGLbmZ9BP0N0UaIq1PdvU89NpyiKS8tFRBRDf4yEwRMRKjn6yjOvl6AglScJQtZ94GU2fQVhldTehqXndZbt3yoZnXes0fksNM0JiZlZVyu5+g4XWCCTnCtKVfrpmC0TLJ3T0qdZVXr7FWyIIrSFn6Q+4YCBnVvjQpCpZuN3FTtZRDD0hfc4JQb7FiUWSOJtM9OX4pJ+dJDOIhch1DItOM4MX2bygf5IVI+pnObExrzqllUrqwHHtS9oTQ6H9ZwHkrSTjDbBKAqnWfJLJw7NnOdcqOanriWZZ5pT7FkvbwXjSke1KWOGHT0uHkFz+bef9E2uSuAAAAAElFTkSuQmCC"},
+  6100: {n:"FUNCARITHBitmap", w:32, h:32, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAh0lEQVR42s2WUQ7AIAxCe/9Lb99z1RWEun6ZaHzBFmJEQ122GgFyXgLQYnLAe20BSKQ8ALPrdjDAE3EYuAcoZjVFC5fUMYcUuHrQPUV6H/Q5WfhWWJoSURjoaVQNDyhiAvUkt8Ur+MQoASmGAVQ+DEM6/EyBqwdnpkjpgz4ne7NoN01dn19r3eZwVCuu8keTAAAAAElFTkSuQmCC"},
+  6200: {n:"FUNCLOGICBitmap", w:32, h:32, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAeUlEQVR42u2WSQoAIQwE/f+n9Wz0kO5YgmDOGWpCL9jahenYTADiPyIgsw0CDIYMUBkOQN10AOq5H/AggHURmwM2yUbfaW1aLbuktr4Gknkcm6ruzJvCt3/4fNWpCgjarJtnANtTHrmA1YB1EZgDNsk3uggE+G9TdAY9hGMc0WlddwAAAABJRU5ErkJggg=="},
+  6300: {n:"FUNCSTRUCTBitmap", w:32, h:32, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAATklEQVR42mNgoAP4TzOAYgEtXINuATEaBrEFRGoYrD4gMg5HeCSPWjAoLKBtWUTz0pQEDUR7dLBaQLyaEWvBaByMWjCaTGlqAZnFNU0BABZEsr4wIcucAAAAAElFTkSuQmCC"},
+  6400: {n:"FUNCSTRBitmap", w:32, h:32, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAqElEQVR42t2WSQ7AIAhFuf+l213TMMiH8I2RlVXKY5JWZIM8NNkL+NZrZMkhsUYVciyCvy0KwJpTXaBcUZvqLaUgUX4t23VovZDIaJSrJgA0gZzaR8FjBx0Pu8jnm1K7O7Yvhm+yW8vhUcGN4IBhV0oxqJMAkK/IWiEHpEfRpMkBbuNH060ZQbUM5Rog1vsRgL8K/RrgEdABM0WmXDTlIwtwy7A7G0CVF0ujdvoG0IkbAAAAAElFTkSuQmCC"},
+  6500: {n:"FUNCCUSTBitmap", w:32, h:32, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAyElEQVR42sWWwQKAIAxC/f+frmO2MYRs5bXak9jQMT5YR9u6AIQNX7h9T7+NVUJFCAhPVQAhzYUq2DsKYLmKYSuQNssBxGTDUghQG85hMAWhro7B7ZA9nCu6GNAR0M8Z4KopJxm2IzRDxBgKAkkJDNsDqMYIu68ViB68pmBrJtw5CDwelGsF1Q8xwpFExU46eWHXdSZv3iWeA6oTJvsPmmd5gYA2VC0wcufkKYNBD4+XBSDvt6JCQI6W579Ice4PkxvbtHfQWtcJLXquio0gUdkAAAAASUVORK5CYII="},
+  6600: {n:"FUNCARRAYBitmap", w:32, h:32, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAZUlEQVR42mNgoAP4TzOAYgEtnDIQFuBXOhQsGOJxQFD1oLdgNIiGRhCRVICSH0RoinFxyQ8iMi2guQ9oHgdDP4iI8QH5QURqDiLZBySZQjULKGwKDQIfDH0LaBsHVG6b0tACmgIAgvOTz6oaezgAAAAASUVORK5CYII="},
+  6700: {n:"FUNCTIMEBitmap", w:32, h:32, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAoklEQVR42tWWSw6AMAhEe/9L68LEBfIZBlDLqibaB4xDu9YLcYzFR4DG4kyAWLQBrvU4QK2mrUX+4w4AsWkzQIhcZ5gig0WEdikB7m8ZAOiGXAVO69UtkIkpAeDEVdPyxhrSCnV3SxUegBjzmU0OEA4rHmBJHVaMilwFgL4Pjz8laRyQffNnAJBh/kW0DKgP6ozAyRwjMYvI0wqfpjvfTUfjBFhUAH8uecv9AAAAAElFTkSuQmCC"},
+  6800: {n:"FUNCCOMPBitmap", w:32, h:32, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAiElEQVR42tWWSxKAMAhDuf+lda2CNiFBZdWZft6EEtqIgdhscQbIeQlAi8kB17EFIJFyAFTHdTBAijhMCajOQjFlFa1s+7AC1x1MV5HeB3NOFuYK66ZEKwx0NaqGByxiAvUkN8UreMQwgPvHPK0ajYJ05a8UdO/gnSpS+mDOyd5e1O2mrs+vNXaVp1co492BcAAAAABJRU5ErkJggg=="},
+  6900: {n:"FUNCFILEBitmap", w:32, h:32, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAmElEQVR42t2WQRaAIAhEvf+laxnBQKNCL2KXBT9mlBrjhTjK4seALCWvTFhCLloMg7wBYI6qKy+ZtjQAvqmtxesGALAiZDAqYYCnQGzSNMB72i5O7CLpRGD1OkC5zRwOFgBL7x9yVxbo88IAjXq0CXxDFIDx07MhBxDMjDTA463PA2olKje5/zaNv4N9AN1MzpymrX4dS+MEC5CF6wpw01AAAAAASUVORK5CYII="},
+  7000: {n:"ABOVEBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAATElEQVR42mP4//8/Axj8Jw4wQDQQrw2hAconpIcBUxF+qxhwSeMUx+8kTG3YnYTHNgZcKvC5niIbCPuB0lAiHA/kxzRpaYm01EoSAACE1W2v0DWmdQAAAABJRU5ErkJggg=="},
+  7100: {n:"LESSBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAATklEQVR42qWSVwoAIAxDc/9LR1BRS+k0fx2PTpDEFHPCAvLYBbYdMdBJfilYYdPvt6QxAVidvJjYUjDu4ZoVsjP8bim+Q//StV+qfWtJAz0dba+Je5p9AAAAAElFTkSuQmCC"},
+  7200: {n:"EQUBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAATUlEQVR42mP4//8/Axj8Jw4wQDQQrw2hAconpIcBUxF+qxhwSeMUx+8MTG3onoYDXNoYiPEouuupaQMuzZSFEoF4ID+mSUtLpKVWkgAAoFpevjp+VmQAAAAASUVORK5CYII="},
+  7300: {n:"ABOVEEQUBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAUklEQVR42mP4//8/Axj8Jw4wQDQQrw2hAconpA1dA0FtDHA5IrWhKMVqKpo2LH7A4xKibEDXhhysBJRi2oBfKZZQwipHcTyQH9OkpSXSUitJAADdf2G7NSOVJwAAAABJRU5ErkJggg=="},
+  7400: {n:"LESSEQUBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAU0lEQVR42qWSSQ4AIAgD+/9PY+IStRIL2hvBoQjAzFBlMaEBcWwCPVYYAxID5aTb5uBW5Yrrp2+tD0w7MHb2nXC4P+UpAXBz33t433TulnLXmlIB721hu04Zm44AAAAASUVORK5CYII="},
+  7500: {n:"STOPUNUSEBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAANUlEQVR42mP4//8/A9EApBii4T8RgHoaViEBwhpWYQB8GlbhAMNaA8mhRE480CxpkJZaSQIA1MQf/aiUlV8AAAAASUVORK5CYII="},
+  7600: {n:"LAMPLIGHTBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAASUlEQVR42mNgIAX8//8fShEDcGpANo+wBkw3DKwGuBAaiV0DnLFq1So4iSxOJQ1wdXA2UTZAAAEb0LyIKUKleCAqLZGWWv+TCAAoE94wX4rb6wAAAABJRU5ErkJggg=="},
+  7700: {n:"STOPWAITBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAANklEQVR42mP4//8/A9EApBii4T8RgHoa0NxAQANWRTg1YHUbmuyw00ByKJETDzRLGqSlVpIAABsAGgPeUPF3AAAAAElFTkSuQmCC"},
+  7800: {n:"RUNWAITBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAP0lEQVR42mP4//8/A9EApBii4T8RgHoacOnHpwGrHgI2YOoh7CTsBuH3AyabejaQ5gdyQomWMU2UBtJSK0kAAACyK/H77lhIAAAAAElFTkSuQmCC"},
+  7900: {n:"FORLOOPNBitmap", w:10, h:10, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAIAAAACUFjqAAAAKElEQVR42mNgIAj+4wAIaWR1aIJILFSlWKQx1REtjdUWIpyGz2N4AACJB2WbRMt+nwAAAABJRU5ErkJggg=="},
+  8000: {n:"FORLOOPIBitmap", w:10, h:10, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAIAAAACUFjqAAAAG0lEQVR42mNgIAj+4wDo0li51NJNU2nsTsMDANDHoV9UuzkiAAAAAElFTkSuQmCC"},
+  8100: {n:"PENCILBitmap", w:18, h:18, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAIAAADZrBkAAAAAWElEQVR42p3TSwoAIAgEUO9/6aIIQnM+NCs3DwU1hp3YOcWPMVk1DnvNqn8M74YM60YMZNz0TJqGOaayOzo1giGTWDMJXk/P5AEFGk9cTzpQ/yH8DmxvZiZEReU3zg+pXQAAAABJRU5ErkJggg=="},
+  8200: {n:"RUNRUNWAITBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAVUlEQVR42pWS2w4AIAhC/f+ftrXWZYagPKYnSjF3t7Jm8wK8IAack7eEgWv9MQAIVrE1ALCsAQIzAN/NgczW5KOrn05nxUa+dyIWB31ENHSWemltaQCSs+QqbJN1RQAAAABJRU5ErkJggg=="},
+  8300: {n:"RUNRUNBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAV0lEQVR42pWSUQoAIAhDvf+lFxGE6ZzmV6gPtc0A2Dh28wEwCAXcjC9xICyQYQspsrR7PADtHgF0ZgPkk3qgGhsBfT0HxPXkWys1lHBZ494avZf+3PoVCyM4lni/kPAqAAAAAElFTkSuQmCC"},
+};
+const B = Object.fromEntries(Object.entries(SPRITES).map(([k, v]) => [v.n, +k]));
+/* <</SPRITES>> */
+</script>
+
+<script>
+/* ==========================================================================
+   資料模型 — 對應 Src/vpl.h
+   C 版本每個結構都是手動維護 PREV/NEXT 的雙向鏈結串列（Src/linklist.c 有
+   836 行在做這件事）。JS 直接用陣列和物件參照，那些程式碼就不需要了，
+   但欄位名稱刻意沿用 C 的寫法，方便跟原始碼對照。
+   ========================================================================== */
+
+// BlockType，見 vpl.h
+const HOOKBLOCK = 1, FUNCBLOCK = 2, LOOPBLOCK = 3, CASEBLOCK = 4, CTRLBLOCK = 5;
+
+let nextId = 1;
+
+// struct IONODE：TYPE 1 = input、0 = output、2 = drag point
+function ioNode(TYPE, TL, EXT, ID = 0) {
+  return { ID, TYPE, NotReady: false, TL, EXT };
+}
+
+// struct BlockNode + BA（方塊外觀）。hooks 是內部元件的容器，
+// 對應 C 的 LoopBlockHOOKP / CaseBlockHOOKLLHeadP / hookP。
+function block(TYPE, BITMAPID, XY, SIZE, opt = {}) {
+  return {
+    ID: nextId++, TYPE,
+    bap: {
+      BITMAPID, XY, SIZE,
+      IONodeLLHead: opt.io || [],
+      CTRLNodeLLHead: opt.ctrl || [],
+      DrawBorder: false,
+    },
+    hooks: opt.hooks || null,     // [{name, blocks, wires}]
+    CurrentHOOK: 0,               // switch case 目前顯示第幾頁
+    filename: opt.filename || null,
+    parent: null,
+  };
+}
+
+// struct wList。C 裡存的是節點指標，這裡存物件參照，語意相同。
+function wire(sb, sn, eb, en) {
+  return { WireID: nextId++, StartBlockP: sb, StartNodeP: sn, EndBlockP: eb, EndNodeP: en, DIRTY: false };
+}
+
+/* 補上 parent，讓 DrawWires 能像 C 那樣沿 SelfBlockLLHead 往上走，
+   把巢狀元件的相對座標累加成絕對座標（block.c:166-189）。 */
+function linkParents(blocks, parent = null) {
+  for (const b of blocks) {
+    b.parent = parent;
+    for (const h of b.hooks || []) linkParents(h.blocks, b);
+  }
+}
+
+/* ==========================================================================
+   測試場景 — 對應 Src/testdata.c 的 set_test_data()
+   （那個函式在原始碼裡整段被註解掉，這裡把它重建起來當第一個渲染目標，
+     所以還不需要先解 .pdb 存檔格式。）
+   ========================================================================== */
+function buildScene() {
+  nextId = 1;
+
+  // 一個輸出元件（CTRLU8：8-bit 控制鈕）
+  const ctrl = block(FUNCBLOCK, B.CTRLU8BLOCKBitmap, { x: 6, y: 16 }, { x: 32, y: 16 },
+    { io: [ioNode(0, { x: 0, y: 0 }, { x: 32, y: 16 })] });
+
+  // 一個輸入元件（INDICATOR8：8-bit 顯示器）
+  const ind = block(FUNCBLOCK, B.INDICATOR8BLOCKBitmap, { x: 108, y: 16 }, { x: 32, y: 16 },
+    { io: [ioNode(1, { x: 0, y: 0 }, { x: 32, y: 16 })] });
+
+  // FORLOOP：結構元件，內部自己有一份 blocks/wires（C 的 LoopBlockHOOKP）。
+  // 迴圈內預設元件 N 和 I 的位置由 block.c:760-766 寫死。
+  const loopSize = { x: 74, y: 62 };
+  const forN = block(FUNCBLOCK, B.FORLOOPNBitmap, { x: 8, y: 13 }, { x: 10, y: 10 },
+    { io: [ioNode(1, { x: 0, y: 0 }, { x: 10, y: 10 })] });
+  const forI = block(FUNCBLOCK, B.FORLOOPIBitmap, { x: 8, y: loopSize.y - 17 }, { x: 10, y: 10 },
+    { io: [ioNode(0, { x: 0, y: 0 }, { x: 10, y: 10 })] });
+  const arith = block(FUNCBLOCK, B.FUNCARITHBitmap, { x: 30, y: 15 }, { x: 32, y: 32 },
+    { io: [ioNode(1, { x: 0, y: 0 }, { x: 32, y: 32 })] });
+  const forloop = block(LOOPBLOCK, B.FORLOOPBitmap, { x: 12, y: 52 }, loopSize, {
+    ctrl: [{ ID: 1 /*DRAGNODE*/, TL: { x: loopSize.x - 7, y: loopSize.y - 7 }, EXT: { x: 7, y: 7 } }],
+    hooks: [{
+      name: null,
+      blocks: [forN, forI, arith],
+      wires: [wire(forI, forI.bap.IONodeLLHead[0], arith, arith.bap.IONodeLLHead[0])],
+    }],
+    io: [ioNode(1, { x: 0, y: 24 }, { x: 6, y: 6 })],
+  });
+
+  // SWITCHCASE：兩頁 hook，名字 "true" / "false"（testdata.c 原本就是這兩個字串）
+  const swSize = { x: 46, y: 40 };
+  const lamp = block(FUNCBLOCK, B.LAMPBitmap, { x: 15, y: 18 }, { x: 16, y: 16 },
+    { io: [ioNode(1, { x: 0, y: 0 }, { x: 16, y: 16 })] });
+  const led = block(FUNCBLOCK, B.LEDOFFBitmap, { x: 15, y: 18 }, { x: 16, y: 16 },
+    { io: [ioNode(1, { x: 0, y: 0 }, { x: 16, y: 16 })] });
+  const swcase = block(CASEBLOCK, B.SWITCHCASEBitmap, { x: 100, y: 60 }, swSize, {
+    ctrl: [
+      { ID: 1 /*DRAGNODE*/,   TL: { x: swSize.x - 7, y: swSize.y - 7 }, EXT: { x: 7, y: 7 } },
+      { ID: 2 /*SCPAGEUP*/,   TL: { x: swSize.x - 7, y: 1 },            EXT: { x: 6, y: 13 } },
+      { ID: 3 /*SCPAGEDOWN*/, TL: { x: 1, y: 1 },                       EXT: { x: 6, y: 13 } },
+    ],
+    hooks: [
+      { name: 'true',  blocks: [lamp], wires: [] },
+      { name: 'false', blocks: [led],  wires: [] },
+    ],
+    io: [ioNode(1, { x: 0, y: 20 }, { x: 6, y: 6 })],
+  });
+
+  const blocks = [ctrl, ind, forloop, swcase];
+  const wires = [
+    wire(ctrl, ctrl.bap.IONodeLLHead[0], ind, ind.bap.IONodeLLHead[0]),
+    wire(ctrl, ctrl.bap.IONodeLLHead[0], forloop, forloop.bap.IONodeLLHead[0]),
+    wire(forloop, forloop.bap.IONodeLLHead[0], swcase, swcase.bap.IONodeLLHead[0]),
+  ];
+  linkParents(blocks);
+  return { blocks, wires };
+}
+
+/* ==========================================================================
+   繪圖 — 對應 Src/block.c
+   Palm 的 WinDrawLine 是 1 像素、無反鋸齒的黑線。canvas 要畫出一樣的
+   效果就得把座標對到像素中心（+0.5），否則線會糊成兩像素的灰。
+   ========================================================================== */
+const cv = document.getElementById('screen');
+const ctx = cv.getContext('2d');
+const opts = { showId: false, showNodes: false, showGrid: false };
+let scene = null, selected = null;
+
+// Palm 的 WinEraseRectangle 是清成白色；LCD 色調由 CSS 的 .lcd::after 疊上去
+const PAPER = '#ffffff';
+function line(x1, y1, x2, y2) {           // WinDrawLine
+  ctx.beginPath();
+  ctx.moveTo(x1 + .5, y1 + .5);
+  ctx.lineTo(x2 + .5, y2 + .5);
+  ctx.stroke();
+}
+function rect(x, y, w, h) {               // WinDrawRectangle(&r, 0)
+  ctx.strokeRect(x + .5, y + .5, w - 1, h - 1);
+}
+function eraseRect(x, y, w, h) {          // WinEraseRectangle
+  const keep = ctx.fillStyle;
+  ctx.fillStyle = PAPER;
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = keep;
+}
+function icon(id, x, y) {                 // misc.c:84 DrawIcon
+  const s = SPRITES[id];
+  if (s && s.img && s.img.complete) ctx.drawImage(s.img, x, y);
+}
+
+// block.c:95 CaculateTurnLine — 起點水平走到中間 x，轉垂直，再水平接到終點
+function turnLine(start, end) {
+  if (start.x === end.x || start.y === end.y) return [{ ...start }, { ...start }];
+  const mx = Math.floor((start.x + end.x) / 2);
+  return [{ x: mx, y: start.y }, { x: mx, y: end.y }];
+}
+
+// block.c:166-189 — 巢狀元件要沿所屬串列往上累加，才得到絕對座標
+function absOrigin(b) {
+  let x = 0, y = 0;
+  for (let p = b.parent; p; p = p.parent) { x += p.bap.XY.x; y += p.bap.XY.y; }
+  return { x, y };
+}
+function nodeCenter(b, n) {
+  const o = absOrigin(b);
+  return {
+    x: o.x + b.bap.XY.x + n.TL.x + Math.floor(n.EXT.x / 2),
+    y: o.y + b.bap.XY.y + n.TL.y + Math.floor(n.EXT.y / 2),
+  };
+}
+
+// block.c:111 DrawWires
+function drawWires(wires) {
+  for (const w of wires) {
+    const s = nodeCenter(w.StartBlockP, w.StartNodeP);
+    const e = nodeCenter(w.EndBlockP, w.EndNodeP);
+    const [t1, t2] = turnLine(s, e);
+    line(s.x, s.y, t1.x, t1.y);
+    line(t1.x, t1.y, t2.x, t2.y);
+    line(t2.x, t2.y, e.x, e.y);
+  }
+}
+
+// block.c:687 DrawDiagram — 先畫線段，再依 TYPE 畫元件，結構元件遞迴進去
+function drawDiagram(blocks, wires, wx, wy) {
+  drawWires(wires);
+
+  for (const b of blocks) {
+    const { XY, SIZE } = b.bap;
+    const x = XY.x + wx, y = XY.y + wy;
+
+    switch (b.TYPE) {
+      case LOOPBLOCK: {                                   // block.c:721
+        eraseRect(x, y, SIZE.x, SIZE.y);
+        icon(B.LOOP2Bitmap, x, y);
+        icon(B.LOOP3Bitmap, x + SIZE.x - 5, y);
+        icon(B.LOOP4Bitmap, x + SIZE.x - 5, y + SIZE.y - 5);
+        icon(B.LOOP5Bitmap, x, y + SIZE.y - 5);
+        const x1 = x + 7, x2 = x + SIZE.x - 6;            // 上下兩組雙橫線
+        line(x1, y, x2, y);
+        line(x1, y + 2, x2, y + 2);
+        line(x1, y + SIZE.y - 1, x2, y + SIZE.y - 1);
+        line(x1, y + SIZE.y - 3, x2, y + SIZE.y - 3);
+        const y1 = y + 5, y2 = y + SIZE.y - 6;            // 左右兩組雙直線
+        line(x + 2, y1, x + 2, y2);
+        line(x + 4, y1, x + 4, y2);
+        line(x + SIZE.x - 3, y1, x + SIZE.x - 3, y2);
+        line(x + SIZE.x - 1, y1, x + SIZE.x - 1, y2);
+        icon(B.LOOP1Bitmap, x, y + Math.floor(SIZE.y / 2) - 3);
+        for (const n of b.bap.IONodeLLHead) rect(x + n.TL.x, y + n.TL.y, n.EXT.x, n.EXT.y);
+        const h = b.hooks[0];
+        drawDiagram(h.blocks, h.wires, x, y);             // 遞迴內部元件
+        break;
+      }
+      case CASEBLOCK: {                                   // block.c:839
+        eraseRect(x, y, SIZE.x, SIZE.y);
+        icon(B.SC1Bitmap, x + SIZE.x - 6, y + 4);
+        icon(B.SC2Bitmap, x + 2, y + 4);
+        line(x, y + 13, x + SIZE.x - 1, y + 13);
+        line(x, y, x + SIZE.x - 1, y);                    // 雙線外框
+        line(x, y + 1, x + SIZE.x - 1, y + 1);
+        line(x, y + SIZE.y - 2, x + SIZE.x - 1, y + SIZE.y - 2);
+        line(x, y + SIZE.y - 1, x + SIZE.x - 1, y + SIZE.y - 1);
+        line(x, y, x, y + SIZE.y - 1);
+        line(x + 1, y, x + 1, y + SIZE.y - 1);
+        line(x + SIZE.x - 1, y, x + SIZE.x - 1, y + SIZE.y - 1);
+        line(x + SIZE.x - 2, y, x + SIZE.x - 2, y + SIZE.y - 1);
+        const h = b.hooks[b.CurrentHOOK];
+        ctx.font = '9px ui-monospace,Consolas,monospace';
+        ctx.textBaseline = 'top';
+        ctx.fillText(h.name, x + Math.floor(SIZE.x / 2) - Math.floor(h.name.length * 5 / 2), y + 2);
+        for (const n of b.bap.IONodeLLHead) rect(x + n.TL.x, y + n.TL.y, n.EXT.x, n.EXT.y);
+        drawDiagram(h.blocks, h.wires, x, y);
+        break;
+      }
+      default:                                            // block.c:949，FUNCBLOCK 等
+        icon(b.bap.BITMAPID, x, y);
+    }
+
+    if (b.bap.DrawBorder) {                               // block.c:966 選取外框
+      rect(x - 1, y - 1, SIZE.x + 3, SIZE.y + 3);
+    }
+    if (opts.showId) {                                    // block.c:1009 SHOW_ID
+      ctx.font = '8px ui-monospace,Consolas,monospace';
+      ctx.textBaseline = 'top';
+      ctx.fillText(String(b.ID), x, y - 9);
+    }
+    if (opts.showNodes) {
+      for (const n of b.bap.IONodeLLHead) {
+        const c = nodeCenter(b, n);
+        ctx.fillRect(c.x - 1, c.y - 1, 3, 3);
+      }
+    }
+  }
+}
+
+function render() {
+  ctx.fillStyle = ctx.strokeStyle = '#111';
+  ctx.lineWidth = 1;
+  eraseRect(0, 0, cv.width, cv.height);
+
+  if (opts.showGrid) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(0,0,0,.13)';
+    for (let i = 16; i < 160; i += 16) { line(i, 0, i, 159); line(0, i, 159, i); }
+    ctx.restore();
+  }
+  drawDiagram(scene.blocks, scene.wires, 0, 0);
+  renderTree();
+}
+
+/* ========================= 側邊的結構樹 ========================= */
+const TYPE_NAME = { 1: 'HOOKBLOCK', 2: 'FUNCBLOCK', 3: 'LOOPBLOCK', 4: 'CASEBLOCK', 5: 'CTRLBLOCK' };
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function renderTree() {
+  const out = [];
+  const walk = (blocks, depth) => {
+    for (const b of blocks) {
+      const pad = '  '.repeat(depth);
+      const nm = (SPRITES[b.bap.BITMAPID] || {}).n || '?';
+      const label = esc(`${pad}#${b.ID} ${TYPE_NAME[b.TYPE]} ${nm} @${b.bap.XY.x},${b.bap.XY.y}`);
+      out.push(b === selected ? `<span class="sel">${label}</span>` : label);
+      for (const h of b.hooks || []) {
+        if (b.TYPE === CASEBLOCK && h !== b.hooks[b.CurrentHOOK]) continue;
+        if (h.name) out.push(esc(`${pad}  case "${h.name}"`));
+        walk(h.blocks, depth + (h.name ? 2 : 1));
+      }
+    }
+  };
+  walk(scene.blocks, 0);
+  out.push('', esc(`線段 ${scene.wires.length} 條`));
+  document.getElementById('tree').innerHTML = out.join('\n');
+}
+
+/* ========================= 互動 ========================= */
+// misc.c:477 IsInArea 的簡化版：由後往前找（後畫的在上層）
+function hitTest(blocks, px, py, wx = 0, wy = 0) {
+  for (let i = blocks.length - 1; i >= 0; i--) {
+    const b = blocks[i];
+    const x = b.bap.XY.x + wx, y = b.bap.XY.y + wy;
+    for (const h of b.hooks || []) {
+      if (b.TYPE === CASEBLOCK && h !== b.hooks[b.CurrentHOOK]) continue;
+      const inner = hitTest(h.blocks, px, py, x, y);
+      if (inner) return inner;
+    }
+    if (px >= x && px < x + b.bap.SIZE.x && py >= y && py < y + b.bap.SIZE.y) return b;
+  }
+  return null;
+}
+
+cv.addEventListener('pointerdown', ev => {
+  const r = cv.getBoundingClientRect();
+  const px = Math.floor((ev.clientX - r.left) / (r.width / cv.width));
+  const py = Math.floor((ev.clientY - r.top) / (r.height / cv.height));
+  if (selected) selected.bap.DrawBorder = false;
+  selected = hitTest(scene.blocks, px, py);
+  if (selected) selected.bap.DrawBorder = true;
+  render();
+});
+
+function setZoom(z) {
+  cv.style.width = cv.width * z + 'px';
+  cv.style.height = cv.height * z + 'px';
+  cv.parentElement.style.width = cv.width * z + 'px';
+  document.getElementById('zoomv').textContent = z + '×';
+}
+document.getElementById('zoom').addEventListener('input', e => setZoom(+e.target.value));
+for (const k of ['showId', 'showNodes', 'showGrid']) {
+  document.getElementById(k).addEventListener('change', e => { opts[k] = e.target.checked; render(); });
+}
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => render());
+
+/* ========================= 啟動 ========================= */
+(async function boot() {
+  await Promise.all(Object.values(SPRITES).map(s => new Promise(res => {
+    s.img = new Image();
+    s.img.onload = s.img.onerror = res;
+    s.img.src = s.src;
+  })));
+  scene = buildScene();
+  setZoom(3);
+  render();
+})();
+</script>
+</body>
+</html>
