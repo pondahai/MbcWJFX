@@ -1875,6 +1875,7 @@ function doRunLoopBlock(b) {
   const first = inner.blocks[0], second = inner.blocks[1];
   const again = () => {
     handle = true;
+    loopIterations++;          // 重跑一輪算有進展，不然 while(1) 會被熄火誤判
     checkConnection(inner.blocks, false);
     resetWireStatus(inner.blocks, inner.wires);
     for (const n of b.bap.IONodeLLHead) {
@@ -2917,6 +2918,7 @@ function syncUI() {
    停下來並說明原因，不然畫面上看起來只是「跑不完」。 */
 const STALL_TICKS = 64;
 let stallFingerprint = '', stallCount = 0;
+let loopIterations = 0;   // 迴圈總共重跑了幾輪，只給 runFingerprint() 用
 
 function runFingerprint() {
   const out = [];
@@ -2931,6 +2933,10 @@ function runFingerprint() {
     }
   };
   walk(scene);
+  /* 一個什麼都不做的 while(1) 每個 tick 都會回到一模一樣的狀態，光看狀態
+     跟真正的卡住分不出來。迴圈每重跑一輪就把這個計數器加一，讓它算有進展
+     —— 那種圖是「照使用者寫的跑到天荒地老」，跟原版一樣，該按停止鈕。 */
+  out.push('it' + loopIterations);
   return out.join('|');
 }
 
@@ -2960,7 +2966,7 @@ function tick() {
 
 // block.c:1970 執行鈕：靜止→執行、執行→暫停、暫停→執行
 function runButton() {
-  if (RUN === 0) { STOP = 1; RUN = 1; ticks = 0; stallFingerprint = ''; stallCount = 0; resetRun(); startTimer(); runStatus('執行中…'); }
+  if (RUN === 0) { STOP = 1; RUN = 1; ticks = 0; stallFingerprint = ''; stallCount = 0; loopIterations = 0; resetRun(); startTimer(); runStatus('執行中…'); }
   else if (RUN === 1) { RUN = 2; killTimer(); runStatus(`暫停於 ${ticks} ticks`); }
   else { RUN = 1; startTimer(); }
   syncUI();

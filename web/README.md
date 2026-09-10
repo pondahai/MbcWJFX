@@ -364,9 +364,23 @@ FileStream 在記錄裡還有自己的表頭，格式沒有公開文件，所以
 pap 面板外觀和線段。
 
 **它是格式的測試檔，不是一支跑得完的程式。** 裡面有 switch case，而
-`DoItemRUN` 的 `SWITCHCASE` 在原版就是空 case（`run.c:145`、`run.c:421`），
-所以含它的圖永遠算不完；線段也是為了涵蓋各種格式而接的，不構成有意義的
-資料流。要看執行，用內建的「資料流（可執行）」場景，或自己畫一張。
+switch case 是不會執行的（見下面），所以含它的圖永遠算不完；線段也是為了
+涵蓋各種格式而接的，不構成有意義的資料流。要看執行，用內建的
+「資料流（可執行）」場景，或自己畫一張。
+
+### switch case 不會執行
+
+原版 `DoRun_BlockRun`（`run.c:1356`）只對 `HOOKBLOCK` 和 `LOOPBLOCK` 做特別
+處理，`CASEBLOCK` 掉進 `default` 被當成一般元件走 `DoItemRUN`，而那裡的
+`SWITCHCASEBitmap` 是個空 case（`run.c:421`；`run.c:145` 的 `CheckConnection`
+也是）。整份 `run.c` 裡沒有 `DoRun_CASEBLOCK`。
+
+也就是說**原版沒有可以移植的實作，網頁版也沒有自己補一個**。畫、翻頁、
+存讀、編輯都能用，只是按執行不會進去跑。
+
+for 迴圈和 while 迴圈則是兩種都會跑 —— `DoRun_LOOPBLOCK` 本來就一起處理：
+for 看 N 和 I（`N != I` 就 I++ 再跑一輪，`run.c:1326`），while 看 hook 裡
+第一顆條件元件（為真就再跑一輪，`run.c:1268`）。
 
 **但是還沒有拿真正由 Palm 寫出來的檔案驗證過** —— repo 裡沒有留下任何當年
 存的 `.pdb`。如果你手上找得到，值得拿來試，特別是 FileStream 容器那一層。

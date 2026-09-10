@@ -56,9 +56,20 @@
 | --- | --- | --- |
 | `DoRun` | ✅ | |
 | `DoRun_WireRun` | ✅ | |
-| `DoRun_BlockRun` | ✅ | |
-| `DoRun_LOOPBLOCK` | ✅ | 含 IO 點角色對調 |
+| `DoRun_BlockRun` | ✅ 🚧 | `HOOKBLOCK` 和 `LOOPBLOCK` 兩個 case 都做了。`CASEBLOCK` 落到 `default` —— 原版就沒有 `DoRun_CASEBLOCK` 這個函式 |
+| `DoRun_LOOPBLOCK` | ✅ | for 和 while 兩種都做了，含 IO 點角色對調 |
 | `DoItemRUN` | ✅ 🚧 | 算術／邏輯／比較都有；`SWITCHCASE` 在 `run.c:145` 和 `run.c:421` 都是空 case |
+
+**switch case 不會執行**，這點講明白一點：原版 `DoRun_BlockRun`（`run.c:1356`）
+只對 `HOOKBLOCK` 和 `LOOPBLOCK` 做特別處理，`CASEBLOCK` 掉進 `default` 當一般
+元件走 `DoItemRUN`，而那裡的 `SWITCHCASE` 是空的 —— 全份 `run.c` 裡沒有
+`DoRun_CASEBLOCK`。所以**原版沒有可移植的實作，網頁版也沒有自己補一個**。
+畫、翻頁、存讀、編輯都能用，就是按執行不會進去跑。
+
+for 迴圈和 while 迴圈則是**兩種都會跑**（`DoRun_LOOPBLOCK` 本來就一起處理）：
+- for：N 和 I 兩個預設元件，`N != I` 就 I++ 再跑一輪（`run.c:1326`）
+- while：hook 裡第一顆是條件元件，值為真就再跑一輪（`run.c:1268`）；
+  條件恆真就是一個正常的無窮迴圈，跟原版一樣要自己按停止
 | `CheckConnection` | ✅ | |
 | `ResetWireStatus` | ✅ | |
 | `MoveNodeData` | ✅ | |
@@ -193,7 +204,9 @@
 - **多一道「卡住」熄火**。`DoRun_HOOKBLOCK`（`run.c:781`）和 `DoRun_LOOPBLOCK`
   在「輸入還沒到齊」時是回傳 `handle=true` 的，所以一張永遠等不到輸入的圖
   會無止盡空轉 —— 原版就是這樣，要使用者自己按 STOP。網頁版連續 64 個 tick
-  整個執行狀態都沒變就停下來，並說明多半是哪裡沒接線。
+  整個執行狀態都沒變就停下來，並說明多半是哪裡沒接線。**迴圈每重跑一輪算
+  有進展**，所以條件恆真的 while 迴圈不會被誤判成卡住（那種圖是照使用者寫的
+  在跑，該按停止鈕）。
 - **接線的「輸出不能接輸出」判斷會換算邊框節點的角色**。結構元件邊框上的
   IO 點在 `run.c:1115` 進去之前會整批翻面，所以「迴圈裡的 `i` 接到邊框上的
   輸出點」是合法的 —— 那正是把值送出迴圈的作法。原版有同樣的判斷式，但它的
