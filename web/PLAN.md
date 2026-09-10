@@ -15,9 +15,9 @@
 | `DrawRunPointOnWire` | ✅ | `stepRunPoints()` / `drawRunPoints()` |
 | `DrawDiagram` | ✅ | |
 | `DrawCUSTOMBLOCKLattice` | ✅ | 併在 `drawDiagram()` 的 HOOKBLOCK case |
-| `CrossWire` | ❌ | 跨層接線 |
-| `StartStopAddIntoWLL` | ⚠️ | `addWire()` 是簡化版，用共同父層決定歸屬 |
-| `CheckWireLink` | ⚠️ | 擋掉了自我連線；其餘合法性檢查沒做 |
+| `CrossWire` | ✅ | `crossWire()`，結構邊界上自動長節點 |
+| `StartStopAddIntoWLL` | ✅ | `addWire()`，三種情況都照 `block.c:1493` 分派 |
+| `CheckWireLink` | ✅ | 擋自我連線與輸出接輸出（`block.c:1582`） |
 | `BreakWireConnection` | ✅ | 併在 `removeBlock()` 裡 |
 | `ChangeLinkList` | ❌ | 把元件拖進／拖出結構元件 |
 | `PenDownInBlockToolArea` | ✅ | `toolbarHit()`，含點標題切換 form（`block.c:2008`） |
@@ -159,12 +159,25 @@
 4. ~~存檔~~ ✅
 5. `ChangeLinkList` — 把元件拖進／拖出結構元件
 6. ~~自訂元件一整套（`HOOKBLOCK`）~~ ✅
-7. **`CrossWire` 跨層接線** —— 迴圈的跨內外資料流靠它：把迴圈外的元件接到
-   迴圈內的元件時，會自動在迴圈邊框上長出 5×5 的 IO 節點，再把線拆成
-   外→邊框、邊框→內兩段（`block.c:1206`）。**沒有它，for 迴圈的 N 就只能
-   來自迴圈內部，不能從外面餵。**
+7. ~~`CrossWire` 跨層接線~~ ✅
 8. 選單、關於畫面
 9. `ItemMoveToLastPosition` — 點選時把元件移到最上層
+
+## 跨越結構邊界的資料流
+
+結構元件（迴圈、switch case、自訂元件）是一道邊界，線不能直接穿過去。
+`crossWire()`（`block.c:1206`）做的事是把比較深的那一端**往外提**一層：
+
+1. 在那個結構的邊框上長出一個 5×5 的 IO 節點 —— 方向由哪一端比較深決定
+   （資料要出來就是輸出、要進去就是輸入），邊也跟著（出去走右邊、進來走左邊）
+2. 在結構自己的 hook 裡補一段線，把新節點接到內部的元件
+3. 那一端就變成邊框上的節點，重複到兩端同層，最後把剩下那段接起來
+
+執行時真正讓資料穿過邊界的，是 `DoRun_LOOPBLOCK` / `DoRun_HOOKBLOCK` 的
+**IO 點角色對調** —— 同一個節點從外面看是輸入、站在裡面看就是輸出。
+
+所以 for 迴圈的 N 從哪裡餵都可以，不必侷限在迴圈內部。實測：迴圈外的控制鈕
+接到迴圈內的 N，一條線會變成邊框節點 + 外面一段 + 裡面一段，10 個 tick 跑完。
 
 ## 跟原版的介面差異（刻意的）
 

@@ -832,25 +832,79 @@ function relocateCtrlNodes(b) {
   }
 }
 
-/* 線段要放進哪個 hook？原版靠 SelfBlockLLHead 判斷所屬範圍
-   （block.c:1206 CrossWire 處理跨層的情況）。這裡取兩端共同的父層。 */
-function scopeFor(a, b) {
-  const chain = x => { const c = []; for (let p = x; p; p = p.parent) c.unshift(p); return c; };
-  const ca = chain(a.parent), cb = chain(b.parent);
-  let common = null;
-  for (let i = 0; i < Math.min(ca.length, cb.length); i++) {
-    if (ca[i] === cb[i]) common = ca[i]; else break;
-  }
-  return common ? common.hooks[common.TYPE === CASEBLOCK ? common.CurrentHOOK : 0] : scene;
+// 一個方塊所屬的線段串列（它父層的 hook；沒有父層就是最外層）
+function scopeOf(block) {
+  const p = block.parent;
+  if (!p) return scene;
+  return p.hooks[p.TYPE === CASEBLOCK ? p.CurrentHOOK : 0];
 }
+function depthOf(block) { let d = 0; for (let p = block.parent; p; p = p.parent) d++; return d; }
 
-function addWire(a, b) {
-  const scope = scopeFor(a.block, b.block);
-  scope.wires.push({
+function makeWire(a, b) {
+  return {
     StartBlockP: a.block, StartNodeP: a.node,
     EndBlockP: b.block, EndNodeP: b.node,
     DIRTY: false, STARTRUN: false, RUNSEG: 0, RUNPOINT: { x: 0, y: 0 },
-  });
+  };
+}
+
+/* block.c:1206 CrossWire —— 跨越結構邊界的資料流
+
+   結構元件（迴圈、switch case、自訂元件）是一道邊界，線不能直接穿過去。
+   真正發生的事情是：把比較深的那一端「往外提」一層 —— 在那個結構的邊框上
+   長出一個 5×5 的 IO 節點，並在結構自己的 hook 裡補一段線把節點接到內部的
+   元件；然後那一端就變成了邊框上的節點。重複到兩端同層，最後把剩下的那段
+   接起來。
+
+   執行時，`DoRun_LOOPBLOCK` / `DoRun_HOOKBLOCK` 的 IO 點角色對調
+   （從外面看是輸入、站在裡面看就是輸出）就是讓資料真的穿過這道邊界的手法。 */
+function crossWire(start, end) {
+  // block.c:1221 先讓 start 一定是輸出側（資料的來源）
+  if (end.node.TYPE === 0) { const t = start; start = end; end = t; }
+
+  let guard = 0;
+  while (start.block.parent !== end.block.parent && guard++ < 32) {
+    const startDeeper = depthOf(start.block) > depthOf(end.block);
+    const struct = startDeeper ? start.block.parent : end.block.parent;
+    if (!struct || !struct.hooks) break;
+
+    const inner = startDeeper ? start.block : end.block;
+    const maxID = struct.bap.IONodeLLHead.reduce((m, n) => Math.max(m, n.ID), -1);
+    /* block.c:1336 節點的方向由哪一端比較深決定：資料要出來就是輸出、
+       要進去就是輸入。邊也跟著 —— 出去走右邊，進來走左邊。 */
+    const node = {
+      ID: maxID + 1,
+      TYPE: startDeeper ? 0 : 1,
+      NotReady: true, BYTES: 2, value: 0,
+      TL: { x: startDeeper ? struct.bap.SIZE.x - 6 : 0, y: inner.bap.XY.y },
+      EXT: { x: 5, y: 5 },
+    };
+    struct.bap.IONodeLLHead.push(node);
+
+    const border = { block: struct, node };
+    const innerScope = struct.hooks[struct.TYPE === CASEBLOCK ? struct.CurrentHOOK : 0];
+    innerScope.wires.push(startDeeper ? makeWire(start, border) : makeWire(border, end));
+
+    if (startDeeper) start = border; else end = border;
+  }
+
+  scopeOf(start.block).wires.push(makeWire(start, end));
+}
+
+function addWire(a, b) {
+  const pa = a.block.parent, pb = b.block.parent;
+
+  if (pa === pb) {
+    // 同一層，直接放進共同的父層（block.c:1493）
+    scopeOf(a.block).wires.push(makeWire(a, b));
+  } else if (a.block === pb || b.block === pa) {
+    /* 一端是結構元件本身、另一端在它裡面（block.c:1503）。
+       線要放進那個結構自己的 hook，不是它所在的那一層。 */
+    const struct = a.block === pb ? a.block : b.block;
+    struct.hooks[struct.TYPE === CASEBLOCK ? struct.CurrentHOOK : 0].wires.push(makeWire(a, b));
+  } else {
+    crossWire(a, b);
+  }
   resetRun();
 }
 
@@ -2248,6 +2302,9 @@ cv.addEventListener('pointerup', ev => {
     } else if (n.block === wireStart.block) {
       // block.c:1593 起終點不能是同一個元件
       runStatus('接線失敗：兩端不能是同一個元件');
+    } else if (n.node.TYPE === 0 && wireStart.node.TYPE === 0) {
+      // block.c:1582 兩個輸出不能接在一起
+      runStatus('接線失敗：輸出不能接輸出');
     } else {
       addWire(wireStart, n);
       runStatus(`接好 #${wireStart.block.ID} → #${n.block.ID}`);
