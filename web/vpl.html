@@ -366,61 +366,70 @@ function buildScene() {
 
 /* 第二個場景：這張是拿來「跑」的。上半是 5 + 3 送進顯示器，
    下半是一個數到 3 的 for 迴圈，把計數器 I 接到迴圈內的顯示器。 */
+/* 第二個場景：這張是拿來「跑」的。
+   上半是 5 + 3 送進顯示器；下半是一個 for 迴圈，計數上限 N 從**迴圈外面**
+   餵進去、計數值 I 再送到迴圈外面的顯示器 —— 兩條線都跨越了結構邊界，
+   由 crossWire() 在迴圈邊框上長出接點（block.c:1206）。 */
 function buildRunScene() {
   nextId = 1;
 
-  const ctrlA = block(FUNCBLOCK, B.CTRLU8BLOCKBitmap, { x: 2, y: 16 }, { x: 32, y: 16 },
+  const ctrlA = block(FUNCBLOCK, B.CTRLU8BLOCKBitmap, { x: 2, y: 20 }, { x: 32, y: 16 },
     { io: [ioNode(0, { x: 0, y: 0 }, { x: 32, y: 16 })], pap: panelCtrl({ x: 12, y: 24 }) });
-  const ctrlB = block(FUNCBLOCK, B.CTRLU8BLOCKBitmap, { x: 2, y: 38 }, { x: 32, y: 16 },
+  const ctrlB = block(FUNCBLOCK, B.CTRLU8BLOCKBitmap, { x: 2, y: 42 }, { x: 32, y: 16 },
     { io: [ioNode(0, { x: 0, y: 0 }, { x: 32, y: 16 })], pap: panelCtrl({ x: 12, y: 48 }) });
   ctrlA.bap.IONodeLLHead[0].value = 5;
   ctrlB.bap.IONodeLLHead[0].value = 3;
 
   // 運算元件的節點順序就是 run.c 取值的順序：[0]、[1] 是輸入，[2] 是輸出
-  const add = block(FUNCBLOCK, B.ADDBitmap, { x: 62, y: 27 }, { x: 16, y: 16 }, {
+  const add = block(FUNCBLOCK, B.ADDBitmap, { x: 58, y: 31 }, { x: 16, y: 16 }, {
     io: [
       ioNode(1, { x: 0, y: 0 }, { x: 8, y: 8 }),
       ioNode(1, { x: 0, y: 8 }, { x: 8, y: 8 }, 1),
       ioNode(0, { x: 8, y: 0 }, { x: 8, y: 16 }, 2),
     ],
   });
-  const ind = block(FUNCBLOCK, B.INDICATOR8BLOCKBitmap, { x: 110, y: 27 }, { x: 32, y: 16 },
+  const ind = block(FUNCBLOCK, B.INDICATOR8BLOCKBitmap, { x: 100, y: 31 }, { x: 32, y: 16 },
     { io: [ioNode(1, { x: 0, y: 0 }, { x: 32, y: 16 })], pap: panelIndicator({ x: 100, y: 36 }) });
 
-  // 迴圈內部。blocks[0] 必須是 N、blocks[1] 必須是 I ——
-  // run.c:1293 的迴圈條件判斷就是照這個順序取的。
-  const loopSize = { x: 104, y: 62 };
+  // 迴圈內部只有預設的 N 和 I。順序不能換 —— run.c:1293 的條件判斷
+  // 是直接拿 blocks[0] 當 N、blocks[1] 當 I 比較的。
+  const loopSize = { x: 72, y: 60 };
   const N = block(FUNCBLOCK, B.FORLOOPNBitmap, { x: 8, y: 13 }, { x: 10, y: 10 },
     { io: [ioNode(1, { x: 0, y: 0 }, { x: 10, y: 10 })] });
   const I = block(FUNCBLOCK, B.FORLOOPIBitmap, { x: 8, y: loopSize.y - 17 }, { x: 10, y: 10 },
     { io: [ioNode(0, { x: 0, y: 0 }, { x: 10, y: 10 })] });
-  // 迴圈內的元件在前面板上也要出現（panel.c:238「panel 也要巢狀解析」）
-  const count = block(FUNCBLOCK, B.CTRLU8BLOCKBitmap, { x: 28, y: 8 }, { x: 32, y: 16 },
-    { io: [ioNode(0, { x: 0, y: 0 }, { x: 32, y: 16 })], pap: panelCtrl({ x: 12, y: 96 }) });
-  count.bap.IONodeLLHead[0].value = 3;
-  const show = block(FUNCBLOCK, B.INDICATOR8BLOCKBitmap, { x: 28, y: 38 }, { x: 32, y: 16 },
-    { io: [ioNode(1, { x: 0, y: 0 }, { x: 32, y: 16 })], pap: panelIndicator({ x: 100, y: 96 }) });
 
-  const forloop = block(LOOPBLOCK, B.FORLOOPBitmap, { x: 4, y: 82 }, loopSize, {
+  const forloop = block(LOOPBLOCK, B.FORLOOPBitmap, { x: 44, y: 66 }, loopSize, {
     ctrl: [{ ID: 1, TL: { x: loopSize.x - 7, y: loopSize.y - 7 }, EXT: { x: 7, y: 7 } }],
-    hooks: [{
-      name: null,
-      blocks: [N, I, count, show],
-      wires: [
-        wire(count, count.bap.IONodeLLHead[0], N, N.bap.IONodeLLHead[0]),
-        wire(I, I.bap.IONodeLLHead[0], show, show.bap.IONodeLLHead[0]),
-      ],
-    }],
+    hooks: [{ name: null, blocks: [N, I], wires: [] }],
   });
 
-  const blocks = [ctrlA, ctrlB, add, ind, forloop];
-  const wires = [
-    wire(ctrlA, ctrlA.bap.IONodeLLHead[0], add, add.bap.IONodeLLHead[0]),
-    wire(ctrlB, ctrlB.bap.IONodeLLHead[0], add, add.bap.IONodeLLHead[1]),
-    wire(add, add.bap.IONodeLLHead[2], ind, ind.bap.IONodeLLHead[0]),
-  ];
-  linkParents(blocks);
-  return { blocks, wires };
+  // 迴圈外面：餵 N 的控制鈕，和讀 I 的顯示器
+  const count = block(FUNCBLOCK, B.CTRLU8BLOCKBitmap, { x: 2, y: 76 }, { x: 32, y: 16 },
+    { io: [ioNode(0, { x: 0, y: 0 }, { x: 32, y: 16 })], pap: panelCtrl({ x: 12, y: 96 }) });
+  count.bap.IONodeLLHead[0].value = 3;
+  const readout = block(FUNCBLOCK, B.INDICATOR8BLOCKBitmap, { x: 124, y: 76 }, { x: 32, y: 16 },
+    { io: [ioNode(1, { x: 0, y: 0 }, { x: 32, y: 16 })], pap: panelIndicator({ x: 100, y: 96 }) });
+
+  const s = {
+    blocks: [ctrlA, ctrlB, add, ind, forloop, count, readout],
+    wires: [
+      wire(ctrlA, ctrlA.bap.IONodeLLHead[0], add, add.bap.IONodeLLHead[0]),
+      wire(ctrlB, ctrlB.bap.IONodeLLHead[0], add, add.bap.IONodeLLHead[1]),
+      wire(add, add.bap.IONodeLLHead[2], ind, ind.bap.IONodeLLHead[0]),
+    ],
+  };
+  linkParents(s.blocks);
+
+  /* 這兩條要跨越迴圈邊界，交給 crossWire 去長邊框節點。它是對「目前場景」
+     動作的，所以先把 scene 指過來。 */
+  const prev = scene;
+  scene = s;
+  addWire({ block: count, node: count.bap.IONodeLLHead[0] }, { block: N, node: N.bap.IONodeLLHead[0] });
+  addWire({ block: I, node: I.bap.IONodeLLHead[0] }, { block: readout, node: readout.bap.IONodeLLHead[0] });
+  scene = prev;
+
+  return s;
 }
 
 function buildEmptyScene() {
