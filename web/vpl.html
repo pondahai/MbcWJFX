@@ -1911,6 +1911,10 @@ function findWireByNode(wires, node) {
 
 function doRunHookBlock(b) {
   let handle = false;
+  /* 空殼：存檔對 HOOKBLOCK 只寫一行 FILENAME（save.c），內容要靠那個檔名去
+     找回來（load.c:576）。找不到的話 hooks 是 null —— 不能往下走，也不能
+     假裝算完了，就當它不動，讓整輪執行正常結束而不是丟例外。 */
+  if (!b.hooks) return false;
   if (!inputsReady(b)) return true;
   if (!outputsPending(b)) return false;
 
@@ -2163,6 +2167,8 @@ function parseSave(text) {
      hook 的擁有者。只從 hook 自己的串列找就會找不到，線段整條被丟掉。 */
   function resolve(scope, owner) {
     const { blocks, rawWires } = scope;
+    // 自訂元件補回來的 hook：內容在它自己的存檔裡就解析完了，不用再解一次
+    if (!rawWires) return;
     const searchRoot = owner ? [owner] : blocks;
     scope.wires = [];
     for (const r of rawWires) {
@@ -2177,6 +2183,35 @@ function parseSave(text) {
     delete scope.rawWires;
     for (const b of blocks) for (const h of b.hooks || []) resolve(h, b);
   }
+  /* load.c:576 —— 有 FILENAME 而且不是最外層那顆 HOOKBLOCK 的，原版會拿那個
+     檔名遞迴 LOAD() 把內容補回來。自訂元件的內容**不會**寫進使用它的存檔裡
+     （save.c 對 HOOKBLOCK 只寫一行 FILENAME），元件本身是機器上另一個
+     database。網頁版拿元件庫和存檔區（localStorage）當那個 database。
+
+     load.c:601 那幾行還做了兩件事，這裡照做：
+       - 接腳（IONodeLLHead）要用元件那份，因為暗線段是接在它上面的
+       - 元件內部 ID 為 1 的線段端點要換成這顆方塊本身 */
+  const missing = [];
+  function fillCustomBlocks(blocks, depth) {
+    for (const b of blocks) {
+      for (const h of b.hooks || []) fillCustomBlocks(h.blocks, depth);
+      if (b === hookBlock || b.TYPE !== HOOKBLOCK || !b.filename || b.hooks) continue;
+      if (depth > 8) continue;                       // 自己包自己的話別無限遞迴
+      const src = library.has(b.filename) ? library.get(b.filename) : fileRead(b.filename);
+      if (src == null) { missing.push(b.filename); continue; }
+      let shell;
+      try { shell = cloneScope(makeCustomBlock(src, b.filename)).blocks[0]; }
+      catch (e) { missing.push(b.filename); continue; }
+      for (const w of shell.hooks[0].wires) {        // load.c:604 ID==1 換成 newnode
+        if (w.StartBlockP === shell) w.StartBlockP = b;
+        if (w.EndBlockP === shell) w.EndBlockP = b;
+      }
+      b.hooks = shell.hooks;
+      b.bap.IONodeLLHead = shell.bap.IONodeLLHead;   // load.c:601 接腳搶過來
+    }
+  }
+  fillCustomBlocks(root.blocks, 0);
+
   resolve(root, null);
   linkParents(root.blocks);
 
@@ -2185,7 +2220,7 @@ function parseSave(text) {
   const blocks = root.blocks.filter(b => b !== hookBlock);
   const wires = root.wires.filter(w => w.StartBlockP !== hookBlock && w.EndBlockP !== hookBlock);
   // allWires 保留暗線段，載成自訂元件時要靠它把接腳接到內部元件
-  return { blocks, wires, hookBlock, allWires: root.wires };
+  return { blocks, wires, hookBlock, allWires: root.wires, missing };
 }
 
 /* ==========================================================================
@@ -2492,6 +2527,7 @@ async function loadFile(file) {
     if (document.getElementById('asComponent').checked) {
       makeCustomBlock(text, name);          // 先驗證讀得動
       library.set(name, text);
+      fileWrite(name, text);                // 元件本身也是一個存檔，之後靠檔名找得回來
       renderLibrary();
       status.textContent = `"${name}" 已加入元件庫，點一下就能放進圖裡`;
       status.className = 'ok';
@@ -2508,8 +2544,12 @@ async function loadFile(file) {
     syncUI();
     const n = (bs) => bs.reduce((s, b) => s + 1 + (b.hooks || []).reduce((t, h) => t + n(h.blocks), 0), 0);
     status.textContent = `${file.name}：${n(scene.blocks)} 個元件、${scene.wires.length} 條線段`
-      + (parsed.hookBlock ? `（外框 HOOKBLOCK "${parsed.hookBlock.filename || '?'}" 未顯示）` : '');
-    status.className = 'ok';
+      + (parsed.hookBlock ? `（外框 HOOKBLOCK "${parsed.hookBlock.filename || '?'}" 未顯示）` : '')
+      + (parsed.missing && parsed.missing.length
+          ? `　⚠ 找不到自訂元件 ${[...new Set(parsed.missing)].map(x => `"${x}"`).join('、')}`
+            + '，它們會是空殼。先把那個元件的 .pdb 匯入（勾「當成元件加入」）再載這張圖。'
+          : '');
+    status.className = parsed.missing && parsed.missing.length ? 'err' : 'ok';
   } catch (err) {
     status.textContent = '讀取失敗：' + err.message;
     status.className = 'err';
@@ -2966,7 +3006,16 @@ function tick() {
 
 // block.c:1970 執行鈕：靜止→執行、執行→暫停、暫停→執行
 function runButton() {
-  if (RUN === 0) { STOP = 1; RUN = 1; ticks = 0; stallFingerprint = ''; stallCount = 0; loopIterations = 0; resetRun(); startTimer(); runStatus('執行中…'); }
+  if (RUN === 0) {
+    STOP = 1; RUN = 1; ticks = 0; stallFingerprint = ''; stallCount = 0; loopIterations = 0;
+    resetRun(); startTimer();
+    const shells = [];
+    const scan = bs => { for (const b of bs) { if (b.TYPE === HOOKBLOCK && !b.hooks) shells.push(b.filename || ('#' + b.ID)); for (const h of b.hooks || []) scan(h.blocks); } };
+    scan(scene.blocks);
+    runStatus(shells.length
+      ? `執行中…（⚠ 自訂元件 ${[...new Set(shells)].map(x => `"${x}"`).join('、')} 是空殼，找不到內容，不會算出東西）`
+      : '執行中…');
+  }
   else if (RUN === 1) { RUN = 2; killTimer(); runStatus(`暫停於 ${ticks} ticks`); }
   else { RUN = 1; startTimer(); }
   syncUI();

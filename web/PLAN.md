@@ -103,7 +103,8 @@ for 迴圈和 while 迴圈則是**兩種都會跑**（`DoRun_LOOPBLOCK` 本來�
 | `parse_loop` / `LOAD` | ✅ | `parseSave()`，而且補了原版沒做完的 `NEWCASEHOOK` |
 | `read_a_str` | ✅ | |
 | `FindNodeByID` / `FindIONodeByID` | ✅ | |
-| `ProcessCUSTOMLoad` | ✅ | `makeCustomBlock()`，改用元件庫而不是檔名查找 |
+| `ProcessCUSTOMLoad` | ✅ | `makeCustomBlock()` |
+| `parse_loop` 的 FILENAME 遞迴載入（`load.c:576`） | ✅ | 圖裡放的自訂元件只存檔名，載入時靠檔名把內容補回來；含 `load.c:601` 的接腳接手和 `load.c:604` 的 ID 1 換指標 |
 | `LOADFormHandleEvent` / `BuildLOADMenu` | ✅ | LOADForm 畫在畫面裡（tFRM 1400），LOAD／DELETE／CANCEL 都有，含 Talt 1000 的刪除確認 |
 | `ConvertFileName2RecordIndex` | ➖ | 原版拿檔名換 record index；網頁版直接用檔名當 key |
 
