@@ -597,9 +597,17 @@ function drawDiagram(blocks, wires, wx, wy) {
       rect(x - 3, y - 3, SIZE.x + 7, SIZE.y + 7);
       ctx.font = 'bold 9px ui-monospace,Consolas,monospace';
       ctx.textBaseline = 'top';
-      // 驚嘆號擺右邊，貼到螢幕邊緣就改擺左邊，免得被裁掉
-      const bx = x + SIZE.x + 4;
-      ctx.fillText('!', bx > 154 ? x - 6 : bx, y - 3);
+      /* 外框佔到 x-3 ～ x+SIZE.x+3，驚嘆號要再留 3 像素空隙才不會黏在框上。
+         優先擺右邊，右邊不夠就左邊，左右都不夠就擺框的上面（再不行擺下面）。 */
+      const gap = 3, cw = 5, ch = 9, fr = x + SIZE.x + 3, fb = y + SIZE.y + 3;
+      let ex, ey = y - 3;
+      if (fr + gap + cw <= 159) ex = fr + gap;
+      else if (x - 3 - gap - cw >= 0) ex = x - 3 - gap - cw;
+      else {
+        ex = x;
+        ey = (y - 3 - gap - ch >= 0) ? y - 3 - gap - ch : fb + gap;
+      }
+      ctx.fillText('!', ex, ey);
     }
     if (opts.showId) {                                    // block.c:1009 SHOW_ID
       ctx.font = '8px ui-monospace,Consolas,monospace';
