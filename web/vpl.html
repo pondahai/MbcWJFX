@@ -119,7 +119,8 @@
       <p id="status"></p>
       <label class="row"><input type="checkbox" id="asComponent">把 .pdb 當成元件加入（不取代目前的圖）</label>
       <p><button id="save" type="button">存成 .pdb</button>
-         <button id="reset" type="button">回到內建測試場景</button></p>
+         <button id="reset" type="button">回到內建測試場景</button>
+         <button id="menu" type="button" title="Palm 是按硬體的 Menu 鍵">選單（Menu）</button></p>
     </div>
 
     <div class="panel">
@@ -680,6 +681,179 @@ function drawPopup() {
   });
 }
 
+/* ==========================================================================
+   下拉選單與關於畫面 — block.c:2891 BlockDiagramFormDoCommand / Src/about.c
+
+   選單的內容不在 .c 裡，是 Starter.prc 的 MBAR 1000（方塊圖）和 MBAR 1100
+   （前面板）資源。兩個只差在 Works 的最後一項：方塊圖是 Functions、
+   前面板是 UIs。字串照抄資源裡的，包含 "-" 那條分隔線。
+
+   Palm 是按硬體的 Menu 鍵叫出選單，網頁沒有那顆鍵，所以在右邊那欄放一個
+   按鈕（跟執行控制那些一樣是網頁版自己加的）。選單本身照原版畫在
+   160x160 螢幕裡面。
+   ========================================================================== */
+
+const MENUS = [
+  { title: 'File', items: [
+      { text: 'NEW', cmd: 'FileNEW' },
+      { text: 'SAVE', cmd: 'FileSAVE' },
+      { text: 'LOAD', cmd: 'FileLOAD' },
+  ] },
+  { title: 'Works', items: [
+      { text: 'Block Diagram', cmd: 'WorksBlockDiagram' },
+      { text: 'Front Panel', cmd: 'WorksFrontPanel' },
+      { text: '-' },
+      { text: 'Functions', cmd: 'WorksFunctions', panelText: 'UIs' },
+  ] },
+  { title: 'Run', items: [
+      { text: 'Run', cmd: 'RunRun' },
+      { text: 'Stop', cmd: 'RunStop' },
+  ] },
+  { title: 'About', items: [
+      { text: 'About MbcWJFX', cmd: 'AboutMbcWJFX' },
+  ] },
+];
+
+const MENUBAR_H = 13;          // 標題列高度，跟 drawFormFrame 的一致
+const MENUITEM_H = 11;         // MBAR 1000 的 File 下拉是 34x33 ＝ 3 項 × 11
+
+let menu = null;               // null | {open: number|null}
+let about = false;             // AboutForm 是 modal，開著的時候什麼都不能點
+
+function menuItems(m) {
+  // MBAR 1100 的 Works 最後一項在前面板是 UIs
+  return m.items.map(it => ({ ...it, text: view === 'panel' && it.panelText ? it.panelText : it.text }));
+}
+
+function menuTitleRects() {
+  ctx.font = 'bold 10px ui-sans-serif,system-ui,sans-serif';
+  const out = [];
+  let x = 2;
+  for (const m of MENUS) {
+    const w = Math.ceil(ctx.measureText(m.title).width) + 8;
+    out.push({ x, y: 0, w, h: MENUBAR_H, menu: m });
+    x += w;
+  }
+  return out;
+}
+
+function menuPullRect(i) {
+  const t = menuTitleRects()[i];
+  const items = menuItems(MENUS[i]);
+  ctx.font = '10px ui-sans-serif,system-ui,sans-serif';
+  let w = 0;
+  for (const it of items) w = Math.max(w, Math.ceil(ctx.measureText(it.text).width));
+  w += 10;
+  const x = Math.min(t.x, cv.width - w - 1);
+  return { x, y: MENUBAR_H, w, h: items.length * MENUITEM_H + 2, items };
+}
+
+function drawMenu() {
+  if (!menu) return;
+  // 標題列：黑底白字，蓋掉畫面最上面那一條
+  eraseRect(0, 0, cv.width, MENUBAR_H);
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, cv.width, MENUBAR_H);
+  ctx.textBaseline = 'top';
+  ctx.font = 'bold 10px ui-sans-serif,system-ui,sans-serif';
+  menuTitleRects().forEach((t, i) => {
+    ctx.fillStyle = i === menu.open ? '#fff' : '#111';
+    ctx.fillRect(t.x, 0, t.w, MENUBAR_H);
+    ctx.fillStyle = i === menu.open ? '#111' : '#fff';
+    ctx.fillText(t.menu.title, t.x + 4, 2);
+  });
+  ctx.fillStyle = '#111';
+  if (menu.open === null) return;
+
+  const r = menuPullRect(menu.open);
+  eraseRect(r.x, r.y, r.w, r.h);
+  rect(r.x, r.y, r.w, r.h);
+  ctx.font = '10px ui-sans-serif,system-ui,sans-serif';
+  r.items.forEach((it, i) => {
+    const y = r.y + 1 + i * MENUITEM_H;
+    if (it.text === '-') { line(r.x + 2, y + 5, r.x + r.w - 3, y + 5); return; }
+    ctx.fillText(it.text, r.x + 4, y + 1);
+  });
+}
+
+/* Src/about.c AboutFormHandleEvent + StarterRsc.h 的 AboutForm 版面。
+   文字取自 Starter.prc 的 tFRM 1200（含原本就打錯的 "enviroment"）。 */
+function drawAbout() {
+  if (!about) return;
+  eraseRect(0, 0, 160, 160);
+  rect(0, 0, 160, 160);
+  ctx.fillRect(0, 0, 160, 13);
+  ctx.textBaseline = 'top';
+  ctx.font = 'bold 10px ui-sans-serif,system-ui,sans-serif';
+  ctx.fillStyle = '#fff';
+  const t = 'About MbcWJFX';
+  ctx.fillText(t, 80 - ctx.measureText(t).width / 2, 1);
+  ctx.fillStyle = '#111';
+
+  icon(B.ADDBitmap, 38, 30);              // AboutUnnamed1201BitMap，PICT 1000
+  ctx.font = 'bold 12px ui-sans-serif,system-ui,sans-serif';
+  ctx.fillText('MbcWJFX', 62, 30);        // AboutUnnamed1202Label (62,30) Bold 12
+  ctx.font = '10px ui-sans-serif,system-ui,sans-serif';
+  // AboutUnnamed1203Label (40,65)，資源裡是用 CR 斷行的三行
+  ['MbcWJFX is a', 'VPL development', 'enviroment.']
+    .forEach((ln, i) => ctx.fillText(ln, 40, 65 + i * 12));
+  ctx.font = 'bold 10px ui-sans-serif,system-ui,sans-serif';
+  ctx.fillText('Version V0.9', 38, 110);  // AboutUnnamed1204Label (38,110) Bold
+  icon(B.dahaiBitmap, 71, 121);           // AboutUnnamed1206BitMap，PICT 1900
+  // about.c:32 WinDrawChars(str,...,0,150)：原版印 __DATE__ __TIME__
+  ctx.font = '9px ui-sans-serif,system-ui,sans-serif';
+  ctx.fillText('Last compiled:' + BUILD_STAMP, 0, 150);
+}
+
+const BUILD_STAMP = (() => {
+  const d = new Date(document.lastModified);
+  return isNaN(d) ? ' web' : ' ' + d.toDateString().slice(4) + ' ' + d.toTimeString().slice(0, 8);
+})();
+
+// block.c:2891 BlockDiagramFormDoCommand
+function doCommand(cmd) {
+  menu = null;
+  switch (cmd) {
+    case 'FileNEW': setScene(buildEmptyScene); view = 'block'; runStatus('NEW —— 空白的圖'); break;
+    case 'FileSAVE': saveFile(); break;
+    case 'FileLOAD': document.getElementById('file').click(); break;
+    case 'WorksBlockDiagram': view = 'block'; keyboardObject = null; break;
+    case 'WorksFrontPanel': view = 'panel'; keyboardObject = null; break;
+    case 'WorksFunctions': popup = { kind: 'functions', cat: null }; break;
+    case 'RunRun': runButton(); break;
+    case 'RunStop': stopButton(); break;
+    case 'AboutMbcWJFX': about = true; break;
+  }
+  render();
+}
+
+/* 傳回 true 代表這一下被選單／關於畫面吃掉了，後面的處理都不要做 */
+function menuPenDown(px, py) {
+  if (about) { about = false; render(); return true; }   // about.c:38 點一下就回去
+  if (!menu) return false;
+  const titles = menuTitleRects();
+  for (let i = 0; i < titles.length; i++) {
+    const t = titles[i];
+    if (px >= t.x && px < t.x + t.w && py < MENUBAR_H) {
+      menu.open = menu.open === i ? null : i;
+      render();
+      return true;
+    }
+  }
+  if (menu.open !== null) {
+    const r = menuPullRect(menu.open);
+    if (px >= r.x && px < r.x + r.w && py >= r.y && py < r.y + r.h) {
+      const i = Math.floor((py - r.y - 1) / MENUITEM_H);
+      const it = r.items[i];
+      if (it && it.cmd) doCommand(it.cmd);
+      return true;
+    }
+  }
+  menu = null;                 // 點在選單外面就收起來
+  render();
+  return true;
+}
+
 function popupHit(px, py) {
   if (!popup) return -2;
   const f = popup.kind === 'tools' ? FORM_TOOLS : FORM_FUNCTIONS;
@@ -1207,6 +1381,8 @@ function render() {
   }
   drawToolbar();     // block.c:1166 工具列是最後畫的，蓋在圖上面
   drawPopup();       // 彈出視窗又蓋在工具列上面
+  drawMenu();        // 選單再蓋在彈出視窗上面
+  drawAbout();       // AboutForm 是 modal，整片蓋掉
   renderTree();
 }
 
@@ -2184,7 +2360,10 @@ let resize = null;   // {block, ox, oy} —— DRAG 工具改結構元件大小
 cv.addEventListener('pointerdown', ev => {
   const { x: px, y: py } = canvasPos(ev);
 
-  // 彈出視窗在最上層，先攔
+  // 選單和 AboutForm 在最上層（Palm 的選單會蓋掉整個 form）
+  if (menuPenDown(px, py)) return;
+
+  // 彈出視窗在下一層，先攔
   if (popup) {
     const hit = popupHit(px, py);
     if (hit === -2) { popup = null; render(); return; }       // 點視窗外就關掉
@@ -2514,6 +2693,7 @@ document.getElementById('speed').addEventListener('input', e => {
 /* ========================= 場景切換 ========================= */
 function setScene(builder, label) {
   popup = null; wireStart = null; hoverNode = null; penPos = null; drag = null; resize = null; keyboardObject = null;
+  menu = null; about = false;
   killTimer(); RUN = 0; STOP = 0;
   ticks = 0;
   scene = builder();
@@ -2535,6 +2715,11 @@ document.getElementById('file').addEventListener('change', e => {
   if (e.target.files[0]) loadFile(e.target.files[0]);
 });
 document.getElementById('save').addEventListener('click', saveFile);
+document.getElementById('menu').addEventListener('click', () => {
+  menu = menu ? null : { open: null };   // Palm 的 Menu 鍵：叫出來 / 收回去
+  about = false;
+  render();
+});
 document.getElementById('reset').addEventListener('click', () => {
   setScene(SCENES[document.getElementById('scene').value].build);
 });

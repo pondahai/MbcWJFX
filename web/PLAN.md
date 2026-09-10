@@ -23,7 +23,7 @@
 | `PenDownInBlockToolArea` | ✅ | `toolbarHit()`，含點標題切換 form（`block.c:2008`） |
 | `BlockpenDownProcess` | ⚠️ | HAND／THREAD／SCISSOR／KILL／DRAG 做了；PENCIL 沒做 |
 | `BlockpenMoveProcess` | ✅ | 拖曳元件、拉大小、拉線 |
-| `BlockDiagramFormDoCommand` | ❌ | 下拉選單 |
+| `BlockDiagramFormDoCommand` | ✅ | 下拉選單（File / Works / Run / About），內容取自 `Starter.prc` 的 MBAR 1000 / 1100 |
 
 ## panel.c（1035 行）
 
@@ -121,7 +121,7 @@
 | `blocktools.c` / `paneltools.c` / `tools.c` | ✅ | 工具選單 |
 | `db.c` | ➖ | Palm 資料庫管線 |
 | `mbcwjfx.c` | ➖ | 應用程式生命週期與事件迴圈 |
-| `about.c` | ❌ | 關於畫面（有 `dahaiBitmap`） |
+| `about.c` | ✅ | 關於畫面，版面照 `StarterRsc.h`、文字取自 tFRM 1200 |
 
 ---
 
@@ -160,7 +160,7 @@
 5. ~~`ChangeLinkList` — 把元件拖進／拖出結構元件~~ ✅
 6. ~~自訂元件一整套（`HOOKBLOCK`）~~ ✅
 7. ~~`CrossWire` 跨層接線~~ ✅
-8. 選單、關於畫面
+8. ~~選單、關於畫面~~ ✅
 9. ~~`ItemMoveToLastPosition` — 點選時把元件移到最上層~~ ✅
 
 ## 跨越結構邊界的資料流
@@ -186,3 +186,7 @@
 - 右邊那一欄（執行控制、場景、節點狀態表）是原版沒有的除錯用介面。
   工具列上的圖示和它們共用同一份狀態，兩邊按都一樣。
 - 數字鍵盤旁邊會顯示正在輸入的數字，原版沒有。
+- Palm 是按硬體的 Menu 鍵叫出下拉選單，網頁沒有那顆鍵，改成右邊那欄的
+  「選單（Menu）」按鈕。選單本身還是畫在 160×160 螢幕裡面。
+- 關於畫面的 `Last compiled:` 原版印編譯時的 `__DATE__ __TIME__`，
+  網頁版改印 `vpl.html` 的 Last-Modified。
