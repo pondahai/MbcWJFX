@@ -593,6 +593,14 @@ function drawDiagram(blocks, wires, wx, wy) {
     if (b.bap.DrawBorder) {                               // block.c:966 選取外框
       rect(x - 1, y - 1, SIZE.x + 3, SIZE.y + 3);
     }
+    if (b.bap.NoInput) {          // 輸入沒接線 —— 網頁版加的錯誤標記，原版沒有
+      rect(x - 3, y - 3, SIZE.x + 7, SIZE.y + 7);
+      ctx.font = 'bold 9px ui-monospace,Consolas,monospace';
+      ctx.textBaseline = 'top';
+      // 驚嘆號擺右邊，貼到螢幕邊緣就改擺左邊，免得被裁掉
+      const bx = x + SIZE.x + 4;
+      ctx.fillText('!', bx > 154 ? x - 6 : bx, y - 3);
+    }
     if (opts.showId) {                                    // block.c:1009 SHOW_ID
       ctx.font = '8px ui-monospace,Consolas,monospace';
       ctx.textBaseline = 'top';
@@ -2944,6 +2952,8 @@ function startTimer() {
 function killTimer() { clearInterval(timer); timer = null; }
 
 function resetRun() {
+  const clear = bs => { for (const b of bs) { b.bap.NoInput = false; for (const h of b.hooks || []) clear(h.blocks); } };
+  clear(scene.blocks);
   checkConnection(scene.blocks, false);
   resetWireStatus(scene.blocks, scene.wires);
 }
@@ -2962,7 +2972,44 @@ function syncUI() {
    自訂元件的暗線段缺了）會無止盡空轉 —— 原版就是這樣，要使用者自己按 STOP。
    網頁版多一道熄火：連續這麼多個 tick 整個執行狀態都沒變，就當作卡住了，
    停下來並說明原因，不然畫面上看起來只是「跑不完」。 */
+/* 缺少輸入的元件 —— 網頁版另外加的錯誤檢查（原版沒有）。
+
+   CheckConnection（run.c 的那支）算 INodeNUM 是「數 TYPE==1 的節點個數」，
+   不是「數接上線的節點個數」。所以一顆有輸入節點卻沒接線的元件，INodeNUM
+   永遠歸不了零、DoRun_BlockRun 每個 tick 都把 handle 設成 true —— 原版就會
+   一直空轉到使用者按 STOP。
+
+   這是圖畫錯了，不是跑得慢，所以要指出來是哪一顆，而不是讓它默默轉。
+   刻意不採「沒接線就當 0」的作法：資料流語言裡「沒接線」跟「接了一個 0」
+   是兩件事，自動補 0 會把接線漏掉的錯誤變成算錯的答案。 */
+function findUnfedInputs() {
+  const fed = new Set();
+  const walk = sc => {
+    for (const w of sc.wires) { fed.add(w.StartNodeP); fed.add(w.EndNodeP); }
+    for (const b of sc.blocks) for (const h of b.hooks || []) walk(h);
+  };
+  walk(scene);
+  const bad = [];
+  const scan = (sc, path) => {
+    for (const b of sc.blocks) {
+      const miss = b.bap.IONodeLLHead.filter(n => n.TYPE === 1 && !fed.has(n));
+      b.bap.NoInput = miss.length > 0;
+      if (miss.length) bad.push({ block: b, miss, path });
+      for (const h of b.hooks || []) scan(h, path.concat('#' + b.ID));
+    }
+  };
+  scan(scene, []);
+  return bad;
+}
+function unfedText(bad) {
+  return bad.map(u => {
+    const where = u.path.length ? `（在 ${u.path.join(' → ')} 裡面）` : '';
+    return `#${u.block.ID}${where} 的第 ${u.miss.map(n => n.ID).join('、')} 號輸入`;
+  }).join('；');
+}
+
 const STALL_TICKS = 64;
+let runWarn = '';    // 開跑時就發現的問題，整段執行期間都掛在狀態列上
 let stallFingerprint = '', stallCount = 0;
 let loopIterations = 0;   // 迴圈總共重跑了幾輪，只給 runFingerprint() 用
 
@@ -2994,13 +3041,17 @@ function tick() {
     if (fp === stallFingerprint) stallCount++; else { stallFingerprint = fp; stallCount = 0; }
     if (stallCount >= STALL_TICKS) {
       killTimer(); RUN = 0; STOP = 0;
-      runStatus('卡住了：連續 ' + STALL_TICKS + ' 個 tick 沒有任何進展（' + ticks + ' ticks）。'
-              + '通常是有元件的輸入沒接線，或自訂元件的接腳沒接上。');
+      const bad = findUnfedInputs();
+      runStatus(bad.length
+        ? '停住了（' + ticks + ' ticks）：' + unfedText(bad) + '沒有接線，'
+          + '永遠等不到資料，整張圖就結束不了。畫面上已把那些元件框起來。'
+        : '卡住了：連續 ' + STALL_TICKS + ' 個 tick 沒有任何進展（' + ticks + ' ticks）。'
+          + '通常是自訂元件的接腳沒接上。');
       syncUI();
       return;
     }
     if (ticks >= MAX_TICKS) { killTimer(); RUN = 0; STOP = 0; runStatus(`第 ${ticks} 個 tick 仍未結束，已中止`); }
-    else runStatus(`執行中… ${ticks} ticks`);
+    else runStatus(`執行中… ${ticks} ticks` + runWarn);
     syncUI();
     return;
   }
@@ -3018,9 +3069,12 @@ function runButton() {
     const shells = [];
     const scan = bs => { for (const b of bs) { if (b.TYPE === HOOKBLOCK && !b.hooks) shells.push(b.filename || ('#' + b.ID)); for (const h of b.hooks || []) scan(h.blocks); } };
     scan(scene.blocks);
-    runStatus(shells.length
-      ? `執行中…（⚠ 自訂元件 ${[...new Set(shells)].map(x => `"${x}"`).join('、')} 是空殼，找不到內容，不會算出東西）`
-      : '執行中…');
+    const bad = findUnfedInputs();          // 缺輸入是錯誤，一開跑就講，不必等熄火
+    const warn = [];
+    if (shells.length) warn.push(`自訂元件 ${[...new Set(shells)].map(x => `"${x}"`).join('、')} 是空殼，找不到內容`);
+    if (bad.length) warn.push(`${unfedText(bad)}沒有接線，那些元件不會執行`);
+    runWarn = warn.length ? `（⚠ ${warn.join('；')}）` : '';
+    runStatus('執行中…' + runWarn);
   }
   else if (RUN === 1) { RUN = 2; killTimer(); runStatus(`暫停於 ${ticks} ticks`); }
   else { RUN = 1; startTimer(); }
