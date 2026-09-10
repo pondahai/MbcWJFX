@@ -52,7 +52,10 @@
   button{border:1px solid var(--bd);border-radius:8px;padding:6px 12px;cursor:pointer;
          font:13px inherit;background:var(--bg);color:var(--fg)}
   button:hover{border-color:var(--accent);color:var(--accent)}
-  #status{font-size:12px;margin:10px 0 0;min-height:1em}
+  #status,#runstat{font-size:12px;margin:10px 0 0;min-height:1em}
+  #runstat{font-variant-numeric:tabular-nums;color:var(--mut)}
+  select{border:1px solid var(--bd);border-radius:8px;padding:6px 10px;font:13px inherit;
+         background:var(--bg);color:var(--fg);flex:1}
   #status.ok{color:var(--accent)} #status.err{color:#c0392b}
   .lcd.drop{outline:2px dashed var(--accent);outline-offset:3px}
   code{font:12px ui-monospace,Consolas,monospace;background:var(--bd);padding:1px 5px;border-radius:4px}
@@ -73,7 +76,22 @@
 
   <div class="side">
     <div class="panel">
-      <h2>存檔</h2>
+      <h2>執行</h2>
+      <div class="ctl">
+        <button id="run" type="button">執行</button>
+        <button id="step" type="button">單步</button>
+        <button id="stop" type="button">停止</button>
+      </div>
+      <div class="ctl"><span>速度</span><input type="range" id="speed" min="1" max="60" step="1" value="8"><span id="speedv">8/s</span></div>
+      <label class="row"><input type="checkbox" id="forever">跑完自動重來（RUNFOREVER）</label>
+      <p id="runstat"></p>
+    </div>
+
+    <div class="panel">
+      <h2>場景</h2>
+      <div class="ctl">
+        <select id="scene"></select>
+      </div>
       <label class="filebtn">
         <input type="file" id="file" accept=".pdb,application/octet-stream">
         選擇 .pdb 檔…
@@ -88,6 +106,8 @@
       <div class="ctl"><span>縮放</span><input type="range" id="zoom" min="1" max="6" step="1" value="3"><span id="zoomv">3×</span></div>
       <label class="row"><input type="checkbox" id="showId">顯示元件 ID（SHOW_ID）</label>
       <label class="row"><input type="checkbox" id="showNodes">標出 IO 節點中心</label>
+      <label class="row"><input type="checkbox" id="showValues">在圖上疊節點數值</label>
+      <label class="row"><input type="checkbox" id="showNotReady">顯示 NotReady 旗標</label>
       <label class="row"><input type="checkbox" id="showGrid">格線</label>
     </div>
 
@@ -102,7 +122,7 @@
 <script>
 /* <<SPRITES>> 由 tools/extract_bitmaps.py 產生，請勿手改 */
 const SPRITES = {
-  1000: {n:"AboutUnnamed1201BitMap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAATElEQVR42mP4//8/Axj8Jw4wQDQQrw2hAconpIcBUxF+qxhwSeMUx+8kTG1E+QFZG3oowQE+15NpA7F+oDSUCMcD+TFNWloiLbWSBACTrWG7hHCHXQAAAABJRU5ErkJggg=="},
+  1000: {n:"ADDBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAATElEQVR42mP4//8/Axj8Jw4wQDQQrw2hAconpIcBUxF+qxhwSeMUx+8kTG1E+QFZG3oowQE+15NpA7F+oDSUCMcD+TFNWloiLbWSBACTrWG7hHCHXQAAAABJRU5ErkJggg=="},
   1100: {n:"SUBBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAASUlEQVR42mP4//8/Axj8Jw4wQDQQrw2hAconpA1dA0FtDATliLIBjzbCGtC0oYcSHODURr4NxPqBOqGEzxTyY5q0tERaaiUJAAC+VWqyfLlofgAAAABJRU5ErkJggg=="},
   1200: {n:"MULBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAS0lEQVR42mP4//8/Axj8Jw4wQDQQrw2hAconpA1dA0FtDATl8PkBWSkubShKMXViasNnNnZt5NtArB/IDyVi44H8mCYtLZGWWkkCAPEJXr43eQCMAAAAAElFTkSuQmCC"},
   1300: {n:"DIVBitmap", w:16, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAASUlEQVR42mP4//8/Axj8Jw4wQDQQrw2hAconpA1dA0FtDATlCDsJvzbsTsJjG3oowQFObeTbQKwfKA0lwvFAfkyTlpZIS60kAQDXr2S4YA0GUQAAAABJRU5ErkJggg=="},
@@ -111,7 +131,7 @@ const SPRITES = {
   1600: {n:"TOOLSBitmap", w:40, h:64, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAABACAIAAADnO6INAAABQElEQVR42u2YSxLDIAxDc/9Lp5sukoKFJGyY6cCiTQvhMeCPzHXtaPd9f79Wthf/9ftnXdw/4eygKx3c5YXg7jvt7OChnXo1GLNrwYAtgNVTx4ddCAYmHYI3+PEBP8atAz/DWTobxdL2MxpWDo5Co3FADridEQfkQnDEdgKICo62QcjH+AFbeDQYJM3OpDNWM2R3wIzjDruGbLTVBlgyxs4mMO4/Q0X5mAdHVjI0w8uIhUDXMVQ2STBdwDuctCgtqOsgfj6WToGXFZQQAApSSgzl0mcb+KjMAz7gdU7sp0VGfphgj50DNthpYJU9m4+ldBSJeKeE6V6zeWDn8oVktwqVKT4E8FDSSjJNO2Mgg9TiI8G4vOJjEEASr2ZKwGrxQcXqLHYhOMG4bJnOFx+LdPUiMOOQR3Md8D+D97RdS/gAyjLMW6+3NOIAAAAASUVORK5CYII="},
   1700: {n:"CONSTU8Bitmap", w:32, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAQCAIAAAD4YuoOAAAAHUlEQVR42mNgGCbgPw3AqAWjFoxaMGoBqRYMYQAASOzsPnjpgSoAAAAASUVORK5CYII="},
   1800: {n:"UISBitmap", w:40, h:64, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAABACAIAAADnO6INAAAAxUlEQVR42u2YOxLAIAhEvf+lTZMmxs9GBHQDTWYs8vgJO6bkYTnn+2NpD74z+O1H66TIGzW4f+4DBtOwGIwnQDFitxp/TjXStEhXz4CHPdIC4xdsg8nlZj9eEgEOcIBZxJ72iKyDF4bVWuFG4CLQMXioRvrLpmCcD0bcmqzxpmAw1URg3hp38ql1nZBfa4F9Rqb1kjB6aEIqZwQOzRWaSxroxmDhWqQD4y9iLOCoMU+NpzWXaHJJNNeBI9MaHJqL8KHcy4ULfhcT+NOHFAQAAAAASUVORK5CYII="},
-  1900: {n:"AboutUnnamed1206BitMap", w:64, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAQCAIAAAAphe5+AAAAoUlEQVR42u2W0QrAIAhF/f+f3h4GI9J7NdJiIx8GSbWO3jS5Pm7yQwARx2lOePyvdR4+jeyZBtD6xTKyJHK4KgC9L/mTRjK/JvkUgHimqeLhR0Ii2CskpIdI3JGrkikhrlrz6CmhXQGARNzKDCkbKTAZIHh9kYT2VyFdsLuwjWYABaIkA8H+xSF5rriuZsuom1wUy0h5NdtzVSc+j7kDMGI3ubrUqppApqgAAAAASUVORK5CYII="},
+  1900: {n:"dahaiBitmap", w:64, h:16, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAAAQCAIAAAAphe5+AAAAoUlEQVR42u2W0QrAIAhF/f+f3h4GI9J7NdJiIx8GSbWO3jS5Pm7yQwARx2lOePyvdR4+jeyZBtD6xTKyJHK4KgC9L/mTRjK/JvkUgHimqeLhR0Ii2CskpIdI3JGrkikhrlrz6CmhXQGARNzKDCkbKTAZIHh9kYT2VyFdsLuwjWYABaIkA8H+xSF5rriuZsuom1wUy0h5NdtzVSc+j7kDMGI3ubrUqppApqgAAAAASUVORK5CYII="},
   2000: {n:"CLENCHBitmap", w:13, h:12, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA0AAAAMCAIAAAA21aCOAAAAQUlEQVR42mP4jwQYGBjQSIQUHkUMYICiDi6Ek8Qnh2Y2pmvQAAOyC6ikjhhLUfxLlDpcStHDD5dS7OoQXmNA9yIAVK5atCoWMlwAAAAASUVORK5CYII="},
   2100: {n:"HANDBitmap", w:18, h:18, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAIAAADZrBkAAAAAWklEQVR42sXSwQoAIAgD0P3/T9chkNS59FSHCOtRuLDkAMDr4uhZUAlqwpxli2U8YO79P1joXtVPx2KpyIozHRRhQQ6YvkSxjnwEMGazlnSk+pNCtpiFYePe2sZG/R9HnQssAAAAAElFTkSuQmCC"},
   2200: {n:"BLANKBitmap", w:18, h:18, src:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAIAAADZrBkAAAAAFklEQVR42mP4TxZgGNU2qm1U22DXBgCOGshifZEKMgAAAABJRU5ErkJggg=="},
@@ -196,7 +216,7 @@ let nextId = 1;
 
 // struct IONODE：TYPE 1 = input、0 = output、2 = drag point
 function ioNode(TYPE, TL, EXT, ID = 0) {
-  return { ID, TYPE, NotReady: false, TL, EXT };
+  return { ID, TYPE, NotReady: false, BYTES: 2, value: 0, TL, EXT };
 }
 
 // struct BlockNode + BA（方塊外觀）。hooks 是內部元件的容器，
@@ -295,6 +315,69 @@ function buildScene() {
   return { blocks, wires };
 }
 
+/* 第二個場景：這張是拿來「跑」的。上半是 5 + 3 送進顯示器，
+   下半是一個數到 3 的 for 迴圈，把計數器 I 接到迴圈內的顯示器。 */
+function buildRunScene() {
+  nextId = 1;
+
+  const ctrlA = block(FUNCBLOCK, B.CTRLU8BLOCKBitmap, { x: 2, y: 16 }, { x: 32, y: 16 },
+    { io: [ioNode(0, { x: 0, y: 0 }, { x: 32, y: 16 })] });
+  const ctrlB = block(FUNCBLOCK, B.CTRLU8BLOCKBitmap, { x: 2, y: 38 }, { x: 32, y: 16 },
+    { io: [ioNode(0, { x: 0, y: 0 }, { x: 32, y: 16 })] });
+  ctrlA.bap.IONodeLLHead[0].value = 5;
+  ctrlB.bap.IONodeLLHead[0].value = 3;
+
+  // 運算元件的節點順序就是 run.c 取值的順序：[0]、[1] 是輸入，[2] 是輸出
+  const add = block(FUNCBLOCK, B.ADDBitmap, { x: 62, y: 27 }, { x: 16, y: 16 }, {
+    io: [
+      ioNode(1, { x: 0, y: 0 }, { x: 8, y: 8 }),
+      ioNode(1, { x: 0, y: 8 }, { x: 8, y: 8 }, 1),
+      ioNode(0, { x: 8, y: 0 }, { x: 8, y: 16 }, 2),
+    ],
+  });
+  const ind = block(FUNCBLOCK, B.INDICATOR8BLOCKBitmap, { x: 110, y: 27 }, { x: 32, y: 16 },
+    { io: [ioNode(1, { x: 0, y: 0 }, { x: 32, y: 16 })] });
+
+  // 迴圈內部。blocks[0] 必須是 N、blocks[1] 必須是 I ——
+  // run.c:1293 的迴圈條件判斷就是照這個順序取的。
+  const loopSize = { x: 104, y: 62 };
+  const N = block(FUNCBLOCK, B.FORLOOPNBitmap, { x: 8, y: 13 }, { x: 10, y: 10 },
+    { io: [ioNode(1, { x: 0, y: 0 }, { x: 10, y: 10 })] });
+  const I = block(FUNCBLOCK, B.FORLOOPIBitmap, { x: 8, y: loopSize.y - 17 }, { x: 10, y: 10 },
+    { io: [ioNode(0, { x: 0, y: 0 }, { x: 10, y: 10 })] });
+  const count = block(FUNCBLOCK, B.CTRLU8BLOCKBitmap, { x: 28, y: 8 }, { x: 32, y: 16 },
+    { io: [ioNode(0, { x: 0, y: 0 }, { x: 32, y: 16 })] });
+  count.bap.IONodeLLHead[0].value = 3;
+  const show = block(FUNCBLOCK, B.INDICATOR8BLOCKBitmap, { x: 28, y: 38 }, { x: 32, y: 16 },
+    { io: [ioNode(1, { x: 0, y: 0 }, { x: 32, y: 16 })] });
+
+  const forloop = block(LOOPBLOCK, B.FORLOOPBitmap, { x: 4, y: 82 }, loopSize, {
+    ctrl: [{ ID: 1, TL: { x: loopSize.x - 7, y: loopSize.y - 7 }, EXT: { x: 7, y: 7 } }],
+    hooks: [{
+      name: null,
+      blocks: [N, I, count, show],
+      wires: [
+        wire(count, count.bap.IONodeLLHead[0], N, N.bap.IONodeLLHead[0]),
+        wire(I, I.bap.IONodeLLHead[0], show, show.bap.IONodeLLHead[0]),
+      ],
+    }],
+  });
+
+  const blocks = [ctrlA, ctrlB, add, ind, forloop];
+  const wires = [
+    wire(ctrlA, ctrlA.bap.IONodeLLHead[0], add, add.bap.IONodeLLHead[0]),
+    wire(ctrlB, ctrlB.bap.IONodeLLHead[0], add, add.bap.IONodeLLHead[1]),
+    wire(add, add.bap.IONodeLLHead[2], ind, ind.bap.IONodeLLHead[0]),
+  ];
+  linkParents(blocks);
+  return { blocks, wires };
+}
+
+const SCENES = {
+  layout: { name: '版面示範', build: buildScene },
+  run: { name: '資料流（可執行）', build: buildRunScene },
+};
+
 /* ==========================================================================
    繪圖 — 對應 Src/block.c
    Palm 的 WinDrawLine 是 1 像素、無反鋸齒的黑線。canvas 要畫出一樣的
@@ -302,7 +385,7 @@ function buildScene() {
    ========================================================================== */
 const cv = document.getElementById('screen');
 const ctx = cv.getContext('2d');
-const opts = { showId: false, showNodes: false, showGrid: false };
+const opts = { showId: false, showNodes: false, showGrid: false, showValues: false, showNotReady: false };
 let scene = null, selected = null;
 
 // Palm 的 WinEraseRectangle 是清成白色；LCD 色調由 CSS 的 .lcd::after 疊上去
@@ -430,6 +513,20 @@ function drawDiagram(blocks, wires, wx, wy) {
         ctx.fillRect(c.x - 1, c.y - 1, 3, 3);
       }
     }
+    // 執行狀態：節點數值，以及 block.c:213 SHOW_NOTREADYBIT 的 T/F 旗標
+    if (opts.showValues || opts.showNotReady) {
+      ctx.font = '8px ui-monospace,Consolas,monospace';
+      ctx.textBaseline = 'top';
+      for (const n of b.bap.IONodeLLHead) {
+        const c = nodeCenter(b, n);
+        let t = '';
+        if (opts.showValues) t += n.value | 0;
+        if (opts.showNotReady) t += (opts.showValues ? ':' : '') + (n.NotReady ? 'T' : 'F');
+        const wpx = ctx.measureText(t).width;
+        eraseRect(c.x - wpx / 2 - 1, c.y - 4, wpx + 2, 9);
+        ctx.fillText(t, c.x - wpx / 2, c.y - 4);
+      }
+    }
   }
 }
 
@@ -460,9 +557,17 @@ function renderTree() {
   const walk = (blocks, depth) => {
     for (const b of blocks) {
       const pad = '  '.repeat(depth);
-      const nm = (SPRITES[b.bap.BITMAPID] || {}).n || '?';
-      const label = esc(`${pad}#${b.ID} ${TYPE_NAME[b.TYPE]} ${nm} @${b.bap.XY.x},${b.bap.XY.y}`);
+      const nm = ((SPRITES[b.bap.BITMAPID] || {}).n || '?').replace(/Bitmap$/, '');
+      // INodeNUM / ONodeNUM 是 run.c 的執行計數器，-1 代表沒有那一種節點
+      const cnt = b.bap.INodeNUM === undefined ? ''
+        : `  in:${b.bap.INodeNUM} out:${b.bap.ONodeNUM}`;
+      const label = esc(`${pad}#${b.ID} ${nm}${cnt}`);
       out.push(b === selected ? `<span class="sel">${label}</span>` : label);
+      for (const n of b.bap.IONodeLLHead) {
+        // NotReady 為 false 才是資料備妥，所以 ● 表示可用、○ 表示還在等
+        out.push(esc(`${pad}   ${n.NotReady ? '○' : '●'} `
+          + `${n.TYPE === 1 ? 'in ' : 'out'}[${n.ID}] = ${n.value | 0}`));
+      }
       for (const h of b.hooks || []) {
         if (b.TYPE === CASEBLOCK && h !== b.hooks[b.CurrentHOOK]) continue;
         if (h.name) out.push(esc(`${pad}  case "${h.name}"`));
@@ -473,6 +578,210 @@ function renderTree() {
   walk(scene.blocks, 0);
   out.push('', esc(`線段 ${scene.wires.length} 條`));
   document.getElementById('tree').innerHTML = out.join('\n');
+}
+
+/* ==========================================================================
+   執行引擎 — 對應 Src/run.c
+
+   這是資料流（dataflow）模型，不是指令流：沒有程式計數器，只有「哪個節點
+   的資料備妥了」。每個 IO 節點有一個 NotReady 旗標，每次 tick 做兩件事 ——
+   先把備妥的資料沿線段搬到對面（DoRun_WireRun），再讓輸入到齊的元件計算
+   （DoRun_BlockRun）。tick 回傳 handle：true 表示還有事情沒做完。
+
+   速度最佳化靠 INodeNUM / ONodeNUM 兩個計數器（原始碼 6-3 那次改版）：
+   輸入全部到齊 = INodeNUM 歸零，輸出還有沒算的 = ONodeNUM 不為零。
+   兩個計數器為 0 時會被設成 -1，代表「這個元件根本沒有輸入／輸出」。
+   ========================================================================== */
+
+const to16 = v => (v << 16) >> 16;          // Palm 的 int 是 16 bit
+
+// run.c:63 CheckConnection —— 重算 IO 計數並設定初始的 NotReady 狀態
+function checkConnection(blocks, ioBlockClear) {
+  for (const b of blocks) {
+    const io = b.bap.IONodeLLHead;
+    b.bap.INodeNUM = io.filter(n => n.TYPE === 1).length || -1;
+    b.bap.ONodeNUM = io.filter(n => n.TYPE === 0).length || -1;
+    const all = ready => { for (const n of io) n.NotReady = ready; };
+
+    switch (b.bap.BITMAPID) {
+      case B.CTRLU8BLOCKBitmap:
+      case B.LOGICCTRLBitmap:
+        // 控制鈕是資料的源頭，一開始就備妥（ONodeNUM=0 表示輸出算完了）
+        if (ioBlockClear) { io[0].NotReady = true; }
+        else { io[0].NotReady = false; b.bap.ONodeNUM = 0; }
+        break;
+      case B.FORLOOPIBitmap:
+        io[0].NotReady = true;
+        break;
+      case B.WHILELOOPBitmap:
+        all(true);
+        checkConnection(b.hooks[0].blocks, ioBlockClear);
+        break;
+      case B.FORLOOPBitmap:
+        all(true);
+        // run.c:128 迴圈計數器 I 歸零（迴圈內第二個元件的第一個節點）
+        b.hooks[0].blocks[1].bap.IONodeLLHead[0].value = 0;
+        checkConnection(b.hooks[0].blocks, ioBlockClear);
+        break;
+      case B.CUSTOMBLOCKBitmap:
+        all(true);
+        if (b.hooks) checkConnection(b.hooks[0].blocks, true);
+        break;
+      case B.SWITCHCASEBitmap:
+        break;
+      default:
+        all(true);
+    }
+  }
+}
+
+// run.c:24 ResetWireStatus
+function resetWireStatus(blocks, wires) {
+  for (const w of wires) { w.DIRTY = false; w.STARTRUN = false; w.RUNSEG = 0; }
+  for (const b of blocks) {
+    if (b.TYPE === HOOKBLOCK || b.TYPE === LOOPBLOCK) {
+      if (b.hooks) resetWireStatus(b.hooks[0].blocks, b.hooks[0].wires);
+    }
+  }
+}
+
+// run.c:559 MoveNodeData —— 目的端是 16 bit 就要截斷
+function moveNodeData(dest, src) {
+  dest.value = dest.BYTES === 2 ? to16(src.value) : src.value;
+}
+
+// run.c:198 DoItemRUN —— 元件本身的運算，全部照 IONodeLLHead 的順序取值
+function doItemRun(b, blocks, idx) {
+  const io = b.bap.IONodeLLHead;
+  const done = n => { n.NotReady = false; b.bap.ONodeNUM = 0; };
+  const bin = f => { io[2].value = f(io[0].value, io[1].value); done(io[2]); };
+  const cmp = f => { io[2].value = f(io[0].value, io[1].value) ? 1 : 0; done(io[2]); };
+
+  switch (b.bap.BITMAPID) {
+    case B.ADDBitmap: bin((a, c) => to16(a + c)); break;
+    case B.SUBBitmap: bin((a, c) => to16(a - c)); break;
+    case B.MULBitmap: bin((a, c) => to16(a * c)); break;
+    case B.DIVBitmap: bin((a, c) => (c === 0 ? 0 : Math.trunc(a / c))); break;
+    case B.ANDBitmap: bin((a, c) => a & c); break;
+    case B.ORBitmap:  bin((a, c) => a | c); break;
+    case B.NOTBitmap: io[1].value = io[0].value ? 0 : 1; done(io[1]); break;
+    case B.ABOVEBitmap:    cmp((a, c) => a > c); break;
+    case B.LESSBitmap:     cmp((a, c) => a < c); break;
+    case B.EQUBitmap:      cmp((a, c) => a === c); break;
+    case B.LESSEQUBitmap:  cmp((a, c) => a <= c); break;
+    case B.ABOVEEQUBitmap: cmp((a, c) => a >= c); break;
+    case B.FORLOOPNBitmap:
+      // run.c:424 N 只負責把它後面那個元件（I）的節點打開
+      if (blocks[idx + 1]) blocks[idx + 1].bap.IONodeLLHead[0].NotReady = false;
+      b.bap.ONodeNUM = 0;
+      break;
+    // 顯示器、控制鈕、結構元件本身不做事
+  }
+}
+
+// run.c:582 DoRun_WireRun —— 資料沿線段搬移
+function doRunWireRun(wires) {
+  for (const w of wires) {
+    if (w.DIRTY) continue;
+    const s = w.StartNodeP, e = w.EndNodeP;
+
+    // 輸出端備妥 -> 搬給還沒備妥的輸入端
+    if (!s.NotReady && s.TYPE === 0 && e.NotReady) {
+      moveNodeData(e, s); e.NotReady = false; w.EndBlockP.bap.INodeNUM--;
+    }
+    if (!e.NotReady && e.TYPE === 0 && s.NotReady) {
+      moveNodeData(s, e); s.NotReady = false; w.StartBlockP.bap.INodeNUM--;
+    }
+    // 兩端都是輸入時（迴圈邊上會出現），備妥的那端餵給另一端
+    if (s.TYPE === 1 && e.TYPE === 1) {
+      if (s.NotReady && !e.NotReady) {
+        moveNodeData(s, e); s.NotReady = false; w.StartBlockP.bap.INodeNUM--;
+      }
+      if (!s.NotReady && e.NotReady) {
+        moveNodeData(e, s); e.NotReady = false; w.EndBlockP.bap.INodeNUM--;
+      }
+    }
+  }
+}
+
+const inputsReady = b => b.bap.INodeNUM === 0 || b.bap.INodeNUM === -1;
+const outputsPending = b => (b.bap.ONodeNUM === -1 ? true : b.bap.ONodeNUM !== 0);
+
+// run.c:1043 DoRun_LOOPBLOCK
+function doRunLoopBlock(b) {
+  let handle = false;
+  if (!inputsReady(b)) return true;              // 輸入還沒到齊，下次再來
+  if (!outputsPending(b)) return false;          // 輸出都算完了，不用再進去
+
+  const inner = b.hooks[0];
+
+  /* run.c:1115 迴圈邊上的 IO 點要暫時對調角色 —— 從外面看是輸入的節點，
+     站在迴圈裡面看就變成輸出。進去之前翻一次，回來再翻回來。 */
+  const swap = () => {
+    const t = b.bap.ONodeNUM; b.bap.ONodeNUM = b.bap.INodeNUM; b.bap.INodeNUM = t;
+    for (const n of b.bap.IONodeLLHead) n.TYPE = n.TYPE === 1 ? 0 : 1;
+  };
+
+  swap();
+  const innerBusy = doRun(inner.blocks, inner.wires);
+  swap();
+
+  if (innerBusy) {
+    handle = true;
+    for (const n of b.bap.IONodeLLHead) if (n.TYPE === 0) n.NotReady = true;
+    return handle;
+  }
+
+  // 內部這一輪跑完了
+  if (b.bap.ONodeNUM !== 0 && b.bap.ONodeNUM !== -1) handle = true;
+  if (handle) return handle;
+
+  // run.c:1256 迴圈控制：決定要不要再跑一圈
+  const first = inner.blocks[0], second = inner.blocks[1];
+  const again = () => {
+    handle = true;
+    checkConnection(inner.blocks, false);
+    resetWireStatus(inner.blocks, inner.wires);
+    for (const n of b.bap.IONodeLLHead) {
+      if (n.TYPE === 0) { b.bap.ONodeNUM++; n.NotReady = true; }
+    }
+  };
+
+  if (b.bap.BITMAPID === B.WHILELOOPBitmap) {
+    if (!first.bap.IONodeLLHead[0].NotReady && first.bap.IONodeLLHead[0].value) again();
+  } else if (b.bap.BITMAPID === B.FORLOOPBitmap) {
+    const N = first.bap.IONodeLLHead[0], I = second.bap.IONodeLLHead[0];
+    if (!N.NotReady) {
+      if (N.value !== I.value) { again(); I.value++; }   // run.c:1326 N != I 就 I++
+      else I.value = 0;                                   // 相等，迴圈結束，I 歸零
+    }
+  }
+  return handle;
+}
+
+// run.c:1356 DoRun_BlockRun
+function doRunBlockRun(blocks) {
+  let handle = false;
+  blocks.forEach((b, i) => {
+    switch (b.TYPE) {
+      case HOOKBLOCK:
+        // 自訂元件（run.c:746 DoRun_HOOKBLOCK）還沒移植
+        break;
+      case LOOPBLOCK:
+        if (doRunLoopBlock(b)) handle = true;
+        break;
+      default:
+        if (!inputsReady(b)) { handle = true; break; }
+        if (outputsPending(b)) doItemRun(b, blocks, i);
+    }
+  });
+  return handle;
+}
+
+// run.c:1498 DoRun —— 一次 tick。回傳 true 表示還沒跑完
+function doRun(blocks, wires) {
+  doRunWireRun(wires);
+  return doRunBlockRun(blocks);
 }
 
 /* ==========================================================================
@@ -663,8 +972,11 @@ async function loadFile(file) {
   const status = document.getElementById('status');
   try {
     const parsed = parseSave(pdbToText(await file.arrayBuffer()));
+    stopRun('');
+    ticks = 0;
     scene = parsed;
     selected = null;
+    resetRun();
     render();
     const n = (bs) => bs.reduce((s, b) => s + 1 + (b.hooks || []).reduce((t, h) => t + n(h.blocks), 0), 0);
     status.textContent = `${file.name}：${n(scene.blocks)} 個元件、${scene.wires.length} 條線段`
@@ -702,15 +1014,95 @@ cv.addEventListener('pointerdown', ev => {
   render();
 });
 
+/* ========================= 執行的驅動 =========================
+   block.c:3096 的 nilEvent 迴圈：RUN==1 的時候每個 event 跑一次 DoRun，
+   回傳 false 就代表跑完了 —— RUNFOREVER 開著就重置狀態再來一輪，
+   否則把 RUN 歸零。這裡用 setInterval 代替 Palm 的 nilEvent。 */
+let RUN = 0, RUNFOREVER = false, ticks = 0, timer = null;
+const MAX_TICKS = 50000;   // 保險絲：接錯線的圖有可能永遠跑不完
+
+function runStatus(msg) {
+  document.getElementById('runstat').textContent = msg;
+}
+
+function stopRun(msg) {
+  RUN = 0;
+  clearInterval(timer);
+  timer = null;
+  document.getElementById('run').textContent = '執行';
+  if (msg) runStatus(msg);
+}
+
+function resetRun() {
+  checkConnection(scene.blocks, false);
+  resetWireStatus(scene.blocks, scene.wires);
+}
+
+function tick() {
+  const busy = doRun(scene.blocks, scene.wires);
+  ticks++;
+  render();
+  if (busy) {
+    if (ticks >= MAX_TICKS) stopRun(`第 ${ticks} 個 tick 仍未結束，已中止`);
+    else runStatus(`執行中… ${ticks} ticks`);
+    return;
+  }
+  if (RUNFOREVER) { resetRun(); runStatus(`跑完一輪，重來（${ticks} ticks）`); }
+  else stopRun(`結束，共 ${ticks} ticks`);
+}
+
+function startRun() {
+  if (RUN === 1) { stopRun(`暫停於 ${ticks} ticks`); return; }
+  if (ticks === 0) resetRun();
+  RUN = 1;
+  document.getElementById('run').textContent = '暫停';
+  clearInterval(timer);
+  timer = setInterval(tick, 1000 / +document.getElementById('speed').value);
+}
+
+document.getElementById('run').addEventListener('click', startRun);
+document.getElementById('step').addEventListener('click', () => {
+  stopRun();
+  if (ticks === 0) resetRun();
+  tick();
+  if (RUN === 0 && ticks > 0) runStatus(`單步：${ticks} ticks`);
+});
+document.getElementById('stop').addEventListener('click', () => {
+  stopRun('已停止');
+  ticks = 0;
+  resetRun();
+  render();
+});
+document.getElementById('speed').addEventListener('input', e => {
+  document.getElementById('speedv').textContent = e.target.value + '/s';
+  if (RUN === 1) { clearInterval(timer); timer = setInterval(tick, 1000 / +e.target.value); }
+});
+document.getElementById('forever').addEventListener('change', e => { RUNFOREVER = e.target.checked; });
+
+/* ========================= 場景切換 ========================= */
+function setScene(builder, label) {
+  stopRun('');
+  ticks = 0;
+  scene = builder();
+  selected = null;
+  resetRun();
+  render();
+  const st = document.getElementById('status');
+  st.textContent = label || '';
+  st.className = '';
+}
+
+const sel = document.getElementById('scene');
+for (const [k, v] of Object.entries(SCENES)) {
+  sel.insertAdjacentHTML('beforeend', `<option value="${k}">${v.name}</option>`);
+}
+sel.addEventListener('change', e => setScene(SCENES[e.target.value].build));
+
 document.getElementById('file').addEventListener('change', e => {
   if (e.target.files[0]) loadFile(e.target.files[0]);
 });
 document.getElementById('reset').addEventListener('click', () => {
-  scene = buildScene();
-  selected = null;
-  document.getElementById('status').textContent = '';
-  document.getElementById('status').className = '';
-  render();
+  setScene(SCENES[document.getElementById('scene').value].build);
 });
 
 // 拖放：file:// 底下沒辦法 fetch 本機檔案，所以拖放和檔案挑選是唯二的入口
@@ -733,7 +1125,7 @@ function setZoom(z) {
   document.getElementById('zoomv').textContent = z + '×';
 }
 document.getElementById('zoom').addEventListener('input', e => setZoom(+e.target.value));
-for (const k of ['showId', 'showNodes', 'showGrid']) {
+for (const k of ['showId', 'showNodes', 'showGrid', 'showValues', 'showNotReady']) {
   document.getElementById(k).addEventListener('change', e => { opts[k] = e.target.checked; render(); });
 }
 matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => render());
@@ -745,7 +1137,9 @@ matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => rende
     s.img.onload = s.img.onerror = res;
     s.img.src = s.src;
   })));
-  scene = buildScene();
+  document.getElementById('scene').value = 'run';
+  scene = buildRunScene();
+  resetRun();
   setZoom(3);
   render();
 })();

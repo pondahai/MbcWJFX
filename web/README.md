@@ -15,8 +15,9 @@ web/
 
 ## 現況
 
-目前是**唯讀檢視器**：可以讀 Palm 的 `.pdb` 存檔、把 block diagram 畫在
-160×160 的畫布上、點選元件、看場景結構。還不能編輯、不能執行。
+目前可以讀 Palm 的 `.pdb` 存檔、把 block diagram 畫在 160×160 的畫布上、
+點選元件、看場景結構，**而且能執行**（執行／單步／停止，附即時的節點狀態表）。
+還不能編輯。
 
 載入方式是選檔或把檔案拖到畫面上 —— `file://` 底下瀏覽器不准 fetch 本機檔案，
 所以沒辦法自動載入。預設顯示的是內建測試場景，對應 `Src/testdata.c` 裡
@@ -37,6 +38,14 @@ JS 這邊的欄位名稱沿用 C 的寫法，函式上面標了對應的原始�
 | `hitTest()` | `Src/misc.c:477` `IsInArea()`（簡化版） |
 | `parseSave()` | `Src/load.c:359` `parse_loop()` |
 | `pdbToText()` | `Src/load.c:733` `LOAD()` 的 `FileOpen`／`FileRead` |
+| `doRun()` | `Src/run.c:1498` `DoRun()` |
+| `doRunWireRun()` | `Src/run.c:582` `DoRun_WireRun()` |
+| `doRunBlockRun()` | `Src/run.c:1356` `DoRun_BlockRun()` |
+| `doRunLoopBlock()` | `Src/run.c:1043` `DoRun_LOOPBLOCK()` |
+| `doItemRun()` | `Src/run.c:198` `DoItemRUN()` |
+| `checkConnection()` | `Src/run.c:63` `CheckConnection()` |
+| `resetWireStatus()` | `Src/run.c:24` `ResetWireStatus()` |
+| `tick()` 的驅動迴圈 | `Src/block.c:3096` 的 `nilEvent` 處理 |
 
 C 版本裡 `Src/linklist.c` 那 836 行在手動維護 `PREV`/`NEXT` 雙向鏈結串列，
 JS 直接用陣列和物件參照，所以那一整層不需要重寫。
@@ -70,6 +79,53 @@ Palm 的 bitmap 是**不透明**的（白底黑點），所以畫布底色必須
 
 另外 `WinDrawLine` 畫的是 1 像素無反鋸齒的線，canvas 要畫出一樣的效果
 得把座標對到像素中心（`+0.5`），否則線會糊成兩像素的灰。
+
+## 執行模型
+
+這是**資料流**（dataflow），不是指令流 —— 沒有程式計數器，只有「哪個節點的
+資料備妥了」。每個 IO 節點有一個 `NotReady` 旗標，每個 tick 做兩件事：
+
+1. `doRunWireRun()` 把備妥的資料沿線段搬到對面，搬完把對面的 `NotReady`
+   關掉，並把接收端元件的 `INodeNUM` 減一。
+2. `doRunBlockRun()` 讓輸入到齊的元件計算。
+
+tick 回傳 `handle`，true 代表還有事沒做完。外面的驅動迴圈一直呼叫到它回傳
+false 為止 —— 原版是 Palm 的 `nilEvent`（`Src/block.c:3096`），這裡用
+`setInterval`。
+
+速度靠 `INodeNUM` / `ONodeNUM` 兩個計數器（原始碼 2003-6-3 那次改版）：
+輸入全到齊 = `INodeNUM` 歸零，輸出還有沒算的 = `ONodeNUM` 不為零。
+計數為 0 時會被設成 **-1**，代表「這個元件根本沒有那種節點」，
+跟「有但已經算完」區分開來。
+
+### 迴圈是怎麼做的
+
+`doRunLoopBlock()` 有一個很漂亮的手法（`Src/run.c:1115`）：迴圈邊框上的
+IO 點在進入迴圈內部之前會**整組對調角色** —— 從外面看是輸入的節點，站在
+迴圈裡面看就是輸出。遞迴進去跑完再翻回來。
+
+for 迴圈的條件判斷（`Src/run.c:1293`）比較迴圈內第一個元件（N）和第二個
+元件（I）的值：不相等就 `I++`、重置內部所有元件和線段的狀態、再跑一圈；
+相等就把 I 歸零、迴圈結束。所以**迴圈內部 `blocks[0]` 必須是 N、`blocks[1]`
+必須是 I**，這個順序是寫死的。
+
+內建的「資料流（可執行）」場景跑起來是這樣（8 個 tick 結束）：
+
+```
+t1  5+3 算出 8                     I=0
+t2  8 送達顯示器                   I=1
+t4                                 I=2
+t6                                 I=3
+t8  N==I，I 歸零，迴圈結束 → 完成
+```
+
+### 還沒移植的部分
+
+- `DoRun_HOOKBLOCK()`（`Src/run.c:746`）—— 自訂元件的執行
+- 線段上的執行點動畫（`DrawRunPointOnWire()`，`Src/block.c:363`）。
+  原版的 `LAMP` 旗標開啟時會先跑完動畫才搬資料，`DIRTY` 就是為此存在的；
+  這裡直接走 `LAMP=false` 那條路徑，資料一次搬到位。
+- switch case 的執行（原版 `DoItemRUN` 裡 `SWITCHCASEBitmap` 就是空的）
 
 ## 存檔格式
 
@@ -128,5 +184,6 @@ FileStream 在記錄裡還有自己的表頭，格式沒有公開文件，所以
 
 - [ ] 拿真正的 Palm `.pdb` 驗證讀檔器
 - [ ] 編輯：拖曳元件、拉線（`Src/block.c` 的 `BlockpenDownProcess` / `BlockpenMoveProcess`）
-- [ ] 執行引擎（`Src/run.c`：dirty bit 傳播、`NotReady`、巢狀 forloop）
+- [ ] 自訂元件的執行（`DoRun_HOOKBLOCK`）
+- [ ] 線段上的執行點動畫（`LAMP` 那條路徑）
 - [ ] 元件面板與工具列（`Src/panel.c`、`Src/functions.c`）

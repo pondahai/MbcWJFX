@@ -60,13 +60,26 @@ def resources(data):
 
 
 def names():
-    """StarterRsc.h 裡的 #define XxxBitmap 1234 -> {1234: 'XxxBitmap'}"""
-    out = {}
+    """StarterRsc.h 裡的 #define XxxBitmap 1234 -> {1234: 'XxxBitmap'}
+
+    同一個資源 ID 可能出現兩次：真正的圖片常數以 "Bitmap" 結尾，
+    表單物件則是 "BitMap"（大寫 M），例如 ID 1000 同時是 ADDBitmap
+    和 AboutUnnamed1201BitMap。C 程式裡 bap->BITMAPID 用的是前者，
+    所以 "Bitmap" 一律優先。
+    """
+    out, weak = {}, {}
     with open(RSC_H, encoding='utf-8') as f:
         for line in f:
-            m = re.match(r'#define\s+(\w*[Bb]it[Mm]ap\w*)\s+(\d+)', line)
-            if m:
-                out.setdefault(int(m.group(2)), m.group(1))
+            m = re.match(r'#define\s+(\w+)\s+(\d+)', line)
+            if not m:
+                continue
+            name, rid = m.group(1), int(m.group(2))
+            if name.endswith('Bitmap'):
+                out.setdefault(rid, name)
+            elif name.endswith('BitMap'):
+                weak.setdefault(rid, name)
+    for rid, name in weak.items():
+        out.setdefault(rid, name)
     return out
 
 
