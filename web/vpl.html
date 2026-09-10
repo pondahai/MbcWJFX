@@ -2117,6 +2117,47 @@ function hitTest(blocks, px, py, wx = 0, wy = 0) {
   return null;
 }
 
+/* misc.c:477 IsInArea —— 拖曳中的元件落在哪個「結構」上（迴圈 / switch case）。
+   由內往外找最深的那一個；手上抓的那顆和它自己的子孫都要排除，
+   否則會把元件搬進自己裡面。落在空白處就是回到主串列（SYSHOOK）。 */
+function isDescendant(b, anc) { for (let p = b; p; p = p.parent) if (p === anc) return true; return false; }
+function structAt(blocks, px, py, moving, wx = 0, wy = 0) {
+  for (let i = blocks.length - 1; i >= 0; i--) {
+    const b = blocks[i];
+    if (b === moving) continue;
+    const x = b.bap.XY.x + wx, y = b.bap.XY.y + wy;
+    if (!(px >= x && px < x + b.bap.SIZE.x && py >= y && py < y + b.bap.SIZE.y)) continue;
+    if (b.TYPE !== LOOPBLOCK && b.TYPE !== CASEBLOCK) continue;
+    const h = b.hooks[b.TYPE === CASEBLOCK ? b.CurrentHOOK : 0];
+    // 先往裡面找更深的結構（IsInArea 的遞迴），沒有才用自己
+    const inner = structAt(h.blocks, px, py, moving, x, y);
+    return inner || b;
+  }
+  return null;
+}
+
+/* block.c:1766 ChangeLinkList —— 放手時，元件所屬的串列跟著落點換。
+   原版是先 BreakWireConnection 再搬串列；座標要從絕對值換算成
+   相對於新父層的值（block.c:1789 的那段迴圈）。 */
+function reparent(b, newParent) {
+  const oldParent = b.parent || null;
+  if (newParent === oldParent) return;
+  const abs = absOrigin(b);
+  const ax = abs.x + b.bap.XY.x, ay = abs.y + b.bap.XY.y;
+
+  removeBlock(scene, b);                       // 拆線 + 從原串列移除
+  const dest = newParent
+    ? newParent.hooks[newParent.TYPE === CASEBLOCK ? newParent.CurrentHOOK : 0]
+    : scene;
+  dest.blocks.push(b);
+  b.parent = newParent;
+  const no = absOrigin(b);
+  b.bap.XY.x = Math.max(0, ax - no.x);
+  b.bap.XY.y = Math.max(0, ay - no.y);
+  linkParents(scene.blocks);
+  resetRun();
+}
+
 function canvasPos(ev) {
   const r = cv.getBoundingClientRect();
   return {
@@ -2264,7 +2305,8 @@ cv.addEventListener('pointerdown', ev => {
     if (pointerState === B.HANDBitmap) {
       stopForEdit();
       const o = absOrigin(selected);
-      drag = { block: selected, dx: px - o.x - selected.bap.XY.x, dy: py - o.y - selected.bap.XY.y };
+      drag = { block: selected, dx: px - o.x - selected.bap.XY.x, dy: py - o.y - selected.bap.XY.y,
+               bg: selected.parent || null };
       cv.setPointerCapture(ev.pointerId);
     }
   }
@@ -2296,6 +2338,13 @@ cv.addEventListener('pointermove', ev => {
   // misc.c:800 PointIconYExt：筆點被夾在 18 以下，拖不到工具列上面去
   drag.block.bap.XY.x = Math.max(0, px - o.x - drag.dx);
   drag.block.bap.XY.y = Math.max(TOOLBAR_H - o.y, py - o.y - drag.dy);
+  /* block.c:2402 落在結構上就把那個結構框起來，放手時搬進去 */
+  const bg = structAt(scene.blocks, px, py, drag.block);
+  if (bg !== drag.bg) {
+    if (drag.bg && drag.bg !== selected) drag.bg.bap.DrawBorder = false;
+    drag.bg = bg;
+    if (bg) bg.bap.DrawBorder = true;
+  }
   render();
 });
 
@@ -2322,6 +2371,17 @@ cv.addEventListener('pointerup', ev => {
     hoverNode = null;
     penPos = null;
     render();
+  }
+  if (drag) {
+    const bg = drag.bg || null;
+    if (bg && bg !== selected) bg.bap.DrawBorder = false;
+    if (bg !== (drag.block.parent || null) && !(bg && isDescendant(bg, drag.block))) {
+      reparent(drag.block, bg);
+      runStatus(bg ? `#${drag.block.ID} 搬進 #${bg.ID} 裡面` : `#${drag.block.ID} 回到最外層`);
+    }
+    drag = null;
+    render();
+    return;
   }
   drag = null;
 });
