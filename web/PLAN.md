@@ -17,12 +17,12 @@
 | `DrawCUSTOMBLOCKLattice` | ❌ | 自訂元件的格子外觀 |
 | `CrossWire` | ❌ | 跨層接線 |
 | `StartStopAddIntoWLL` | ⚠️ | `addWire()` 是簡化版，用共同父層決定歸屬 |
-| `CheckWireLink` | ❌ | 接線的合法性檢查（見下面「已知缺陷」） |
+| `CheckWireLink` | ⚠️ | 擋掉了自我連線；其餘合法性檢查沒做 |
 | `BreakWireConnection` | ✅ | 併在 `removeBlock()` 裡 |
 | `ChangeLinkList` | ❌ | 把元件拖進／拖出結構元件 |
 | `PenDownInBlockToolArea` | ✅ | `toolbarHit()` |
-| `BlockpenDownProcess` | ⚠️ | HAND／THREAD／SCISSOR／KILL 做了；DRAG、PENCIL 沒做 |
-| `BlockpenMoveProcess` | ⚠️ | 只做了拖曳元件 |
+| `BlockpenDownProcess` | ⚠️ | HAND／THREAD／SCISSOR／KILL／DRAG 做了；PENCIL 沒做 |
+| `BlockpenMoveProcess` | ✅ | 拖曳元件、拉大小、拉線 |
 | `BlockDiagramFormDoCommand` | ❌ | 下拉選單 |
 
 ## panel.c（1035 行）
@@ -30,7 +30,7 @@
 | 函式 | 狀態 | 備註 |
 | --- | --- | --- |
 | `ValueDisplay` / `ValueErase` | ✅ | |
-| `DrawPanel` | ⚠️ | 少了數字鍵盤那段 |
+| `DrawPanel` | ✅ | 含數字鍵盤 |
 | `DrawRUNPanel` | ➖ | 原版為了省重畫而分出來的，網頁版整張重畫 |
 | `ChangeControl` | ✅ | |
 | `PenDownInPanelToolArea` | ✅ | |
@@ -72,10 +72,10 @@
 | `CaculateNowXNowY` | ✅ | 只取了 y 夾在 18 以下這一段 |
 | `GetNodeData` | ✅ | |
 | `IsInArea` | ✅ | `hitTest()` |
-| `CheckOnCTRLNode` | ⚠️ | 面板那邊做了；方塊圖的 DRAGNODE／SCPAGEUP／SCPAGEDOWN 沒做 |
-| `DrawDecimalIntKeyboard` | ❌ | 面板上的數字鍵盤 |
-| `EraseDecimalIntKeyboard` | ❌ | 同上 |
-| `KeyboardPendownProcess` | ❌ | 同上 |
+| `CheckOnCTRLNode` | ✅ | `ctrlHit()`，面板與方塊圖都有 |
+| `DrawDecimalIntKeyboard` | ✅ | `drawKeyboard()` |
+| `EraseDecimalIntKeyboard` | ➖ | 網頁版整張重畫 |
+| `KeyboardPendownProcess` | ✅ | `keyboardHit()` |
 | `AutoFindIOnodesSetIntoICONnode` | ❌ | 自訂元件用 |
 | `IsTheSameWireLLHead` | ❌ | 自訂元件用 |
 | `NestReDraw` / `NestItemMoveToLastPosition` | ➖ | 為了省重畫；網頁版整張重畫 |
@@ -125,24 +125,22 @@
 
 ## 已知缺陷（行為跟原版不一樣）
 
-1. **接線可以連到同一個元件的兩個節點。**
-   `block.c:1593` 有 `WireStart.BlockP != WireStop.BlockP` 的檢查，我沒做。
-2. **接線的手勢不同。** 原版是在節點上按下、拖到另一個節點放開
-   （`BlockpenMoveProcess` 裡沒有 THREAD 的處理，所以拖的過程**沒有預覽線**）。
-   我做的是點兩下。功能等價，手勢不同。
-3. **switch case 不能翻頁。** `SCPAGEUP` / `SCPAGEDOWN` 控制點畫出來了，
-   但點下去沒反應（`block.c:2186` 是切換 `CurrentHOOKP`）。
-4. **執行中還可以編輯。** 原版在剪刀等編輯動作時會強制停止執行
-   （`block.c:2202`）。
+1. ~~接線可以連到同一個元件的兩個節點~~ — 已修（`block.c:1593`）
+2. ~~接線的手勢不同~~ — 已改成拖曳。原版 `BlockpenMoveProcess` 裡沒有
+   THREAD 的處理，所以拖的過程**本來就沒有預覽線**，這點也一致
+3. ~~switch case 不能翻頁~~ — 已修。翻頁在 **DRAG 工具**底下，不是 HAND
+   （`block.c:2151` 那個 case 才是，我原本分類錯了）
+4. ~~執行中還可以編輯~~ — 已修（`stopForEdit()`，`block.c:2049`）
 
 ## 建議順序
 
-1. 上面 4 個已知缺陷（都很小，但行為就是不對）
-2. 數字鍵盤 — 面板上唯一的輸入方式，現在只能一格一格按
-3. 存檔 — 做完編輯循環才閉合，而且格式已經完全知道了
-4. DRAG 工具 — 改變結構元件大小，放開時控制點要跟到新的右下角（`block.c:2743`）
+1. ~~4 個已知缺陷~~ ✅
+2. ~~數字鍵盤~~ ✅
+3. ~~DRAG 工具（改大小 + 翻頁）~~ ✅
+4. **存檔** — 做完編輯循環才閉合，格式已經完全知道了
 5. `ChangeLinkList` — 把元件拖進／拖出結構元件
 6. 自訂元件一整套（`HOOKBLOCK`）：`DoRun_HOOKBLOCK`、`AddCUSTtoSYSHOOK`、
    `ProcessCUSTOMLoad`、`DrawCUSTOMBLOCKLattice`、存檔時的暗線段
 7. `CrossWire` 跨層接線
 8. 選單、關於畫面
+9. `ItemMoveToLastPosition` — 點選時把元件移到最上層

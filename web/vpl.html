@@ -726,6 +726,14 @@ function addToSysHook(spec) {
 
 let wireStart = null;   // block.c 的公共變數 WireStart
 
+// block.c:2049 執行中不可編輯：一動編輯工具就強制停止
+function stopForEdit() {
+  if (RUN === 0) return false;
+  killTimer(); RUN = 0; STOP = 0; RUNFOREVER = false;
+  runStatus('執行中不可編輯，已停止');
+  return true;
+}
+
 // 找出點到哪個 IO 節點。節點的位置是元件位置加上節點的相對位移。
 function nodeHit(blocks, px, py) {
   for (let i = blocks.length - 1; i >= 0; i--) {
@@ -742,6 +750,37 @@ function nodeHit(blocks, px, py) {
     }
   }
   return null;
+}
+
+// misc.c:143 CheckOnCTRLNode —— 找出點到元件上的哪個控制點
+function ctrlHit(blocks, px, py) {
+  for (let i = blocks.length - 1; i >= 0; i--) {
+    const b = blocks[i];
+    for (const h of b.hooks || []) {
+      if (b.TYPE === CASEBLOCK && h !== b.hooks[b.CurrentHOOK]) continue;
+      const inner = ctrlHit(h.blocks, px, py);
+      if (inner) return inner;
+    }
+    const o = absOrigin(b);
+    for (const n of b.bap.CTRLNodeLLHead || []) {
+      const x = o.x + b.bap.XY.x + n.TL.x, y = o.y + b.bap.XY.y + n.TL.y;
+      if (px >= x && px < x + n.EXT.x && py >= y && py < y + n.EXT.y) return { block: b, node: n };
+    }
+  }
+  return null;
+}
+
+/* block.c:2743 改完大小之後，控制點要跟到新的右下角 */
+function relocateCtrlNodes(b) {
+  for (const n of b.bap.CTRLNodeLLHead || []) {
+    if (n.ID === 1 /*DRAGNODE*/) {
+      n.TL.x = b.bap.SIZE.x - n.EXT.x;
+      n.TL.y = b.bap.SIZE.y - n.EXT.y;
+    } else if (n.ID === 2 /*SCPAGEUP*/) {
+      n.TL.x = b.bap.SIZE.x - n.EXT.x;
+    }
+    // SCPAGEDOWN 在左上角，不用動
+  }
 }
 
 /* 線段要放進哪個 hook？原版靠 SelfBlockLLHead 判斷所屬範圍
@@ -876,6 +915,62 @@ function valueDisplay(b) {
   }
 }
 
+/* misc.c:854 DrawDecimalIntKeyboard —— 面板上的數字鍵盤
+   30x60，每格 10x12，5 列 3 行。按鍵順序就是原始碼裡那個陣列：
+   1 2 3 / 4 5 6 / 7 8 9 / 0 c E / - (空) (空)
+   c = 清除、E = Enter、- = 正負號。 */
+const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'c', 'E', '-', '', ''];
+let keyboardObject = null;   // misc.c 的公共變數 KeyboardObject
+let keyboardText = '';
+
+// misc.c:316 鍵盤放在元件下面，位置不夠就改放上面
+function keyboardXY(b) {
+  const y = b.pap.XY.y + b.pap.SIZE.y + 60 > 160 ? b.pap.XY.y - 60 : b.pap.XY.y + b.pap.SIZE.y;
+  return { x: b.pap.XY.x, y };
+}
+
+function drawKeyboard() {
+  if (!keyboardObject) return;
+  const { x, y } = keyboardXY(keyboardObject);
+  eraseRect(x, y, 31, 61);
+  line(x, y, x + 30, y);
+  line(x + 30, y, x + 30, y + 60);
+  line(x + 30, y + 60, x, y + 60);
+  line(x, y + 60, x, y);
+  ctx.font = 'bold 9px ui-monospace,Consolas,monospace';
+  ctx.textBaseline = 'top';
+  KEYS.forEach((k, i) => {
+    if (!k) return;
+    ctx.fillText(k, x + (i % 3) * 10 + 3, y + Math.floor(i / 3) * 12 + 1);
+  });
+  // 原版沒有這個：把正在輸入的數字顯示出來，否則按了看不出結果
+  if (keyboardText) {
+    const w = ctx.measureText(keyboardText).width;
+    eraseRect(x + 31, y, w + 3, 11);
+    ctx.fillText(keyboardText, x + 33, y + 1);
+  }
+}
+
+// misc.c:929 KeyboardPendownProcess
+function keyboardHit(px, py) {
+  if (!keyboardObject) return false;
+  const { x, y } = keyboardXY(keyboardObject);
+  if (px < x || px >= x + 30 || py < y || py >= y + 60) return false;
+  const k = KEYS[Math.floor((py - y) / 12) * 3 + Math.floor((px - x) / 10)];
+  if (k === undefined || k === '') return true;
+
+  const io = keyboardObject.bap.IONodeLLHead[0];
+  if (k === 'c') keyboardText = '';
+  else if (k === '-') keyboardText = keyboardText.startsWith('-') ? keyboardText.slice(1) : '-' + keyboardText;
+  else if (k === 'E') {
+    if (io) io.value = to16(parseInt(keyboardText, 10) || 0);
+    keyboardObject = null;
+    keyboardText = '';
+    resetRun();
+  } else keyboardText += k;
+  return true;
+}
+
 // panel.c:239 DrawPanel
 function drawPanel(blocks) {
   for (const b of blocks) {
@@ -898,6 +993,12 @@ function drawPanel(blocks) {
         if (b.pap.DrawBorder) rect(b.pap.XY.x - 1, b.pap.XY.y - 1, b.pap.SIZE.x + 3, b.pap.SIZE.y + 3);
     }
   }
+}
+
+// panel.c:312 鍵盤是整個面板畫完之後才疊上去的
+function drawPanelView(blocks) {
+  drawPanel(blocks);
+  drawKeyboard();
 }
 
 // panel.c:367 ChangeControl —— 面板上按下去會改動元件的值
@@ -958,7 +1059,7 @@ function render() {
     ctx.restore();
   }
   if (view === 'panel') {
-    drawPanel(scene.blocks);
+    drawPanelView(scene.blocks);
   } else {
     drawDiagram(scene.blocks, scene.wires, 0, 0);
     if (LAMP) drawRunPoints(scene.blocks, scene.wires);
@@ -1504,7 +1605,8 @@ function canvasPos(ev) {
   };
 }
 
-let drag = null;   // {block, dx, dy}
+let drag = null;     // {block, dx, dy}
+let resize = null;   // {block, ox, oy} —— DRAG 工具改結構元件大小
 
 cv.addEventListener('pointerdown', ev => {
   const { x: px, y: py } = canvasPos(ev);
@@ -1546,31 +1648,57 @@ cv.addEventListener('pointerdown', ev => {
   }
 
   if (view === 'panel') {
+    if (keyboardHit(px, py)) { render(); return; }        // 鍵盤在最上層
+
     if (selected) { selected.bap.DrawBorder = false; if (selected.pap) selected.pap.DrawBorder = false; }
     const hit = panelHit(scene.blocks, px, py);
     selected = hit ? hit.block : null;
     if (hit) {
       hit.block.pap.DrawBorder = true;
-      if (hit.node) changeControl(hit.block, hit.node);   // 按在加減鈕上就改值
+      if (hit.node) {
+        changeControl(hit.block, hit.node);               // 按在加減鈕上就改值
+      } else if (hit.block.pap.BITMAPID === B.CTRLU8Bitmap) {
+        // 按在控制鈕的框體上：叫出數字鍵盤直接打字
+        keyboardObject = keyboardObject === hit.block ? null : hit.block;
+        keyboardText = '';
+        runStatus(keyboardObject ? '數字鍵盤：打完按 E 送出、c 清除' : '');
+      }
+    } else {
+      keyboardObject = null;
     }
     render();
     return;
   }
 
-  // 接線工具：點第一個 IO 節點記起來，點第二個就連起來
+  // 接線工具：在節點上按下、拖到另一個節點放開（block.c:1591 的 WireStart/WireStop）
   if (pointerState === B.THREADBitmap) {
+    stopForEdit();
     const n = nodeHit(scene.blocks, px, py);
-    if (!n) { wireStart = null; runStatus('接線：要點在 IO 節點上'); render(); return; }
-    if (!wireStart) {
-      wireStart = n;
-      runStatus(`接線：從 #${n.block.ID} 的 ${n.node.TYPE ? 'in' : 'out'}[${n.node.ID}] 出發，再點另一端`);
-    } else if (wireStart.node === n.node) {
-      wireStart = null;
-      runStatus('接線取消');
-    } else {
-      addWire(wireStart, n);
-      runStatus(`接好 #${wireStart.block.ID} → #${n.block.ID}`);
-      wireStart = null;
+    wireStart = n;
+    if (n) {
+      cv.setPointerCapture(ev.pointerId);
+      runStatus(`接線：從 #${n.block.ID} 的 ${n.node.TYPE ? 'in' : 'out'}[${n.node.ID}] 拉到另一個節點`);
+    } else runStatus('接線：要從 IO 節點上開始拉');
+    render();
+    return;
+  }
+
+  // DRAG 工具：拉右下角改大小，或翻 switch case 的頁（block.c:2151）
+  if (pointerState === B.DRAGBitmap) {
+    stopForEdit();
+    const hit = ctrlHit(scene.blocks, px, py);
+    if (!hit) { runStatus('拖拉：要點在結構元件的控制點上'); render(); return; }
+    if (hit.node.ID === 1 /*DRAGNODE*/) {
+      const o = absOrigin(hit.block);
+      resize = { block: hit.block, ox: o.x + hit.block.bap.XY.x, oy: o.y + hit.block.bap.XY.y };
+      cv.setPointerCapture(ev.pointerId);
+    } else if (hit.node.ID === 2 /*SCPAGEUP*/) {
+      hit.block.CurrentHOOK = (hit.block.CurrentHOOK + 1) % hit.block.hooks.length;
+      runStatus(`switch case → "${hit.block.hooks[hit.block.CurrentHOOK].name}"`);
+    } else if (hit.node.ID === 3 /*SCPAGEDOWN*/) {
+      const n2 = hit.block.hooks.length;
+      hit.block.CurrentHOOK = (hit.block.CurrentHOOK - 1 + n2) % n2;
+      runStatus(`switch case → "${hit.block.hooks[hit.block.CurrentHOOK].name}"`);
     }
     render();
     return;
@@ -1578,6 +1706,7 @@ cv.addEventListener('pointerdown', ev => {
 
   // 剪刀：剪掉一條線段
   if (pointerState === B.SCISSORBitmap) {
+    stopForEdit();
     const hit = wireHit(scene, px, py);
     if (hit) {
       hit.scope.wires.splice(hit.scope.wires.indexOf(hit.wire), 1);
@@ -1590,6 +1719,7 @@ cv.addEventListener('pointerdown', ev => {
 
   // 刪除工具
   if (pointerState === B.KILLBitmap) {
+    stopForEdit();
     const b = hitTest(scene.blocks, px, py);
     if (b) {
       removeBlock(scene, b);
@@ -1606,6 +1736,7 @@ cv.addEventListener('pointerdown', ev => {
     selected.bap.DrawBorder = true;
     // 手工具才能拖。座標是相對於元件所屬的層，所以要扣掉父層的位移
     if (pointerState === B.HANDBitmap) {
+      stopForEdit();
       const o = absOrigin(selected);
       drag = { block: selected, dx: px - o.x - selected.bap.XY.x, dy: py - o.y - selected.bap.XY.y };
       cv.setPointerCapture(ev.pointerId);
@@ -1615,6 +1746,15 @@ cv.addEventListener('pointerdown', ev => {
 });
 
 cv.addEventListener('pointermove', ev => {
+  if (resize) {
+    const { x: px, y: py } = canvasPos(ev);
+    // 結構元件不能小到裝不下裡面的東西，給一個下限
+    resize.block.bap.SIZE.x = Math.max(24, px - resize.ox + 1);
+    resize.block.bap.SIZE.y = Math.max(24, py - resize.oy + 1);
+    relocateCtrlNodes(resize.block);
+    render();
+    return;
+  }
   if (!drag) return;
   const { x: px, y: py } = canvasPos(ev);
   const o = absOrigin(drag.block);
@@ -1624,9 +1764,29 @@ cv.addEventListener('pointermove', ev => {
   render();
 });
 
-for (const e of ['pointerup', 'pointercancel']) {
-  cv.addEventListener(e, () => { drag = null; });
-}
+cv.addEventListener('pointerup', ev => {
+  if (resize) { relocateCtrlNodes(resize.block); resize = null; render(); return; }
+
+  // 接線：在另一個節點上放開才算數（block.c:1591）
+  if (wireStart) {
+    const { x: px, y: py } = canvasPos(ev);
+    const n = nodeHit(scene.blocks, px, py);
+    if (!n || n.node === wireStart.node) {
+      runStatus('接線取消');
+    } else if (n.block === wireStart.block) {
+      // block.c:1593 起終點不能是同一個元件
+      runStatus('接線失敗：兩端不能是同一個元件');
+    } else {
+      addWire(wireStart, n);
+      runStatus(`接好 #${wireStart.block.ID} → #${n.block.ID}`);
+    }
+    wireStart = null;
+    render();
+  }
+  drag = null;
+});
+
+cv.addEventListener('pointercancel', () => { drag = null; resize = null; wireStart = null; });
 
 document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
   document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t));
@@ -1742,7 +1902,7 @@ document.getElementById('speed').addEventListener('input', e => {
 
 /* ========================= 場景切換 ========================= */
 function setScene(builder, label) {
-  popup = null; wireStart = null; drag = null;
+  popup = null; wireStart = null; drag = null; resize = null; keyboardObject = null;
   killTimer(); RUN = 0; STOP = 0;
   ticks = 0;
   scene = builder();
