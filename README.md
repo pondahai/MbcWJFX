@@ -8,6 +8,10 @@
 
 程式碼寫於 2003 年，開發環境是 CodeWarrior for Palm OS。
 
+> **不想裝模擬器？直接開 [線上版](https://pondahai.github.io/MbcWJFX/)。**
+> 這是把當年那支程式重新寫成的網頁版，同一套執行模型、同一份存檔格式。
+> 詳見下面的[網頁版](#網頁版)。
+
 ![screenshot](1.png)
 ![screenshot](2.png)
 
@@ -54,6 +58,65 @@
 專案檔是 **CodeWarrior for Palm OS**（`VPL.mcp`），資源檔 `Src/starter.rsrc` 是用 **Constructor for Palm OS 1.5** 編輯的，`Src/StarterRsc.h` / `Src/StarterRsc.c` 由 Constructor 自動產生，請勿手動修改。
 
 如果手邊沒有 CodeWarrior（現在已經很難取得），理論上可以改用 **PRC-Tools**（gcc 的 m68k-palmos 版本）或 **PalmDev / pilrc** 這條開源工具鏈重建，但需要把 `.rsrc` 轉成 `.rcp`，本 repo 尚未做這件事。
+
+---
+
+## 網頁版
+
+**線上版：<https://pondahai.github.io/MbcWJFX/>**（手機也能開）
+
+`web/vpl.html` 是把這支程式重新寫成的瀏覽器版本 —— **單一 HTML 檔、沒有
+build step、打開就能跑**。不是模擬器，是照著 `Src/` 底下的 C 原始碼一個函式
+一個函式重寫的：`Src/` 在這裡的角色是唯讀的規格書，JS 那邊每個函式上面都
+標了對應的 C 檔名和行號（例如 `// run.c:1043 DoRun_LOOPBLOCK`），欄位名也
+沿用 C 的寫法（`bap`、`BITMAPID`、`IONodeLLHead`）。
+
+畫面一樣是 160×160，工具列、彈出面板、下拉選單都畫在那塊畫布裡面，位置照
+`Src/StarterRsc.h` 的資源座標。圖是從編譯好的 `Starter.prc` 抽出來的 74 張
+Tbmp（`web/tools/extract_bitmaps.py`），所以連圖示都是當年那幾張。
+
+### 做到哪裡
+
+| | |
+|---|---|
+| 編輯 | 從元件面板拿元件、拖曳（含拖進／拖出迴圈和 switch case）、接線（含跨結構邊界的 `CrossWire`）、剪線、刪除、改結構元件大小 |
+| 執行 | 執行／單步／停止，`LAMP` 的線段動畫，`RUNFOREVER`，即時的節點狀態表 |
+| 前面板 | Block / Panel 兩個分頁，手（搬位置）／手指（操作控制項）／鉛筆（數字鍵盤）三個工具 |
+| 結構 | For / While 迴圈、Switch/Case、自訂元件（`HOOKBLOCK`），都可巢狀 |
+| 檔案 | 原版的 SAVE / LOAD 表單，載入 `.pdb`（拖放或選檔），存成 `.pdb` 下載 |
+| 選單 | File / Works / Run / About，內容取自 `Starter.prc` 的 MBAR 資源 |
+
+存檔格式照的是原版 —— `.pdb` 裡是純 ASCII，`Src/save.c` 的
+`DataStruct2ASCII()` 印出來那套。不過還**沒有拿真正由 Palm 寫出來的檔案
+驗證過**（repo 裡沒留下任何當年存的 `.pdb`），目前的樣本是
+`web/tools/make_sample_pdb.py` 照 `save.c` 的格式生的。如果你手上找得到
+當年的檔案，值得拿來試。
+
+### 跟原版不一樣的地方
+
+都是刻意的，理由記在 [`web/PLAN.md`](web/PLAN.md)：
+
+- 畫面倍率會自動配合視窗寬度（原版固定 1×，因為 Palm 螢幕就是 160×160）
+- 右邊多一欄執行控制、場景結構樹、節點狀態表 —— 純粹是除錯用的介面
+- Palm 是按硬體的 Menu 鍵叫選單，網頁沒有那顆鍵，改成一顆按鈕
+- 存檔區用 `localStorage` 代替 Palm 的 database（原版一個存檔就是一個 database）
+- 方塊圖工具列少一顆 PENCIL —— 原版排了它，但處理那兩段整個被註解掉，按了沒反應
+
+### 在本機跑
+
+```
+python -m http.server 8778
+```
+
+然後開 `http://localhost:8778/web/vpl.html`。用 `file://` 開的話瀏覽器不准
+fetch 本機檔案，量版面寬度也會失準。
+
+### 想讀 / 想接手
+
+| 檔案 | 內容 |
+|---|---|
+| [`web/PLAN.md`](web/PLAN.md) | **進度的唯一來源**。112 個函式逐一標了狀態，含刻意的介面差異，以及原版自己就沒做完的那幾處 |
+| [`web/README.md`](web/README.md) | 跟 C 原始碼的對照表、存檔格式、執行模型、跨邊界資料流 |
 
 ---
 
