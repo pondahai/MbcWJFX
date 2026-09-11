@@ -318,11 +318,12 @@ function buildScene() {
     { io: [ioNode(1, { x: 0, y: 0 }, { x: 32, y: 16 })], pap: panelIndicator({ x: 100, y: 30 }) });
 
   // FORLOOP：結構元件，內部自己有一份 blocks/wires（C 的 LoopBlockHOOKP）。
-  // 迴圈內預設元件 N 和 I 的位置由 block.c:760-766 寫死。
+  // 迴圈內預設元件 N 和 I 的位置由 block.c:760-766 寫死，TYPE 是 CTRLBLOCK
+  // （functions.c:833）—— 這決定了它們拖不出迴圈，見 isLoopDefault。
   const loopSize = { x: 74, y: 62 };
-  const forN = block(FUNCBLOCK, B.FORLOOPNBitmap, { x: 8, y: 13 }, { x: 10, y: 10 },
+  const forN = block(CTRLBLOCK, B.FORLOOPNBitmap, { x: 8, y: 13 }, { x: 10, y: 10 },
     { io: [ioNode(1, { x: 0, y: 0 }, { x: 10, y: 10 })] });
-  const forI = block(FUNCBLOCK, B.FORLOOPIBitmap, { x: 8, y: loopSize.y - 17 }, { x: 10, y: 10 },
+  const forI = block(CTRLBLOCK, B.FORLOOPIBitmap, { x: 8, y: loopSize.y - 17 }, { x: 10, y: 10 },
     { io: [ioNode(0, { x: 0, y: 0 }, { x: 10, y: 10 })] });
   const arith = block(FUNCBLOCK, B.FUNCARITHBitmap, { x: 30, y: 15 }, { x: 32, y: 32 },
     { io: [ioNode(1, { x: 0, y: 0 }, { x: 32, y: 32 })] });
@@ -395,9 +396,9 @@ function buildRunScene() {
   // 迴圈內部只有預設的 N 和 I。原版 run.c:1293 是直接拿 blocks[0] 當 N、
   // blocks[1] 當 I，這裡改成用 BITMAPID 認（見 doRunLoopBlock）。
   const loopSize = { x: 72, y: 60 };
-  const N = block(FUNCBLOCK, B.FORLOOPNBitmap, { x: 8, y: 13 }, { x: 10, y: 10 },
+  const N = block(CTRLBLOCK, B.FORLOOPNBitmap, { x: 8, y: 13 }, { x: 10, y: 10 },
     { io: [ioNode(1, { x: 0, y: 0 }, { x: 10, y: 10 })] });
-  const I = block(FUNCBLOCK, B.FORLOOPIBitmap, { x: 8, y: loopSize.y - 17 }, { x: 10, y: 10 },
+  const I = block(CTRLBLOCK, B.FORLOOPIBitmap, { x: 8, y: loopSize.y - 17 }, { x: 10, y: 10 },
     { io: [ioNode(0, { x: 0, y: 0 }, { x: 10, y: 10 })] });
 
   const forloop = block(LOOPBLOCK, B.FORLOOPBitmap, { x: 44, y: 66 }, loopSize, {

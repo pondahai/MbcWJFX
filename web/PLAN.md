@@ -224,7 +224,8 @@ for 迴圈和 while 迴圈則是**兩種都會跑**（`DoRun_LOOPBLOCK` 本來�
   （`block.c:1766`）把它搬出迴圈**並且先 `BreakWireConnection` 拆掉它的線**
   —— 迴圈從此沒有 N，永遠等不到計數上限。網頁版放寬成「可以在自己的框裡搬
   位置，但不准離開」（位置夾在父層框內，放手時不 reparent），比原版能動，
-  但不會壞掉。一般元件進出結構不受影響。
+  但不會壞掉。一般元件進出結構不受影響。認的條件是 `TYPE === CTRLBLOCK`
+  且父層是 `LOOPBLOCK`，所以 N、I、while 的條件元件一體適用。
 - **迴圈控制用 `BITMAPID` 認 N/I，不看串列順序**。原版 `run.c:1293` 是拿
   迴圈內部串列的第一個元件當 N、第二個當 I（`BlockLLHeadP` 和
   `BlockLLHeadP->NEXTNODE`）。但點過或拖過的元件會被
