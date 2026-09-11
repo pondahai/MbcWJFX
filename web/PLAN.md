@@ -57,7 +57,7 @@
 | `DoRun` | ✅ | |
 | `DoRun_WireRun` | ✅ | |
 | `DoRun_BlockRun` | ✅ 🚧 | `HOOKBLOCK` 和 `LOOPBLOCK` 兩個 case 都做了。`CASEBLOCK` 落到 `default` —— 原版就沒有 `DoRun_CASEBLOCK` 這個函式 |
-| `DoRun_LOOPBLOCK` | ✅ | for 和 while 兩種都做了，含 IO 點角色對調 |
+| `DoRun_LOOPBLOCK` | ✅ | for 和 while 兩種都做了，含 IO 點角色對調。迴圈控制改用 `BITMAPID` 認 N/I，不照抄原版的串列順序（見「介面差異」） |
 | `DoItemRUN` | ✅ 🚧 | 算術／邏輯／比較都有；`SWITCHCASE` 在 `run.c:145` 和 `run.c:421` 都是空 case |
 
 **switch case 不會執行**，這點講明白一點：原版 `DoRun_BlockRun`（`run.c:1356`）
@@ -216,6 +216,16 @@ for 迴圈和 while 迴圈則是**兩種都會跑**（`DoRun_LOOPBLOCK` 本來�
   也改成講這件事而不是籠統的「卡住了」。
   **刻意不採「沒接線就當 0」**：資料流語言裡「沒接線」跟「接了一個 0」是兩件事，
   自動補 0 會把接線漏掉的錯誤變成一個算錯的答案。
+
+- **迴圈控制用 `BITMAPID` 認 N/I，不看串列順序**。原版 `run.c:1293` 是拿
+  迴圈內部串列的第一個元件當 N、第二個當 I（`BlockLLHeadP` 和
+  `BlockLLHeadP->NEXTNODE`）。但點過或拖過的元件會被
+  `ItemMoveToLastPosition` 移到串列尾端（`block.c:2720`），所以使用者只要
+  動一下迴圈裡的 N，順序就變成 `[I, N]`、N 和 I 整個對調 —— 拿 I 的值去比
+  N、每輪還把 N 加一，迴圈永遠結束不了。**原版自己也有這個毛病**
+  （🚧，不是移植的缺口）。網頁版改成用 `FORLOOPNBitmap` / `FORLOOPIBitmap`
+  去認（while 迴圈的條件元件 `WHILELOOPLOOPBitmap` 同理），認不到就當作
+  沒有迴圈控制、維持原本的 `handle` 回傳。
 
 - **接線的「輸出不能接輸出」判斷會換算邊框節點的角色**。結構元件邊框上的
   IO 點在 `run.c:1115` 進去之前會整批翻面，所以「迴圈裡的 `i` 接到邊框上的
