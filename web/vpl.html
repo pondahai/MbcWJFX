@@ -3250,6 +3250,64 @@ for (const k of ['showId', 'showNodes', 'showGrid', 'showValues', 'showNotReady'
 }
 matchMedia('(prefers-color-scheme:dark)').addEventListener('change', () => render());
 
+/* ========================= 設定值記住（原版沒有） =========================
+
+   右邊那三欄（執行、場景、顯示）本來就不是原版的東西，是網頁版的除錯介面，
+   所以它們的狀態怎麼存也沒有 C 那邊的對應。存在 localStorage，key 是
+   `mbcwjfx:prefs`，跟存檔區（`mbcwjfx:file:*`）分開。
+
+   兩個不照抄畫面狀態的地方：
+   - RUNFOREVER 只還原勾選狀態，**不會自動開跑**。foreverButton（block.c:1991）
+     是一勾就開始跑的，但一打開網頁就自己動起來太突然了。
+   - 場景只還原內建的那三個（SCENES 的 key）。從 .pdb 載進來的圖不在這裡存，
+     那是存檔區的事。 */
+const PREFS_KEY = 'mbcwjfx:prefs';
+const PREF_CHECKS = ['lamp', 'forever', 'asComponent',
+                     'showId', 'showNodes', 'showValues', 'showNotReady', 'showGrid'];
+
+function readPrefs() {
+  try { return JSON.parse(localStorage.getItem(PREFS_KEY)) || {}; }
+  catch (e) { return {}; }        // 隱私模式或壞掉的內容：當作沒設定過
+}
+
+function savePrefs() {
+  const p = { speed: +document.getElementById('speed').value,
+              scene: document.getElementById('scene').value,
+              autoZoom, zoom: +document.getElementById('zoom').value };
+  for (const k of PREF_CHECKS) p[k] = document.getElementById(k).checked;
+  try { localStorage.setItem(PREFS_KEY, JSON.stringify(p)); } catch (e) { /* 存不進去就算了 */ }
+}
+
+function applyPrefs() {
+  const p = readPrefs();
+  for (const k of PREF_CHECKS) {
+    if (typeof p[k] !== 'boolean') continue;
+    document.getElementById(k).checked = p[k];
+    if (k in opts) opts[k] = p[k];
+  }
+  LAMP = !!p.lamp;
+  RUNFOREVER = !!p.forever;          // 只還原勾選，不觸發 foreverButton 的自動開跑
+  if (p.speed >= 1 && p.speed <= 240) {
+    document.getElementById('speed').value = p.speed;
+    document.getElementById('speedv').textContent = p.speed + '/s';
+  }
+  if (p.scene in SCENES) document.getElementById('scene').value = p.scene;
+  if (p.autoZoom === false && p.zoom >= 1 && p.zoom <= 6) {
+    autoZoom = false;
+    document.getElementById('zoom').value = p.zoom;
+    setZoom(p.zoom);
+  }
+}
+
+// 三欄裡任何一個控制項動了就存一次（檔案挑選和按鈕不算設定值）
+for (const ev of ['change', 'input']) {
+  document.querySelector('.side').addEventListener(ev, e => {
+    if (e.target.id === 'file') return;
+    savePrefs();
+  });
+}
+document.getElementById('zoomauto').addEventListener('click', savePrefs);
+
 /* ========================= 啟動 ========================= */
 renderLibrary();
 
@@ -3260,7 +3318,8 @@ renderLibrary();
     s.img.src = s.src;
   })));
   document.getElementById('scene').value = 'run';
-  scene = buildRunScene();
+  applyPrefs();
+  scene = (SCENES[document.getElementById('scene').value] || SCENES.run).build();
   resetRun();
   fitZoom();
   syncUI();

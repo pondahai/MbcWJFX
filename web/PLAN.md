@@ -235,6 +235,11 @@ for 迴圈和 while 迴圈則是**兩種都會跑**（`DoRun_LOOPBLOCK` 本來�
   IO 點在 `run.c:1115` 進去之前會整批翻面，所以「迴圈裡的 `i` 接到邊框上的
   輸出點」是合法的 —— 那正是把值送出迴圈的作法。原版有同樣的判斷式，但它的
   邊框節點只能由 `CrossWire` 自動長出來、使用者碰不到，所以踩不到。
+- **右邊三欄（執行／場景／顯示）的設定值會記住**，存在 `localStorage` 的
+  `mbcwjfx:prefs`（跟存檔區的 `mbcwjfx:file:*` 分開）。原版沒有這三欄，
+  自然也沒有對應的東西。兩個不照抄畫面狀態的地方：RUNFOREVER 只還原勾選、
+  **不會一開網頁就自己跑**（`foreverButton` 本來是一勾就開跑，`block.c:1991`）；
+  場景只還原內建的那三個，從 `.pdb` 載進來的圖歸存檔區管。
 - **存檔區用 `localStorage`**。原版一個存檔就是一部機器上的一個 Palm
   database（`load.c:820`），`BuildLOADMenu` 用 `DmGetNextDatabaseByTypeCreator`
   把 creator `wjfx` 的全部列出來。瀏覽器沒有那種東西，改用 `localStorage`，
