@@ -392,8 +392,8 @@ function buildRunScene() {
   const ind = block(FUNCBLOCK, B.INDICATOR8BLOCKBitmap, { x: 100, y: 31 }, { x: 32, y: 16 },
     { io: [ioNode(1, { x: 0, y: 0 }, { x: 32, y: 16 })], pap: panelIndicator({ x: 100, y: 36 }) });
 
-  // 迴圈內部只有預設的 N 和 I。順序不能換 —— run.c:1293 的條件判斷
-  // 是直接拿 blocks[0] 當 N、blocks[1] 當 I 比較的。
+  // 迴圈內部只有預設的 N 和 I。原版 run.c:1293 是直接拿 blocks[0] 當 N、
+  // blocks[1] 當 I，這裡改成用 BITMAPID 認（見 doRunLoopBlock）。
   const loopSize = { x: 72, y: 60 };
   const N = block(FUNCBLOCK, B.FORLOOPNBitmap, { x: 8, y: 13 }, { x: 10, y: 10 },
     { io: [ioNode(1, { x: 0, y: 0 }, { x: 10, y: 10 })] });
@@ -1893,8 +1893,14 @@ function doRunLoopBlock(b) {
   if (b.bap.ONodeNUM !== 0 && b.bap.ONodeNUM !== -1) handle = true;
   if (handle) return handle;
 
-  // run.c:1256 迴圈控制：決定要不要再跑一圈
-  const first = inner.blocks[0], second = inner.blocks[1];
+  /* run.c:1256 迴圈控制：決定要不要再跑一圈
+
+     跟原版不一樣的地方：原版是拿串列的第一個和第二個元件當 N 和 I
+     （`BlockLLHeadP` 跟 `BlockLLHeadP->NEXTNODE`），但點過的元件會被
+     ItemMoveToLastPosition 移到串列尾端（block.c:2720），所以只要動一下
+     迴圈裡的 N 或 I，順序就亂了，N/I 會抓到別的元件、迴圈就不會跑。
+     這裡改成用 BITMAPID 去認人，不靠順序。 */
+  const byBmp = id => inner.blocks.find(x => x.bap.BITMAPID === id) || null;
   const again = () => {
     handle = true;
     loopIterations++;          // 重跑一輪算有進展，不然 while(1) 會被熄火誤判
@@ -1906,9 +1912,13 @@ function doRunLoopBlock(b) {
   };
 
   if (b.bap.BITMAPID === B.WHILELOOPBitmap) {
-    if (!first.bap.IONodeLLHead[0].NotReady && first.bap.IONodeLLHead[0].value) again();
+    const c = byBmp(B.WHILELOOPLOOPBitmap);
+    if (!c) return handle;
+    if (!c.bap.IONodeLLHead[0].NotReady && c.bap.IONodeLLHead[0].value) again();
   } else if (b.bap.BITMAPID === B.FORLOOPBitmap) {
-    const N = first.bap.IONodeLLHead[0], I = second.bap.IONodeLLHead[0];
+    const nb = byBmp(B.FORLOOPNBitmap), ib = byBmp(B.FORLOOPIBitmap);
+    if (!nb || !ib) return handle;
+    const N = nb.bap.IONodeLLHead[0], I = ib.bap.IONodeLLHead[0];
     if (!N.NotReady) {
       if (N.value !== I.value) { again(); I.value++; }   // run.c:1326 N != I 就 I++
       else I.value = 0;                                   // 相等，迴圈結束，I 歸零
