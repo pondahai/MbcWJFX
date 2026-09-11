@@ -253,6 +253,11 @@ for 迴圈和 while 迴圈則是**兩種都會跑**（`DoRun_LOOPBLOCK` 本來�
   自然也沒有對應的東西。兩個不照抄畫面狀態的地方：RUNFOREVER 只還原勾選、
   **不會一開網頁就自己跑**（`foreverButton` 本來是一勾就開跑，`block.c:1991`）；
   場景只還原內建的那三個，從 `.pdb` 載進來的圖歸存檔區管。
+- **選取外框和「輸入沒接線」的錯誤外框畫成灰色**。原版是 1-bit 畫面，只有
+  黑跟白，外框只能是黑的（`block.c:966` `DrawBorder`）—— 但網頁版的畫布是
+  灰階的，黑外框跟元件本身的黑線混在一起很難分。灰色一眼就看得出「這是標記，
+  不是圖的一部分」。方塊圖和前面板的選取框都一樣。錯誤的驚嘆號維持黑色，
+  那本來就是要跳出來的。
 - **存檔區用 `localStorage`**。原版一個存檔就是一部機器上的一個 Palm
   database（`load.c:820`），`BuildLOADMenu` 用 `DmGetNextDatabaseByTypeCreator`
   把 creator `wjfx` 的全部列出來。瀏覽器沒有那種東西，改用 `localStorage`，

@@ -466,6 +466,16 @@ function line(x1, y1, x2, y2) {           // WinDrawLine
 function rect(x, y, w, h) {               // WinDrawRectangle(&r, 0)
   ctx.strokeRect(x + .5, y + .5, w - 1, h - 1);
 }
+/* 選取外框和錯誤外框畫成灰色。原版是 1-bit 畫面，只有黑跟白，外框只能是黑的
+   （block.c:966）—— 但網頁版是灰階畫布，外框跟元件本身的黑線混在一起很難分。
+   灰色一眼就看得出「這是標記，不是圖的一部分」。 */
+const MARKGRAY = '#808080';
+function grayRect(x, y, w, h) {
+  const keep = ctx.strokeStyle;
+  ctx.strokeStyle = MARKGRAY;
+  rect(x, y, w, h);
+  ctx.strokeStyle = keep;
+}
 function eraseRect(x, y, w, h) {          // WinEraseRectangle
   const keep = ctx.fillStyle;
   ctx.fillStyle = PAPER;
@@ -592,10 +602,10 @@ function drawDiagram(blocks, wires, wx, wy) {
     }
 
     if (b.bap.DrawBorder) {                               // block.c:966 選取外框
-      rect(x - 1, y - 1, SIZE.x + 3, SIZE.y + 3);
+      grayRect(x - 1, y - 1, SIZE.x + 3, SIZE.y + 3);
     }
     if (b.bap.NoInput) {          // 輸入沒接線 —— 網頁版加的錯誤標記，原版沒有
-      rect(x - 3, y - 3, SIZE.x + 7, SIZE.y + 7);
+      grayRect(x - 3, y - 3, SIZE.x + 7, SIZE.y + 7);
       ctx.font = 'bold 9px ui-monospace,Consolas,monospace';
       ctx.textBaseline = 'top';
       /* 外框佔到 x-3 ～ x+SIZE.x+3，驚嘆號要再留 3 像素空隙才不會黏在框上。
@@ -1529,7 +1539,7 @@ function drawPanel(blocks) {
         }
         icon(b.pap.BITMAPID, b.pap.XY.x, b.pap.XY.y);
         valueDisplay(b);
-        if (b.pap.DrawBorder) rect(b.pap.XY.x - 1, b.pap.XY.y - 1, b.pap.SIZE.x + 3, b.pap.SIZE.y + 3);
+        if (b.pap.DrawBorder) grayRect(b.pap.XY.x - 1, b.pap.XY.y - 1, b.pap.SIZE.x + 3, b.pap.SIZE.y + 3);
     }
   }
 }
