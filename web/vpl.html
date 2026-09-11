@@ -1750,7 +1750,7 @@ function moveNodeData(dest, src) {
 }
 
 // run.c:198 DoItemRUN —— 元件本身的運算，全部照 IONodeLLHead 的順序取值
-function doItemRun(b, blocks, idx) {
+function doItemRun(b, blocks) {
   const io = b.bap.IONodeLLHead;
   const done = n => { n.NotReady = false; b.bap.ONodeNUM = 0; };
   const bin = f => { io[2].value = f(io[0].value, io[1].value); done(io[2]); };
@@ -1769,11 +1769,17 @@ function doItemRun(b, blocks, idx) {
     case B.EQUBitmap:      cmp((a, c) => a === c); break;
     case B.LESSEQUBitmap:  cmp((a, c) => a <= c); break;
     case B.ABOVEEQUBitmap: cmp((a, c) => a >= c); break;
-    case B.FORLOOPNBitmap:
-      // run.c:424 N 只負責把它後面那個元件（I）的節點打開
-      if (blocks[idx + 1]) blocks[idx + 1].bap.IONodeLLHead[0].NotReady = false;
+    case B.FORLOOPNBitmap: {
+      /* run.c:424 N 只負責把 I 的節點打開。原版寫的是「串列裡的下一個元件」
+         （`BL->NEXTNODE`），但順序會被 ItemMoveToLastPosition 打亂
+         （同 doRunLoopBlock / checkConnection 的理由）—— 動一下 N，N 就排到
+         串列尾端，下一個是 undefined，I 永遠不會備妥，迴圈整個不動。
+         再動一下 I 把它推到 N 後面又會好，這裡改成用 BITMAPID 認 I。 */
+      const ib = blocks.find(x => x.bap.BITMAPID === B.FORLOOPIBitmap);
+      if (ib) ib.bap.IONodeLLHead[0].NotReady = false;
       b.bap.ONodeNUM = 0;
       break;
+    }
     // 顯示器、控制鈕、結構元件本身不做事
   }
 }
@@ -2021,7 +2027,7 @@ function doRunBlockRun(blocks) {
         break;
       default:
         if (!inputsReady(b)) { handle = true; break; }
-        if (outputsPending(b)) doItemRun(b, blocks, i);
+        if (outputsPending(b)) doItemRun(b, blocks);
     }
   });
   return handle;
@@ -2614,6 +2620,17 @@ function hitTest(blocks, px, py, wx = 0, wy = 0) {
    由內往外找最深的那一個；手上抓的那顆和它自己的子孫都要排除，
    否則會把元件搬進自己裡面。落在空白處就是回到主串列（SYSHOOK）。 */
 function isDescendant(b, anc) { for (let p = b; p; p = p.parent) if (p === anc) return true; return false; }
+
+/* 迴圈自己長出來的預設元件：for 的 N / I，while 的條件。它們是結構的一部分，
+   不是使用者放進去的東西 —— 原版 block.c:2056 的手工具整段包在
+   `InAreaInf.llp->TYPE != CTRLBLOCK` 底下，也就是根本抓不起來。網頁版放寬成
+   「可以在自己的框裡搬位置，但不准離開」：N 就貼在迴圈左邊框上，往左一點就
+   掉到框外面，一放手 reparent 會把它搬出迴圈**並且拆掉它的線**
+   （block.c:1766 ChangeLinkList 搬串列前先 BreakWireConnection），
+   迴圈就此失去 N，永遠等不到計數上限。 */
+function isLoopDefault(b) {
+  return b.TYPE === CTRLBLOCK && b.parent && b.parent.TYPE === LOOPBLOCK;
+}
 function structAt(blocks, px, py, moving, wx = 0, wy = 0) {
   for (let i = blocks.length - 1; i >= 0; i--) {
     const b = blocks[i];
@@ -2895,6 +2912,15 @@ cv.addEventListener('pointermove', ev => {
   // misc.c:800 PointIconYExt：筆點被夾在 18 以下，拖不到工具列上面去
   drag.block.bap.XY.x = Math.max(0, px - o.x - drag.dx);
   drag.block.bap.XY.y = Math.max(TOOLBAR_H - o.y, py - o.y - drag.dy);
+  /* 迴圈的預設元件（N、I、while 的條件）不准離開自己的結構 —— 見 pointerup。
+     位置夾在父層的框裡面，不然會被拖到框外面、看起來像已經搬出去了。 */
+  if (isLoopDefault(drag.block)) {
+    const p = drag.block.parent, sz = drag.block.bap.SIZE;
+    drag.block.bap.XY.x = Math.min(Math.max(0, drag.block.bap.XY.x), Math.max(0, p.bap.SIZE.x - sz.x));
+    drag.block.bap.XY.y = Math.min(Math.max(0, drag.block.bap.XY.y), Math.max(0, p.bap.SIZE.y - sz.y));
+    render();
+    return;
+  }
   /* block.c:2402 落在結構上就把那個結構框起來，放手時搬進去 */
   const bg = structAt(scene.blocks, px, py, drag.block);
   if (bg !== drag.bg) {
@@ -2933,6 +2959,9 @@ cv.addEventListener('pointerup', ev => {
   if (drag) {
     const bg = drag.bg || null;
     if (bg && bg !== selected) bg.bap.DrawBorder = false;
+    if (isLoopDefault(drag.block)) {
+      drag = null; render(); return;            // 預設元件只能在自己的框裡動
+    }
     if (bg !== (drag.block.parent || null) && !(bg && isDescendant(bg, drag.block))) {
       reparent(drag.block, bg);
       runStatus(bg ? `#${drag.block.ID} 搬進 #${bg.ID} 裡面` : `#${drag.block.ID} 回到最外層`);

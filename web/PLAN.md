@@ -217,6 +217,14 @@ for 迴圈和 while 迴圈則是**兩種都會跑**（`DoRun_LOOPBLOCK` 本來�
   **刻意不採「沒接線就當 0」**：資料流語言裡「沒接線」跟「接了一個 0」是兩件事，
   自動補 0 會把接線漏掉的錯誤變成一個算錯的答案。
 
+- **迴圈的預設元件（for 的 N/I、while 的條件）不准離開自己的結構**。原版
+  `block.c:2056` 的手工具整段包在 `InAreaInf.llp->TYPE != CTRLBLOCK` 底下，
+  也就是這些元件**根本抓不起來**。網頁版一開始沒照抄這個限制，結果 N 貼在
+  迴圈左邊框上、往左拖一點就掉到框外面，放手時 `ChangeLinkList`
+  （`block.c:1766`）把它搬出迴圈**並且先 `BreakWireConnection` 拆掉它的線**
+  —— 迴圈從此沒有 N，永遠等不到計數上限。網頁版放寬成「可以在自己的框裡搬
+  位置，但不准離開」（位置夾在父層框內，放手時不 reparent），比原版能動，
+  但不會壞掉。一般元件進出結構不受影響。
 - **迴圈控制用 `BITMAPID` 認 N/I，不看串列順序**。原版 `run.c:1293` 是拿
   迴圈內部串列的第一個元件當 N、第二個當 I（`BlockLLHeadP` 和
   `BlockLLHeadP->NEXTNODE`）。但點過或拖過的元件會被
@@ -226,6 +234,10 @@ for 迴圈和 while 迴圈則是**兩種都會跑**（`DoRun_LOOPBLOCK` 本來�
   （🚧，不是移植的缺口）。網頁版改成用 `FORLOOPNBitmap` / `FORLOOPIBitmap`
   去認（while 迴圈的條件元件 `WHILELOOPLOOPBitmap` 同理），認不到就當作
   沒有迴圈控制、維持原本的 `handle` 回傳。
+
+  `DoItemRUN` 的 `FORLOOPNBitmap`（`run.c:424`）也一樣 —— N 的工作就是把
+  「串列裡下一個元件」（`BL->NEXTNODE`，也就是 I）的節點打開。N 排到尾端時
+  下一個是 NULL，I 永遠不會備妥。
 
   `CheckConnection`（`run.c:128`）開跑前把 I 歸零那一段也是同一個寫法
   （「迴圈內第二個元件」），一起改掉 —— 不然動過 N 之後歸零的會是別人，
