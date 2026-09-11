@@ -1712,8 +1712,14 @@ function checkConnection(blocks, ioBlockClear) {
         break;
       case B.FORLOOPBitmap:
         all(true);
-        // run.c:128 迴圈計數器 I 歸零（迴圈內第二個元件的第一個節點）
-        b.hooks[0].blocks[1].bap.IONodeLLHead[0].value = 0;
+        /* run.c:128 迴圈計數器 I 歸零。原版寫的是「迴圈內第二個元件」
+           （`BlockLLHeadP->NEXTNODE`），但串列順序會被 ItemMoveToLastPosition
+           打亂（同 doRunLoopBlock 的理由），動一下 N 就會變成把 N 歸零、
+           迴圈直接結束。這裡一樣用 BITMAPID 認 I。 */
+        {
+          const ib = b.hooks[0].blocks.find(x => x.bap.BITMAPID === B.FORLOOPIBitmap);
+          if (ib) ib.bap.IONodeLLHead[0].value = 0;
+        }
         checkConnection(b.hooks[0].blocks, ioBlockClear);
         break;
       case B.CUSTOMBLOCKBitmap:
